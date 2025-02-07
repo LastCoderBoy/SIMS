@@ -53,4 +53,8 @@ public class ProductController {
         return pmService.deleteProduct(id);
     }
 
+    @GetMapping("/search")
+    public ResponseEntity<List<ProductsForPM>> searchProduct(@RequestParam String text){
+        return pmService.searchProduct(text);
+    }
 }

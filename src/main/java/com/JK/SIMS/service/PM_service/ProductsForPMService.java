@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -178,4 +179,22 @@ public class ProductsForPMService {
                 HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
+
+    public ResponseEntity<List<ProductsForPM>> searchProduct(String text){
+        if(text != null && !text.trim().isEmpty()){
+            Optional<List<ProductsForPM>> result = pmRepository.searchByProductIDAndCategoryAndName(text);
+            return result.map(productsForPMS -> new ResponseEntity<>(productsForPMS, HttpStatus.OK))
+                    .orElseGet(() -> new ResponseEntity<>(new ArrayList<>(), HttpStatus.OK));
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.BAD_REQUEST);
+    }
 }
+
+
+
+
+
+
+
+
+

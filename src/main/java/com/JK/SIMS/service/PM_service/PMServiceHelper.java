@@ -2,10 +2,7 @@ package com.JK.SIMS.service.PM_service;
 
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 
-import java.lang.reflect.Field;
 import java.math.BigDecimal;
 
 public class PMServiceHelper {
