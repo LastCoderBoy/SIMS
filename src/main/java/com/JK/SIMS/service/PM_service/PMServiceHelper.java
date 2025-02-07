@@ -13,7 +13,6 @@ public class PMServiceHelper {
         return  product.getCategory() != null && !product.getCategory().toString().isEmpty() &&
                 product.getName() != null && !product.getName().isEmpty() &&
                 product.getPrice() != null && !product.getPrice().toString().isEmpty() &&
-                product.getStatus() != null && !product.getStatus().toString().isEmpty() &&
                 product.getStock() != null && !product.getStock().toString().isEmpty();
     }
 
@@ -29,9 +28,6 @@ public class PMServiceHelper {
             }
             if (product.getPrice() == null || product.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
                 errorMessage.append("Valid price is required. ");
-            }
-            if (product.getStatus() == null) {
-                errorMessage.append("Status is required. ");
             }
             if (product.getStock() == null || product.getStock() < 0) {
                 errorMessage.append("Valid stock quantity is required. ");

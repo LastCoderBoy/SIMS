@@ -2,6 +2,7 @@ package com.JK.SIMS.service.PM_service;
 
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
+import com.JK.SIMS.models.ProductStatus;
 import com.JK.SIMS.repository.PM_repo.PM_repository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,6 +57,10 @@ public class ProductsForPMService {
         try {
             String newID = generateProductId();
             newProduct.setProductID(newID);
+            if(newProduct.getStock() != 0)
+                newProduct.setStatus(ProductStatus.IN_STOCK);
+            else
+                newProduct.setStatus(ProductStatus.OUT_STOCK);
             pmRepository.save(newProduct);
 
             logger.info("New product added: ID = {}, Name = {}", newID, newProduct.getName());
