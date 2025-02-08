@@ -2,8 +2,14 @@ package com.JK.SIMS.service.PM_service;
 
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
+import com.JK.SIMS.models.ProductCategories;
 import com.JK.SIMS.models.ProductStatus;
 import com.JK.SIMS.repository.PM_repo.PM_repository;
+import jakarta.servlet.ServletOutputStream;
+import jakarta.servlet.http.HttpServletResponse;
+import org.apache.poi.xssf.usermodel.XSSFRow;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,10 +19,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.io.IOException;
+import java.util.*;
 
 import static com.JK.SIMS.service.PM_service.PMServiceHelper.validateNewProduct;
 
@@ -187,6 +191,121 @@ public class ProductsForPMService {
                     .orElseGet(() -> new ResponseEntity<>(new ArrayList<>(), HttpStatus.OK));
         }
         return new ResponseEntity<>(new ArrayList<>(), HttpStatus.BAD_REQUEST);
+    }
+
+    public void generatePMReport(HttpServletResponse response, List<ProductsForPM> allProducts) throws IOException {
+        XSSFWorkbook workbook = new XSSFWorkbook();
+        XSSFSheet sheet = workbook.createSheet("Product Management");
+        XSSFRow row = sheet.createRow(0);
+
+        row.createCell(0).setCellValue("Product ID");
+        row.createCell(1).setCellValue("Category");
+        row.createCell(2).setCellValue("Name");
+        row.createCell(3).setCellValue("Price");
+        row.createCell(4).setCellValue("Stock");
+        row.createCell(5).setCellValue("Status");
+
+        int dataRowIndex = 1;
+        for(ProductsForPM pm : allProducts){
+            XSSFRow rowForData = sheet.createRow(dataRowIndex);
+            rowForData.createCell(0).setCellValue(pm.getProductID());
+            rowForData.createCell(1).setCellValue(pm.getCategory().toString());
+            rowForData.createCell(2).setCellValue(pm.getName());
+            rowForData.createCell(3).setCellValue(pm.getPrice().doubleValue());
+            rowForData.createCell(4).setCellValue(pm.getStock());
+            rowForData.createCell(5).setCellValue(pm.getStatus().toString());
+            dataRowIndex++;
+        }
+
+        try (ServletOutputStream outputStream = response.getOutputStream()) {
+            workbook.write(outputStream);
+            logger.info("Product Management report is downloaded with {} data size", allProducts.size());
+            workbook.close();
+        } catch (IOException e) {
+            logger.error("Error writing Excel file", e);
+        }
+    }
+
+    private static final Set<String> VALID_SORT_OPTIONS = Set.of("lowtohigh", "hightolow");
+
+    public ResponseEntity<List<ProductsForPM>> filterProducts(String category, String sortBy, String status) {
+        try {
+            // Validate inputs first
+            validateInputs(category, sortBy, status);
+
+            // Get filtered products
+            List<ProductsForPM> products = getFilteredProducts(category, status);
+
+            // Apply sorting if requested
+            if (sortBy != null) {
+                sortProducts(products, sortBy.toLowerCase().trim());
+            }
+
+            return products.isEmpty() ? new ResponseEntity<>(HttpStatus.NO_CONTENT) : ResponseEntity.ok(products);
+
+        } catch (IllegalArgumentException e) {
+            logger.error("Invalid input parameters: {}", e.getMessage());
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        } catch (DataAccessException e) {
+            logger.error("Database error while filtering products: {}", e.getMessage());
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        } catch (Exception e) {
+            logger.error("Unexpected error while filtering products: {}", e.getMessage(), e);
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+    private void validateInputs(String category, String sortBy, String status) {
+        if (category != null) {
+            try {
+                ProductCategories.valueOf(category);
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid category: " + category);
+            }
+        }
+
+        if (status != null) {
+            try {
+                ProductStatus.valueOf(status);
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid status: " + status);
+            }
+        }
+
+        if (sortBy != null && !VALID_SORT_OPTIONS.contains(sortBy.toLowerCase().trim())) {
+            throw new IllegalArgumentException("Invalid sortBy parameter: " + sortBy);
+        }
+    }
+
+    private List<ProductsForPM> getFilteredProducts(String category, String status) {
+        List<ProductsForPM> products;
+
+        if (category != null) {
+            products = pmRepository.findAllByCategory(ProductCategories.valueOf(category));
+            logger.info("Found {} products for category {}", products.size(), category);
+        } else if (status != null) {
+            products = pmRepository.findAllByStatus(ProductStatus.valueOf(status));
+            logger.info("Found {} products for status {}", products.size(), status);
+        } else {
+            products = pmRepository.findAll();
+            logger.info("Retrieved all {} products", products.size());
+        }
+
+        return products;
+    }
+
+    private void sortProducts(List<ProductsForPM> products, String sortBy) {
+        switch (sortBy) {
+            case "lowtohigh":
+                products.sort(Comparator.comparing(ProductsForPM::getPrice,
+                        Comparator.nullsLast(Comparator.naturalOrder())));
+                logger.info("Sorted {} products by price (ascending)", products.size());
+                break;
+            case "hightolow":
+                products.sort(Comparator.comparing(ProductsForPM::getPrice,
+                        Comparator.nullsLast(Comparator.naturalOrder())).reversed());
+                logger.info("Sorted {} products by price (descending)", products.size());
+                break;
+        }
     }
 }
 
