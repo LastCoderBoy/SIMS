@@ -71,7 +71,6 @@ public class ProductController {
         pmService.generatePMReport(response, allProducts);
     }
 
-    // TODO Implement the Filter section.
     @GetMapping("/filter")
     public ResponseEntity<List<ProductsForPM>> filterProducts(
             @RequestParam(required = false) String category,

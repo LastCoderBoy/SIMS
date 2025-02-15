@@ -10,7 +10,8 @@ public class PMServiceHelper {
         return  product.getCategory() != null && !product.getCategory().toString().isEmpty() &&
                 product.getName() != null && !product.getName().isEmpty() &&
                 product.getPrice() != null && !product.getPrice().toString().isEmpty() &&
-                product.getStock() != null && !product.getStock().toString().isEmpty();
+                product.getLocation() != null && !product.getLocation().isEmpty() &&
+                product.getStatus() != null && !product.getStatus().toString().isEmpty();
     }
 
     public static void validateNewProduct(ProductsForPM product) throws ValidationException {
@@ -26,8 +27,11 @@ public class PMServiceHelper {
             if (product.getPrice() == null || product.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
                 errorMessage.append("Valid price is required. ");
             }
-            if (product.getStock() == null || product.getStock() < 0) {
-                errorMessage.append("Valid stock quantity is required. ");
+            if (product.getLocation() == null || product.getLocation().isEmpty()) {
+                errorMessage.append("Location is required. ");
+            }
+            if(product.getStatus() == null){
+                errorMessage.append("Status is required. ");
             }
 
             throw new ValidationException(errorMessage.toString().trim());

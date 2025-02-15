@@ -1,4 +1,4 @@
-package com.JK.SIMS.models;
+package com.JK.SIMS.models.PM_models;
 
 public enum ProductCategories {
     EDUCATION,

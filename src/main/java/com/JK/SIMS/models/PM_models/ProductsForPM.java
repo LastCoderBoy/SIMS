@@ -1,7 +1,5 @@
 package com.JK.SIMS.models.PM_models;
 
-import com.JK.SIMS.models.ProductCategories;
-import com.JK.SIMS.models.ProductStatus;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
@@ -16,12 +14,12 @@ public class ProductsForPM {
     @Column(name = "Name")
     private String name;
 
+    @Column(name = "Location")
+    private String location;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "Category")
     private ProductCategories category;
-
-    @Column(name = "Stock")
-    private Long stock;
 
     @Column(name = "Price")
     private BigDecimal price;
@@ -62,19 +60,19 @@ public class ProductsForPM {
         this.category = category;
     }
 
-    public Long getStock() {
-        return stock;
-    }
-
-    public void setStock(Long stock) {
-        this.stock = stock;
-    }
-
     public BigDecimal getPrice() {
         return price;
     }
 
     public void setPrice(BigDecimal price) {
         this.price = price;
+    }
+
+    public String getLocation() {
+        return location;
+    }
+
+    public void setLocation(String location) {
+        this.location = location;
     }
 }
