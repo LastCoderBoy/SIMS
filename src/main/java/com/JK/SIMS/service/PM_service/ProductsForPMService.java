@@ -1,9 +1,11 @@
 package com.JK.SIMS.service.PM_service;
 
 import com.JK.SIMS.exceptionHandler.ValidationException;
+import com.JK.SIMS.models.IC_models.InventoryData;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductStatus;
+import com.JK.SIMS.repository.IC_repo.IC_repository;
 import com.JK.SIMS.repository.PM_repo.PM_repository;
 import com.JK.SIMS.service.IC_service.InventoryControlService;
 import jakarta.servlet.ServletOutputStream;
@@ -32,10 +34,12 @@ public class ProductsForPMService {
 
     private final PM_repository pmRepository;
     private final InventoryControlService icService;
+    private final IC_repository icRepository;
     @Autowired
-    public ProductsForPMService(PM_repository pmRepository, InventoryControlService icService) {
+    public ProductsForPMService(PM_repository pmRepository, InventoryControlService icService, IC_repository icRepository) {
         this.pmRepository = pmRepository;
         this.icService = icService;
+        this.icRepository = icRepository;
     }
 
 
@@ -88,7 +92,12 @@ public class ProductsForPMService {
     public ResponseEntity<String> deleteProduct(String id) {
         try {
             Optional<ProductsForPM> productNeedsToBeDeleted = pmRepository.findById(id);
+
             if (productNeedsToBeDeleted.isPresent()) {
+                // Delete all related inventory records first
+                icRepository.deleteByProduct_ProductID(id);
+
+                //Then delete the record from PM table
                 pmRepository.delete(productNeedsToBeDeleted.get());
                 logger.info("PM: Product with ID {} is deleted", id);
                 return ResponseEntity.ok("Product with ID " + id + " is deleted successfully!");

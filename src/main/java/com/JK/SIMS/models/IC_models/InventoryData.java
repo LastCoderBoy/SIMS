@@ -13,7 +13,7 @@ public class InventoryData {
     @Column(name = "SKU", unique = true, nullable = false)
     private String SKU;
 
-    @ManyToOne(cascade = CascadeType.ALL)
+    @ManyToOne
     @JoinColumn(name = "productID", nullable = false)
     private ProductsForPM product;
 

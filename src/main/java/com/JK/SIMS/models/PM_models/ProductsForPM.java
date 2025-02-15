@@ -1,8 +1,10 @@
 package com.JK.SIMS.models.PM_models;
 
+import com.JK.SIMS.models.IC_models.InventoryData;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Entity
 @Table(name = "Products_For_Management")
