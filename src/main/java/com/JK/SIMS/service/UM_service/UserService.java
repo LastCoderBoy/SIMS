@@ -40,7 +40,7 @@ public class UserService {
                 String role = userPrincipal.getAuthorities().stream()
                         .findFirst()
                         .map(GrantedAuthority::getAuthority) // Extract the role name
-                        .orElse("ROLE_USER");
+                        .orElse("ROLE_STAFF");
 
                 String token = jwtService.generateToken(userPrincipal.getUsername(), role);
                 logger.info("User '{}' authenticated successfully. Role: {}", userPrincipal.getUsername(), role);

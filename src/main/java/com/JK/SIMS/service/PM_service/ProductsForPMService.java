@@ -151,7 +151,12 @@ public class ProductsForPMService {
                         logger.warn("PM: Product with ID {} not found", productId);
                         return new ResponseEntity<>("Product not found with ID: " + productId, HttpStatus.NOT_FOUND);
                     });
-        } catch (Exception e) {
+        }
+        catch (ValidationException e) {
+            logger.error("PM: Validation error updating product {}: {}", productId, e.getMessage());
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+        }
+        catch (Exception e) {
             logger.error("PM: Error updating product {}: ", productId, e);
             return new ResponseEntity<>("PM: An error occurred while updating the product.", HttpStatus.INTERNAL_SERVER_ERROR);
         }
@@ -166,7 +171,6 @@ public class ProductsForPMService {
             int lastNumber = Integer.parseInt(lastId.substring(3));
             return String.format("PRD%03d", lastNumber + 1);
         }
-
         return "PRD001";
     }
 
