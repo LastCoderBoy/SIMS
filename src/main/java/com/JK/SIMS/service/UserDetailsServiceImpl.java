@@ -1,6 +1,6 @@
 package com.JK.SIMS.service;
 
-import com.JK.SIMS.config.UserPrincipal;
+import com.JK.SIMS.models.UM_models.UserPrincipal;
 import com.JK.SIMS.models.UM_models.Users;
 import com.JK.SIMS.repository.UM_repo.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;

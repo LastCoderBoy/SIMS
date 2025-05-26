@@ -1,8 +1,6 @@
 package com.JK.SIMS.service.UM_service;
 
-import com.JK.SIMS.config.UserPrincipal;
-import com.JK.SIMS.models.UM_models.LoginResponse;
-import com.JK.SIMS.models.UM_models.Users;
+import com.JK.SIMS.models.UM_models.*;
 import com.JK.SIMS.service.JWTService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,12 +25,12 @@ public class UserService {
         this.jwtService = jwtService;
     }
 
-    public LoginResponse verify(Users user) {
+    public LoginResponse verify(LoginRequest loginRequest) {
         try {
             Authentication authentication = authManager
                     .authenticate(new UsernamePasswordAuthenticationToken(
-                            user.getUsername(),
-                            user.getPassword()
+                            loginRequest.getUsername(),
+                            loginRequest.getPassword()
                     ));
 
             if (authentication.isAuthenticated()) {
@@ -40,7 +38,7 @@ public class UserService {
                 String role = userPrincipal.getAuthorities().stream()
                         .findFirst()
                         .map(GrantedAuthority::getAuthority) // Extract the role name
-                        .orElse("ROLE_STAFF");
+                        .orElse(Roles.ROLE_STAFF.name()); // Default role is STAFF if no role is found in the database
 
                 String token = jwtService.generateToken(userPrincipal.getUsername(), role);
                 logger.info("User '{}' authenticated successfully. Role: {}", userPrincipal.getUsername(), role);
