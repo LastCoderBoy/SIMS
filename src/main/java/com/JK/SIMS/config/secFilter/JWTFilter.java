@@ -1,6 +1,6 @@
 package com.JK.SIMS.config.secFilter;
 
-import com.JK.SIMS.service.JWTService;
+import com.JK.SIMS.service.UM_service.JWTService;
 import com.JK.SIMS.service.UserDetailsServiceImpl;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -33,6 +33,10 @@ public class JWTFilter extends OncePerRequestFilter {
 
         if(authHeader != null && authHeader.startsWith("Bearer ")){
             token = authHeader.substring(7);
+            if(jwtService.isTokenBlacklisted(token)){
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token has been blacklisted");
+                return;
+            }
             username = jwtService.extractUserName(token);
         }
 

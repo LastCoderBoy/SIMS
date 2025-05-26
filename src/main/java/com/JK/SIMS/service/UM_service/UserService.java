@@ -1,7 +1,9 @@
 package com.JK.SIMS.service.UM_service;
 
 import com.JK.SIMS.models.UM_models.*;
-import com.JK.SIMS.service.JWTService;
+import com.JK.SIMS.repository.UM_repo.BlackListTokenRepository;
+import io.jsonwebtoken.JwtException;
+import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +14,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
 
+import java.util.Date;
+
 @Service
 public class UserService {
 
@@ -19,10 +23,13 @@ public class UserService {
     private final JWTService jwtService;
     private static Logger logger = LoggerFactory.getLogger(UserService.class);
 
+    private final BlackListTokenRepository blackListTokenRepository;
+
     @Autowired
-    public UserService(AuthenticationManager authManager, JWTService jwtService) {
+    public UserService(AuthenticationManager authManager, JWTService jwtService, BlackListTokenRepository blackListTokenRepository) {
         this.authManager = authManager;
         this.jwtService = jwtService;
+        this.blackListTokenRepository = blackListTokenRepository;
     }
 
     public LoginResponse verify(LoginRequest loginRequest) {
@@ -52,5 +59,25 @@ public class UserService {
         }
 
         return new LoginResponse(null, "AUTH_FAILED");
+    }
+
+    public void logout(String jwtToken) throws BadRequestException {
+        if (jwtToken == null || jwtToken.isEmpty()) {
+            throw new BadRequestException("Token cannot be null or empty");
+        }
+
+        try {
+            // Check if token is expired before blacklisting
+            if (jwtService.isTokenExpired(jwtToken)) {
+                throw new BadRequestException("Token is already expired");
+            }
+
+            blackListTokenRepository.save(new BlacklistedToken(jwtToken, new Date()));
+            logger.info("Token has been blacklisted");
+        } catch (JwtException e) {
+            logger.error("Invalid token during logout: {}", e.getMessage());
+            throw new BadRequestException("Invalid token format");
+        }
+
     }
 }
