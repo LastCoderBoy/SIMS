@@ -63,9 +63,12 @@ public class JWTService {
     public void cleanBlacklistedTokens() {
         try {
             Date currentTime = new Date();
+            Date expirationThreshold = new Date(currentTime.getTime() - (1000 * 60 * 60 * 8));
+
             blackListTokenRepository.findAll().stream()
-                    .filter(token -> extractExpiration(token.getToken()).before(currentTime))
+                    .filter(token -> token.getBlacklistedAt().before(expirationThreshold))
                     .forEach(blackListTokenRepository::delete);
+
             logger.info("Cleaned up expired blacklisted tokens");
         } catch (Exception e) {
             logger.error("Error during blacklisted tokens cleanup: {}", e.getMessage());

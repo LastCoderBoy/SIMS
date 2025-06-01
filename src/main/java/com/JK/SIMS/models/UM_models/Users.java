@@ -27,4 +27,10 @@ public class Users {
 
     @Column(name = "email", unique = true, nullable = false)
     private String email;
+
+    @Column(name = "firstName", nullable = false)
+    private String firstName;
+
+    @Column(name = "lastName", nullable = false)
+    private String lastName;
 }
