@@ -14,7 +14,7 @@ public class PMServiceHelper {
                 product.getStatus() != null && !product.getStatus().toString().isEmpty();
     }
 
-    public static void validateNewProduct(ProductsForPM product) throws ValidationException {
+    public static boolean validateNewProduct(ProductsForPM product) throws ValidationException {
         if (!PMServiceHelper.areFieldsValid(product)) {
             StringBuilder errorMessage = new StringBuilder("Invalid product data: ");
 
@@ -36,5 +36,6 @@ public class PMServiceHelper {
 
             throw new ValidationException(errorMessage.toString().trim());
         }
+        return true;
     }
 }

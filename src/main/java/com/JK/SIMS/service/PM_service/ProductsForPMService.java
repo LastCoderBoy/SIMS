@@ -1,6 +1,7 @@
 package com.JK.SIMS.service.PM_service;
 
 import com.JK.SIMS.exceptionHandler.ValidationException;
+import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.InventoryData;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PM_models.ProductCategories;
@@ -48,44 +49,48 @@ public class ProductsForPMService {
             List<ProductsForPM> allProducts = pmRepository.findAll();
             logger.info("PM: Retrieved {} products from database.", allProducts.size());
             return allProducts;
-        } catch (Exception e) {
+        }
+        catch (DataAccessException da){
+            logger.error("PM: Database error while retrieving products: {}", da.getMessage());
+            return Collections.emptyList();
+        }
+        catch (Exception e) {
             logger.error("PM: Failed to retrieve products", e);
             return Collections.emptyList();
         }
     }
 
-    public ResponseEntity<String> addProduct(ProductsForPM newProduct) {
-        if (newProduct == null) {
-            return new ResponseEntity<>("PM: Product cannot be null", HttpStatus.BAD_REQUEST);
-        }
-
-        try {
-            validateNewProduct(newProduct);
-        } catch (ValidationException e) {
-            logger.warn("PM: Product validation failed: {}", e.getMessage());
-            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
-        }
-
+    public ApiResponse addProduct(ProductsForPM newProduct) {
         try {
             String newID = generateProductId();
-            newProduct.setProductID(newID);
-            pmRepository.save(newProduct);
 
+            if(validateNewProduct(newProduct)){
+                newProduct.setProductID(newID);
+                pmRepository.save(newProduct);
+            }
+            else {
+                throw new ValidationException("Invalid product data");
+            }
+
+            // Adding directly to the IC if the product status is not in COMING SOON
             if(!newProduct.getStatus().equals(ProductStatus.COMING_SOON)){
                 icService.addProduct(newProduct);
             }
 
             logger.info("PM: New product added: ID = {}, Name = {}", newID, newProduct.getName());
-            return ResponseEntity.ok("PM: Product added successfully with ID: " + newID);
-
-        } catch (DuplicateKeyException e) {
+            return new ApiResponse(true, "PM: Product added successfully with ID: " + newID);
+        }
+        catch (DuplicateKeyException e) {
             logger.error("PM: Duplicate product ID detected", e);
-            // Retry once with a new ID
-            return retryProductCreation(newProduct);
-        } catch (Exception e) {
+            throw new InternalError("PM: Duplicate product ID detected");
+        }
+        catch (ValidationException e) {
+            logger.error("PM: Validation error adding product: {}", e.getMessage());
+            throw new ValidationException("PM: Validation error adding product: " + e.getMessage());
+        }
+        catch (Exception e) {
             logger.error("PM: Failed to add product", e);
-            return new ResponseEntity<>("PM: Failed to add product due to internal error",
-                    HttpStatus.INTERNAL_SERVER_ERROR);
+            throw new InternalError("PM: Failed to add product");
         }
     }
 
@@ -172,31 +177,6 @@ public class ProductsForPMService {
             return String.format("PRD%03d", lastNumber + 1);
         }
         return "PRD001";
-    }
-
-    private ResponseEntity<String> retryProductCreation(ProductsForPM product) {
-        int retryAttempts = 3;
-
-        for (int i = 0; i < retryAttempts; i++) {
-            try {
-                String newID;
-                do {
-                    newID = generateProductId();
-                } while (pmRepository.existsById(newID));
-
-                product.setProductID(newID);
-                pmRepository.save(product);
-
-                logger.info("PM: Product added on retry: ID = {}, Name = {}", newID, product.getName());
-                return ResponseEntity.ok("PM: Product added successfully with ID: " + newID);
-
-            } catch (Exception e) {
-                logger.error("PM: Retry failed when adding product, attempt {}/{}", i + 1, retryAttempts, e);
-            }
-        }
-
-        return new ResponseEntity<>("PM: Failed to add product after retries",
-                HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     public ResponseEntity<List<ProductsForPM>> searchProduct(String text){

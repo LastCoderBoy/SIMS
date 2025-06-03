@@ -1,10 +1,17 @@
 package com.JK.SIMS.controller.product_management;
 
+import com.JK.SIMS.controller.user_management.UserController;
+import com.JK.SIMS.exceptionHandler.ValidationException;
+import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.PM_models.ProductResponse;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.service.PM_service.ProductsForPMService;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.coyote.BadRequestException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -21,6 +28,7 @@ import java.util.List;
 @RequestMapping("/api/v1/products")
 public class ProductController {
 
+    private static final Logger logger = LoggerFactory.getLogger(ProductController.class);
     private final ProductsForPMService pmService;
     @Autowired
     public ProductController(ProductsForPMService pmService) {
@@ -28,7 +36,8 @@ public class ProductController {
     }
 
     @GetMapping
-    public ResponseEntity<ProductResponse> getAllProducts() {
+    public ResponseEntity<?> getAllProducts() {
+        // We need current user's information.
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         boolean hasAdminAccess = auth.getAuthorities().stream()
                 .anyMatch(r ->
@@ -37,12 +46,28 @@ public class ProductController {
 
         List<ProductsForPM> products = pmService.getAllProducts();
         ProductResponse response = new ProductResponse(products, hasAdminAccess);
+        logger.info("PM: Retrieved {} products from database. The User hasAdminAccess: {}", products.size(), hasAdminAccess);
         return ResponseEntity.ok(response);
     }
 
     @PostMapping
-    public ResponseEntity<String> addProduct(@RequestBody ProductsForPM newProduct){
-        return pmService.addProduct(newProduct);
+    public ResponseEntity<?> addProduct(@RequestBody ProductsForPM newProduct){
+        try{
+            if (newProduct == null) {
+                throw new ValidationException("PM: Product data cannot be null");
+            }
+            return ResponseEntity.ok(pmService.addProduct(newProduct));
+        }
+        catch (ValidationException e){
+            logger.warn("PM: Provided new product is empty or provided invalid data: {}", newProduct);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse(false, e.getMessage() != null ? e.getMessage() : "Invalid new product provided"));
+        }
+        catch (Exception e){
+            logger.error("PM: Unexpected error occurred while adding product: {}", newProduct);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse(false, e.getMessage() != null ? e.getMessage() : "Unexpected error occurred"));
+        }
     }
 
     @PutMapping("/{id}")
