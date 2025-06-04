@@ -1,23 +1,19 @@
 package com.JK.SIMS.controller.product_management;
 
-import com.JK.SIMS.controller.user_management.UserController;
+import com.JK.SIMS.config.SecurityUtils;
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.PM_models.ProductResponse;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.service.PM_service.ProductsForPMService;
 import jakarta.servlet.http.HttpServletResponse;
-import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.nio.file.AccessDeniedException;
 import java.util.List;
 
 /**
@@ -37,41 +33,27 @@ public class ProductController {
 
     @GetMapping
     public ResponseEntity<?> getAllProducts() {
-        // We need current user's information.
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        boolean hasAdminAccess = auth.getAuthorities().stream()
-                .anyMatch(r ->
-                        r.getAuthority().equals("ROLE_ADMIN") ||
-                        r.getAuthority().equals("ROLE_MANAGER"));
-
         List<ProductsForPM> products = pmService.getAllProducts();
-        ProductResponse response = new ProductResponse(products, hasAdminAccess);
-        logger.info("PM: Retrieved {} products from database. The User hasAdminAccess: {}", products.size(), hasAdminAccess);
-        return ResponseEntity.ok(response);
+        // We need current user's information.
+        logger.info("PM: Sent {} products from database.", products.size());
+        return ResponseEntity.ok(
+                (products.isEmpty()) ? new ApiResponse(false, "No products found.") : products
+        );
     }
 
     @PostMapping
-    public ResponseEntity<?> addProduct(@RequestBody ProductsForPM newProduct){
-        try{
-            if (newProduct == null) {
-                throw new ValidationException("PM: Product data cannot be null");
-            }
-            return ResponseEntity.ok(pmService.addProduct(newProduct));
+    public ResponseEntity<?> addProduct(@RequestBody ProductsForPM newProduct) throws AccessDeniedException {
+        if (newProduct == null) {
+            throw new ValidationException("PM: Product data cannot be null");
         }
-        catch (ValidationException e){
-            logger.warn("PM: Provided new product is empty or provided invalid data: {}", newProduct);
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ApiResponse(false, e.getMessage() != null ? e.getMessage() : "Invalid new product provided"));
+        if(!SecurityUtils.hasAdminAccess()){
+            throw new AccessDeniedException("PM: User does not have permission to add a new product");
         }
-        catch (Exception e){
-            logger.error("PM: Unexpected error occurred while adding product: {}", newProduct);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponse(false, e.getMessage() != null ? e.getMessage() : "Unexpected error occurred"));
-        }
+        return ResponseEntity.ok(pmService.addProduct(newProduct, SecurityUtils.hasAdminAccess()));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<String> updateProduct(@PathVariable String id, @RequestBody ProductsForPM newProduct){
+    public ResponseEntity<?> updateProduct(@PathVariable String id, @RequestBody ProductsForPM newProduct){
         return pmService.updateProduct(id, newProduct);
     }
 

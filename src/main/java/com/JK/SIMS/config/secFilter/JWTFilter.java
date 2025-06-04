@@ -1,6 +1,8 @@
 package com.JK.SIMS.config.secFilter;
 
+import com.JK.SIMS.exceptionHandler.InvalidTokenException;
 import com.JK.SIMS.exceptionHandler.JwtAuthenticationException;
+import com.JK.SIMS.service.TokenUtils;
 import com.JK.SIMS.service.UM_service.JWTService;
 import com.JK.SIMS.service.UserDetailsServiceImpl;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -36,19 +38,24 @@ public class JWTFilter extends OncePerRequestFilter {
             String username = null;
 
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                token = authHeader.substring(7);
-                if (jwtService.isTokenBlacklisted(token)) {
-                    throw new JwtAuthenticationException("Token has been blacklisted");
+                try {
+                    token = TokenUtils.extractToken(authHeader);
+                    if (jwtService.isTokenBlacklisted(token)) {
+                        throw new JwtAuthenticationException("Token has been blacklisted");
+                    }
+                    username = jwtService.extractUserName(token);
+                } catch (InvalidTokenException e) {
+                    throw new JwtAuthenticationException("Invalid token format");
                 }
-                username = jwtService.extractUserName(token);
             }
 
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = context.getBean(UserDetailsServiceImpl.class).loadUserByUsername(username);
                 if (jwtService.validateToken(token, userDetails)) {
-                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                    authToken.setDetails(new WebAuthenticationDetailsSource()
-                            .buildDetails(request));
+                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                            userDetails, null, userDetails.getAuthorities()
+                    );
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 } else {
                     throw new JwtAuthenticationException("Invalid token");

@@ -1,16 +1,18 @@
 package com.JK.SIMS.service.PM_service;
 
+import com.JK.SIMS.exceptionHandler.DatabaseException;
+import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.IC_models.InventoryData;
-import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductStatus;
+import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.repository.IC_repo.IC_repository;
 import com.JK.SIMS.repository.PM_repo.PM_repository;
 import com.JK.SIMS.service.IC_service.InventoryControlService;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.coyote.BadRequestException;
 import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -24,6 +26,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.nio.file.AccessDeniedException;
 import java.util.*;
 
 import static com.JK.SIMS.service.PM_service.PMServiceHelper.validateNewProduct;
@@ -31,7 +34,7 @@ import static com.JK.SIMS.service.PM_service.PMServiceHelper.validateNewProduct;
 @Service
 public class ProductsForPMService {
 
-    private static Logger logger = LoggerFactory.getLogger(ProductsForPMService.class);
+    private static final Logger logger = LoggerFactory.getLogger(ProductsForPMService.class);
 
     private final PM_repository pmRepository;
     private final InventoryControlService icService;
@@ -50,47 +53,44 @@ public class ProductsForPMService {
             logger.info("PM: Retrieved {} products from database.", allProducts.size());
             return allProducts;
         }
-        catch (DataAccessException da){
-            logger.error("PM: Database error while retrieving products: {}", da.getMessage());
-            return Collections.emptyList();
-        }
-        catch (Exception e) {
+        catch (DataAccessException e) {
+            logger.error("PM: Database error while retrieving products: {}", e.getMessage());
+            throw new DatabaseException("Failed to retrieve products from database", e);
+        } catch (Exception e) {
             logger.error("PM: Failed to retrieve products", e);
-            return Collections.emptyList();
+            throw new ServiceException("Failed to retrieve products", e);
         }
+
     }
 
-    public ApiResponse addProduct(ProductsForPM newProduct) {
+    public ApiResponse addProduct(ProductsForPM newProduct, boolean hasAdminAccess) throws AccessDeniedException {
         try {
-            String newID = generateProductId();
+            if(hasAdminAccess) {
+                String newID = generateProductId();
 
-            if(validateNewProduct(newProduct)){
-                newProduct.setProductID(newID);
-                pmRepository.save(newProduct);
-            }
-            else {
-                throw new ValidationException("Invalid product data");
-            }
+                if (validateNewProduct(newProduct)) {
+                    newProduct.setProductID(newID);
+                    pmRepository.save(newProduct);
+                } else {
+                    throw new ValidationException("Invalid product data");
+                }
 
-            // Adding directly to the IC if the product status is not in COMING SOON
-            if(!newProduct.getStatus().equals(ProductStatus.COMING_SOON)){
-                icService.addProduct(newProduct);
-            }
+                // Adding directly to the IC if the product status is not in COMING SOON
+                if (!newProduct.getStatus().equals(ProductStatus.COMING_SOON)) {
+                    icService.addProduct(newProduct);
+                }
 
-            logger.info("PM: New product added: ID = {}, Name = {}", newID, newProduct.getName());
-            return new ApiResponse(true, "PM: Product added successfully with ID: " + newID);
+                logger.info("PM: New product added: ID = {}, Name = {}", newID, newProduct.getName());
+                return new ApiResponse(true, "PM: Product added successfully with ID: " + newID);
+            }
+            throw new AccessDeniedException("PM: Forbidden access to add product");
         }
-        catch (DuplicateKeyException e) {
-            logger.error("PM: Duplicate product ID detected", e);
-            throw new InternalError("PM: Duplicate product ID detected");
-        }
-        catch (ValidationException e) {
-            logger.error("PM: Validation error adding product: {}", e.getMessage());
-            throw new ValidationException("PM: Validation error adding product: " + e.getMessage());
+        catch (ValidationException | AccessDeniedException e) {
+            throw e;
         }
         catch (Exception e) {
             logger.error("PM: Failed to add product", e);
-            throw new InternalError("PM: Failed to add product");
+            throw new InternalError("PM: Failed to add product " + e.getMessage());
         }
     }
 
@@ -107,7 +107,7 @@ public class ProductsForPMService {
                 logger.info("PM: Product with ID {} is deleted", id);
                 return ResponseEntity.ok("Product with ID " + id + " is deleted successfully!");
             } else {
-                logger.warn("PM: Product with ID {} not found", id);
+                logger.warn("PM: Delete Product with ID {} not found", id);
                 return new ResponseEntity<>("PM: Product with ID " + id + " not found", HttpStatus.NOT_FOUND);
             }
         } catch (DataAccessException e) {
@@ -119,7 +119,7 @@ public class ProductsForPMService {
         }
     }
 
-    public ResponseEntity<String> updateProduct(String productId, ProductsForPM newProduct) {
+    public ResponseEntity<?> updateProduct(String productId, ProductsForPM newProduct) {
         if (productId == null || productId.trim().isEmpty()) {
             return new ResponseEntity<>("PM: Product ID cannot be null or empty", HttpStatus.BAD_REQUEST);
         }
