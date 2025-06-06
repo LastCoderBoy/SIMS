@@ -6,6 +6,7 @@ import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.service.PM_service.ProductsForPMService;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,7 +22,7 @@ import java.util.List;
  */
 
 @RestController
-@RequestMapping("/api/v1/products")
+@RequestMapping("/api/v1/products") // Endpoint requires Authentication.
 public class ProductController {
 
     private static final Logger logger = LoggerFactory.getLogger(ProductController.class);
@@ -34,7 +35,6 @@ public class ProductController {
     @GetMapping
     public ResponseEntity<?> getAllProducts() {
         List<ProductsForPM> products = pmService.getAllProducts();
-        // We need current user's information.
         logger.info("PM: Sent {} products from database.", products.size());
         return ResponseEntity.ok(
                 (products.isEmpty()) ? new ApiResponse(false, "No products found.") : products
@@ -46,19 +46,23 @@ public class ProductController {
         if (newProduct == null) {
             throw new ValidationException("PM: Product data cannot be null");
         }
-        if(!SecurityUtils.hasAdminAccess()){
-            throw new AccessDeniedException("PM: User does not have permission to add a new product");
-        }
+        //Only the Admins and Managers can add new products.
         return ResponseEntity.ok(pmService.addProduct(newProduct, SecurityUtils.hasAdminAccess()));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<?> updateProduct(@PathVariable String id, @RequestBody ProductsForPM newProduct){
+        if(id == null || newProduct == null || id.trim().isEmpty()){
+            throw new ValidationException("PM: Product ID or New product cannot be null");
+        }
         return pmService.updateProduct(id, newProduct);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<String> deleteProduct(@PathVariable String id){
+    public ResponseEntity<?> deleteProduct(@PathVariable String id) throws BadRequestException {
+        if(id == null || id.trim().isEmpty()){
+            throw new ValidationException("PM: Product ID cannot be null");
+        }
         return pmService.deleteProduct(id);
     }
 

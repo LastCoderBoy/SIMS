@@ -54,11 +54,9 @@ public class ProductsForPMService {
             return allProducts;
         }
         catch (DataAccessException e) {
-            logger.error("PM: Database error while retrieving products: {}", e.getMessage());
-            throw new DatabaseException("Failed to retrieve products from database", e);
+            throw new DatabaseException("PM (getAllProducts): Failed to retrieve products from database", e);
         } catch (Exception e) {
-            logger.error("PM: Failed to retrieve products", e);
-            throw new ServiceException("Failed to retrieve products", e);
+            throw new ServiceException("PM (getAllProducts): Failed to retrieve products", e);
         }
 
     }
@@ -66,15 +64,12 @@ public class ProductsForPMService {
     public ApiResponse addProduct(ProductsForPM newProduct, boolean hasAdminAccess) throws AccessDeniedException {
         try {
             if(hasAdminAccess) {
-                String newID = generateProductId();
-
+                String newID = null;
                 if (validateNewProduct(newProduct)) {
+                    newID = generateProductId();
                     newProduct.setProductID(newID);
                     pmRepository.save(newProduct);
-                } else {
-                    throw new ValidationException("Invalid product data");
                 }
-
                 // Adding directly to the IC if the product status is not in COMING SOON
                 if (!newProduct.getStatus().equals(ProductStatus.COMING_SOON)) {
                     icService.addProduct(newProduct);
@@ -83,51 +78,42 @@ public class ProductsForPMService {
                 logger.info("PM: New product added: ID = {}, Name = {}", newID, newProduct.getName());
                 return new ApiResponse(true, "PM: Product added successfully with ID: " + newID);
             }
-            throw new AccessDeniedException("PM: Forbidden access to add product");
+            throw new AccessDeniedException("PM (addProduct): Forbidden access");
         }
         catch (ValidationException | AccessDeniedException e) {
             throw e;
         }
         catch (Exception e) {
-            logger.error("PM: Failed to add product", e);
-            throw new InternalError("PM: Failed to add product " + e.getMessage());
+            throw new ServiceException("PM (addProduct): Failed to add product ", e);
         }
     }
 
-    public ResponseEntity<String> deleteProduct(String id) {
+    public ResponseEntity<?> deleteProduct(String id) throws BadRequestException {
         try {
             Optional<ProductsForPM> productNeedsToBeDeleted = pmRepository.findById(id);
 
             if (productNeedsToBeDeleted.isPresent()) {
-                // Delete all related inventory records first
+                // Delete all related records first from IC table
                 icRepository.deleteByProduct_ProductID(id);
 
                 //Then delete the record from PM table
                 pmRepository.delete(productNeedsToBeDeleted.get());
                 logger.info("PM: Product with ID {} is deleted", id);
                 return ResponseEntity.ok("Product with ID " + id + " is deleted successfully!");
-            } else {
-                logger.warn("PM: Delete Product with ID {} not found", id);
-                return new ResponseEntity<>("PM: Product with ID " + id + " not found", HttpStatus.NOT_FOUND);
             }
-        } catch (DataAccessException e) {
-            logger.error("PM: Deletion failed for product with ID {}", id, e);
-            return new ResponseEntity<>("PM: Deletion failed due to a database error", HttpStatus.INTERNAL_SERVER_ERROR);
+            throw new BadRequestException("PM (deleteProduct): Product with ID " + id + " not found");
+        }
+        catch(BadRequestException e) {
+            throw e;
+        }
+        catch (DataAccessException e) {
+            throw new DatabaseException("PM (deleteProduct): Failed to delete product with ID " + id, e);
         } catch (Exception e) {
-            logger.error("PM: Unexpected error occurred while deleting product with ID {}", id, e);
-            return new ResponseEntity<>("PM: Unexpected error occurred", HttpStatus.INTERNAL_SERVER_ERROR);
+            throw new ServiceException("PM (deleteProduct): Failed to delete product with ID " + id, e);
         }
     }
 
     public ResponseEntity<?> updateProduct(String productId, ProductsForPM newProduct) {
-        if (productId == null || productId.trim().isEmpty()) {
-            return new ResponseEntity<>("PM: Product ID cannot be null or empty", HttpStatus.BAD_REQUEST);
-        }
-
-        if (newProduct == null) {
-            return new ResponseEntity<>("PM: Product data cannot be null", HttpStatus.BAD_REQUEST);
-        }
-
         try {
             return pmRepository.findById(productId)
                     .map(existingProduct -> {
@@ -149,7 +135,7 @@ public class ProductsForPMService {
                         }
 
                         ProductsForPM savedProduct = pmRepository.save(existingProduct);
-                        logger.info("PM: Product with ID {} updated successfully", productId);
+                        logger.info("PM: Product with ID {} updated successfully", productId.toUpperCase());
                         return ResponseEntity.ok("Product " + savedProduct.getProductID() + " is Updated Successfully");
                     })
                     .orElseGet(() -> {
@@ -158,12 +144,10 @@ public class ProductsForPMService {
                     });
         }
         catch (ValidationException e) {
-            logger.error("PM: Validation error updating product {}: {}", productId, e.getMessage());
-            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+            throw new ValidationException("PM (updateProduct): Invalid product data : " + e.getMessage());
         }
         catch (Exception e) {
-            logger.error("PM: Error updating product {}: ", productId, e);
-            return new ResponseEntity<>("PM: An error occurred while updating the product.", HttpStatus.INTERNAL_SERVER_ERROR);
+            throw new ServiceException("PM (updateProduct): Internal error " + productId, e);
         }
     }
 

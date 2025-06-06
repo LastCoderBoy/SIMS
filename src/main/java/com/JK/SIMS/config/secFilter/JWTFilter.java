@@ -44,7 +44,7 @@ public class JWTFilter extends OncePerRequestFilter {
                         throw new JwtAuthenticationException("Token has been blacklisted");
                     }
                     username = jwtService.extractUserName(token);
-                } catch (InvalidTokenException e) {
+                } catch (JwtAuthenticationException e) {
                     throw new JwtAuthenticationException("Invalid token format");
                 }
             }
@@ -66,7 +66,8 @@ public class JWTFilter extends OncePerRequestFilter {
         }
         catch (ExpiredJwtException e) {
             throw new JwtAuthenticationException("Token has expired");
-        } catch (JwtException e) {
+        }
+        catch (JwtException e) {
             throw new JwtAuthenticationException("Invalid token format");
         }
     }

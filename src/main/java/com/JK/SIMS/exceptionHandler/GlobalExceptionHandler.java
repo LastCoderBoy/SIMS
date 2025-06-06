@@ -4,6 +4,7 @@ import com.JK.SIMS.models.ApiResponse;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import jakarta.persistence.EntityNotFoundException;
+import org.apache.coyote.BadRequestException;
 import org.hibernate.service.NullServiceException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +40,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<?> handleJwtAuthenticationException(JwtAuthenticationException ex) {
         logger.warn("JWT Authentication error: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(new ApiResponse(false, "Authentication failed: " + ex.getMessage()));
+                .body(new ApiResponse(false, "Failed to perform the requested operation"));
     }
 
     @ExceptionHandler(ExpiredJwtException.class)
@@ -94,14 +95,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<?> handleAuthenticationFailedException(AuthenticationFailedException ex) {
         logger.warn("Authentication failed: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(new ApiResponse(false, ex.getMessage()));
+                .body(new ApiResponse(false, "Invalid Credentials!"));
     }
 
     @ExceptionHandler(InvalidTokenException.class)
     public ResponseEntity<?> handleInvalidTokenException(InvalidTokenException ex) {
         logger.warn("Invalid token: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ApiResponse(false, ex.getMessage()));
+                .body(new ApiResponse(false, "Failed to perform the requested operation."));
     }
 
     @ExceptionHandler(PasswordValidationException.class)
@@ -116,6 +117,13 @@ public class GlobalExceptionHandler {
         logger.warn("Entity not found: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new ApiResponse(false, ex.getMessage()));
+    }
+
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<?> handleBadRequestException(BadRequestException ex){
+        logger.warn("Bad request: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ApiResponse(false, "Request failed!"));
     }
 
 }
