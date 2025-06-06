@@ -51,9 +51,9 @@ public class ProductController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateProduct(@PathVariable String id, @RequestBody ProductsForPM newProduct){
+    public ResponseEntity<?> updateProduct(@PathVariable String id, @RequestBody ProductsForPM newProduct) throws BadRequestException {
         if(id == null || newProduct == null || id.trim().isEmpty()){
-            throw new ValidationException("PM: Product ID or New product cannot be null");
+            throw new ValidationException("PM (updateProduct): Product ID or New product cannot be null");
         }
         return pmService.updateProduct(id, newProduct);
     }
@@ -67,19 +67,8 @@ public class ProductController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<ProductsForPM>> searchProduct(@RequestParam String text){
+    public ResponseEntity<?> searchProduct(@RequestParam String text){
         return pmService.searchProduct(text);
-    }
-
-    @GetMapping("/report")
-    public void generatePMReport(HttpServletResponse response) throws IOException {
-        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        String headerKey = "Content-Disposition";
-        String headerValue = "attachment; filename=product.xlsx";
-        response.setHeader(headerKey, headerValue);
-
-        List<ProductsForPM> allProducts = pmService.getAllProducts();
-        pmService.generatePMReport(response, allProducts);
     }
 
     @GetMapping("/filter")
@@ -88,6 +77,17 @@ public class ProductController {
             @RequestParam(required = false) String sortBy,
             @RequestParam(required = false) String status){
         return pmService.filterProducts(category, sortBy, status);
+    }
+
+    @GetMapping("/report")
+    public void generatePMReport(HttpServletResponse response) {
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        String headerKey = "Content-Disposition";
+        String headerValue = "attachment; filename=product.xlsx";
+        response.setHeader(headerKey, headerValue);
+
+        List<ProductsForPM> allProducts = pmService.getAllProducts();
+        pmService.generatePMReport(response, allProducts);
     }
 
 }

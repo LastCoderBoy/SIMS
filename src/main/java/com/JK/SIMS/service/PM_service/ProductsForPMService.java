@@ -10,6 +10,7 @@ import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.repository.IC_repo.IC_repository;
 import com.JK.SIMS.repository.PM_repo.PM_repository;
 import com.JK.SIMS.service.IC_service.InventoryControlService;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.coyote.BadRequestException;
@@ -20,16 +21,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.nio.file.AccessDeniedException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
-import static com.JK.SIMS.service.PM_service.PMServiceHelper.validateNewProduct;
+import static com.JK.SIMS.service.PM_service.PMServiceHelper.*;
 
 @Service
 public class ProductsForPMService {
@@ -50,7 +52,7 @@ public class ProductsForPMService {
     public List<ProductsForPM> getAllProducts() {
         try {
             List<ProductsForPM> allProducts = pmRepository.findAll();
-            logger.info("PM: Retrieved {} products from database.", allProducts.size());
+            logger.info("PM (getAllProducts): Retrieved {} products from database.", allProducts.size());
             return allProducts;
         }
         catch (DataAccessException e) {
@@ -113,7 +115,7 @@ public class ProductsForPMService {
         }
     }
 
-    public ResponseEntity<?> updateProduct(String productId, ProductsForPM newProduct) {
+    public ResponseEntity<?> updateProduct(String productId, ProductsForPM newProduct) throws BadRequestException {
         try {
             return pmRepository.findById(productId)
                     .map(existingProduct -> {
@@ -134,14 +136,14 @@ public class ProductsForPMService {
                             existingProduct.setLocation(newProduct.getLocation());
                         }
 
-                        ProductsForPM savedProduct = pmRepository.save(existingProduct);
-                        logger.info("PM: Product with ID {} updated successfully", productId.toUpperCase());
-                        return ResponseEntity.ok("Product " + savedProduct.getProductID() + " is Updated Successfully");
+                        pmRepository.save(existingProduct);
+                        logger.info("PM (updateProduct): Product with ID {} updated successfully", productId);
+                        return ResponseEntity.ok(new ApiResponse(true, "Product with ID " + productId + " updated successfully!"));
                     })
-                    .orElseGet(() -> {
-                        logger.warn("PM: Product with ID {} not found", productId);
-                        return new ResponseEntity<>("Product not found with ID: " + productId, HttpStatus.NOT_FOUND);
-                    });
+                    .orElseThrow(() -> new BadRequestException("PM (updateProduct): Product with ID " + productId + " not found"));
+        }
+        catch (BadRequestException e) {
+            throw e;
         }
         catch (ValidationException e) {
             throw new ValidationException("PM (updateProduct): Invalid product data : " + e.getMessage());
@@ -166,16 +168,51 @@ public class ProductsForPMService {
     public ResponseEntity<List<ProductsForPM>> searchProduct(String text){
         if(text != null && !text.trim().isEmpty()){
 
-            // TODO: Add search by Location as well.
-            Optional<List<ProductsForPM>> result = pmRepository.searchByProductIDAndCategoryAndName(text);
+            Optional<List<ProductsForPM>> result = pmRepository.searchByProductIDAndCategoryAndNameAndLocation(text);
             return result.map(
-                    productsForPMS -> new ResponseEntity<>(productsForPMS, HttpStatus.OK))
-                    .orElseGet(() -> new ResponseEntity<>(new ArrayList<>(), HttpStatus.OK));
+                    productsForPMS ->{
+                            logger.info("PM (searchProduct): Retrieved {} data from the database.", productsForPMS.size());
+                            return new ResponseEntity<>(productsForPMS, HttpStatus.OK);
+                    })
+                    .orElseThrow(() -> new DatabaseException("PM (searchProduct): Failed to filter the product!)"));
         }
-        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.BAD_REQUEST);
+        try {
+            logger.info("PM (searchProduct): No search text provided. Retrieving all products.");
+            return new ResponseEntity<>(getAllProducts(), HttpStatus.OK);
+        }
+        catch (Exception e){
+            throw new ServiceException("PM (searchProduct): Failed to retrieve products", e);
+        }
     }
 
-    public void generatePMReport(HttpServletResponse response, List<ProductsForPM> allProducts) throws IOException {
+    public ResponseEntity<List<ProductsForPM>> filterProducts(String category, String sortBy, String status) {
+        try {
+            // Validate inputs first
+            validateInputs(category, sortBy, status);
+
+            // Get filtered products
+            List<ProductsForPM> products = getFilteredProducts(category, status);
+            logger.info("PM (filterProducts): Retrieved {} products", products.size());
+
+            // Apply sorting if requested
+            if (sortBy != null) {
+                sortProducts(products, sortBy.toLowerCase().trim());
+            }
+            return products.isEmpty() ? new ResponseEntity<>(new ArrayList<>(), HttpStatus.OK) : ResponseEntity.ok(products);
+
+        }
+        catch (ValidationException e) {
+            throw new ValidationException("PM (filterProducts): Invalid input: " + e.getMessage());
+        }
+        catch (DataAccessException e) {
+            throw new DatabaseException("PM (filterProducts): Database error while filtering products: ", e);
+        }
+        catch (Exception e) {
+            throw new ServiceException("PM (filterProducts): Internal error while filtering products: ", e.getCause());
+        }
+    }
+
+    public void generatePMReport(HttpServletResponse response, List<ProductsForPM> allProducts){
         XSSFWorkbook workbook = new XSSFWorkbook();
         XSSFSheet sheet = workbook.createSheet("Product Management");
         XSSFRow row = sheet.createRow(0);
@@ -201,92 +238,26 @@ public class ProductsForPMService {
 
         try (ServletOutputStream outputStream = response.getOutputStream()) {
             workbook.write(outputStream);
-            logger.info("PM: Product Management report is downloaded with {} data size", allProducts.size());
+            logger.info("PM (generatePMReport): Product Management report is downloaded with {} data size", allProducts.size());
             workbook.close();
         } catch (IOException e) {
-            logger.error("PM: Error writing Excel file", e);
+            logger.error("PM (generatePMReport): Error writing Excel file", e);
         }
     }
 
-    private static final Set<String> VALID_SORT_OPTIONS = Set.of("lowtohigh", "hightolow");
-
-    // TODO Filter by Location as well
-    public ResponseEntity<List<ProductsForPM>> filterProducts(String category, String sortBy, String status) {
-        try {
-            // Validate inputs first
-            validateInputs(category, sortBy, status);
-            // Get filtered products
-            List<ProductsForPM> products = getFilteredProducts(category, status);
-            // Apply sorting if requested
-            if (sortBy != null) {
-                sortProducts(products, sortBy.toLowerCase().trim());
-            }
-            return products.isEmpty() ? new ResponseEntity<>(HttpStatus.NO_CONTENT) : ResponseEntity.ok(products);
-
-        } catch (IllegalArgumentException e) {
-            logger.error("PM: Invalid input parameters: {}", e.getMessage());
-            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
-        } catch (DataAccessException e) {
-            logger.error("PM: Database error while filtering products: {}", e.getMessage());
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
-        } catch (Exception e) {
-            logger.error("PM: Unexpected error while filtering products: {}", e.getMessage(), e);
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
-    private void validateInputs(String category, String sortBy, String status) {
-        if (category != null) {
-            try {
-                ProductCategories.valueOf(category);
-            } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Invalid category: " + category);
-            }
-        }
-
-        if (status != null) {
-            try {
-                ProductStatus.valueOf(status);
-            } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Invalid status: " + status);
-            }
-        }
-
-        if (sortBy != null && !VALID_SORT_OPTIONS.contains(sortBy.toLowerCase().trim())) {
-            throw new IllegalArgumentException("Invalid sortBy parameter: " + sortBy);
-        }
-    }
 
     private List<ProductsForPM> getFilteredProducts(String category, String status) {
-        List<ProductsForPM> products;
+        try {
+            ProductCategories categoryEnum = (category != null) ? ProductCategories.valueOf(category.toUpperCase().trim()) : null;
 
-        if (category != null) {
-            products = pmRepository.findAllByCategory(ProductCategories.valueOf(category));
-            logger.info("PM: Found {} products for category {}", products.size(), category);
-        } else if (status != null) {
-            products = pmRepository.findAllByStatus(ProductStatus.valueOf(status));
-            logger.info("PM: Found {} products for status {}", products.size(), status);
-        } else {
-            products = pmRepository.findAll();
-            logger.info("PM: Retrieved all {} products", products.size());
-        }
+            ProductStatus statusEnum = (status != null) ? ProductStatus.valueOf(status.toUpperCase().trim()) : null;
 
-        return products;
-    }
-
-    private void sortProducts(List<ProductsForPM> products, String sortBy) {
-        switch (sortBy) {
-            case "lowtohigh":
-                products.sort(Comparator.comparing(ProductsForPM::getPrice,
-                        Comparator.nullsLast(Comparator.naturalOrder())));
-                logger.info("PM: Sorted {} products by price (ascending)", products.size());
-                break;
-            case "hightolow":
-                products.sort(Comparator.comparing(ProductsForPM::getPrice,
-                        Comparator.nullsLast(Comparator.naturalOrder())).reversed());
-                logger.info("PM: Sorted {} products by price (descending)", products.size());
-                break;
+            return pmRepository.findByFilters(categoryEnum, statusEnum);
+        } catch (Exception e) {
+            throw new ServiceException("PM (getFilteredProducts): Internal Service Error", e);
         }
     }
+
 }
 
 
