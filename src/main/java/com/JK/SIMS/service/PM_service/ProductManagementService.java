@@ -10,7 +10,6 @@ import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.repository.IC_repo.IC_repository;
 import com.JK.SIMS.repository.PM_repo.PM_repository;
 import com.JK.SIMS.service.IC_service.InventoryControlService;
-import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.coyote.BadRequestException;
@@ -30,19 +29,20 @@ import java.nio.file.AccessDeniedException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 import static com.JK.SIMS.service.PM_service.PMServiceHelper.*;
 
 @Service
-public class ProductsForPMService {
+public class ProductManagementService {
 
-    private static final Logger logger = LoggerFactory.getLogger(ProductsForPMService.class);
+    private static final Logger logger = LoggerFactory.getLogger(ProductManagementService.class);
 
     private final PM_repository pmRepository;
     private final InventoryControlService icService;
     private final IC_repository icRepository;
     @Autowired
-    public ProductsForPMService(PM_repository pmRepository, InventoryControlService icService, IC_repository icRepository) {
+    public ProductManagementService(PM_repository pmRepository, InventoryControlService icService, IC_repository icRepository) {
         this.pmRepository = pmRepository;
         this.icService = icService;
         this.icRepository = icRepository;
@@ -63,9 +63,9 @@ public class ProductsForPMService {
 
     }
 
-    public ApiResponse addProduct(ProductsForPM newProduct, boolean hasAdminAccess) throws AccessDeniedException {
+    public ApiResponse addProduct(ProductsForPM newProduct, boolean hasAccess) throws AccessDeniedException {
         try {
-            if(hasAdminAccess) {
+            if(hasAccess) {
                 String newID = null;
                 if (validateNewProduct(newProduct)) {
                     newID = generateProductId();
@@ -73,7 +73,7 @@ public class ProductsForPMService {
                     pmRepository.save(newProduct);
                 }
                 // Adding directly to the IC if the product status is not in COMING SOON
-                if (!newProduct.getStatus().equals(ProductStatus.COMING_SOON)) {
+                if (!newProduct.getStatus().equals(ProductStatus.PLANNING)) {
                     icService.addProduct(newProduct);
                 }
 
@@ -95,10 +95,10 @@ public class ProductsForPMService {
             Optional<ProductsForPM> productNeedsToBeDeleted = pmRepository.findById(id);
 
             if (productNeedsToBeDeleted.isPresent()) {
-                // Delete all related records first from IC table
+                // Delete all related records first from the IC table
                 icRepository.deleteByProduct_ProductID(id);
 
-                //Then delete the record from PM table
+                //Then delete the record from the PM table
                 pmRepository.delete(productNeedsToBeDeleted.get());
                 logger.info("PM: Product with ID {} is deleted", id);
                 return ResponseEntity.ok("Product with ID " + id + " is deleted successfully!");
@@ -130,10 +130,25 @@ public class ProductsForPMService {
                             existingProduct.setPrice(newProduct.getPrice());
                         }
                         if (newProduct.getStatus() != null) {
+
+                            // Adding to the IC section if the status is changed from PLANNING to smthing new
+                            if(existingProduct.getStatus().equals(ProductStatus.PLANNING) &&
+                                    !newProduct.getStatus().equals(ProductStatus.PLANNING)) {
+                                existingProduct.setStatus(newProduct.getStatus());
+                                icService.addProduct(existingProduct);
+                            }
                             existingProduct.setStatus(newProduct.getStatus());
                         }
+
                         if (newProduct.getLocation() != null) {
-                            existingProduct.setLocation(newProduct.getLocation());
+                            // Validating the Location format.
+                            Pattern locationPattern = Pattern.compile("^[A-Za-z]\\d{1,2}-\\d{3}$");
+                            if(!locationPattern.matcher(newProduct.getLocation()).matches()){
+                                throw new ValidationException("PM (updateProduct): Invalid location format.");
+                            }
+                            else {
+                                existingProduct.setLocation(newProduct.getLocation());
+                            }
                         }
 
                         pmRepository.save(existingProduct);
@@ -146,7 +161,7 @@ public class ProductsForPMService {
             throw e;
         }
         catch (ValidationException e) {
-            throw new ValidationException("PM (updateProduct): Invalid product data : " + e.getMessage());
+            throw new ValidationException(e.getMessage());
         }
         catch (Exception e) {
             throw new ServiceException("PM (updateProduct): Internal error " + productId, e);

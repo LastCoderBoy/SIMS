@@ -14,14 +14,14 @@ import java.util.Optional;
 @Repository
 public interface PM_repository extends JpaRepository<ProductsForPM, String> {
     @Query(value = "SELECT pm.productID  FROM ProductsForPM pm ORDER BY CAST(SUBSTRING(pm.productID, 4) AS INTEGER) DESC Limit 1")
-    public Optional<String> getLastId();
+    Optional<String> getLastId();
 
     @Query("SELECT pm FROM ProductsForPM pm WHERE " +
             "LOWER(pm.category) LIKE LOWER(CONCAT('%', :text, '%')) OR " +
             "LOWER(pm.productID) LIKE LOWER(CONCAT('%', :text, '%')) OR " +
             "LOWER(pm.location) LIKE LOWER(CONCAT('%', :text, '%')) OR " +
             "LOWER(pm.name) LIKE LOWER(CONCAT('%', :text, '%'))")
-    public Optional<List<ProductsForPM>> searchByProductIDAndCategoryAndNameAndLocation (String text);
+    Optional<List<ProductsForPM>> searchByProductIDAndCategoryAndNameAndLocation (String text);
 
 
     @Query("SELECT pm FROM ProductsForPM pm WHERE " +
