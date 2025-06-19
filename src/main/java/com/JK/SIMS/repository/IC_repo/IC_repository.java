@@ -2,8 +2,11 @@ package com.JK.SIMS.repository.IC_repo;
 
 import com.JK.SIMS.models.IC_models.InventoryData;
 import com.JK.SIMS.models.IC_models.InventoryDataLoad;
+import com.JK.SIMS.models.IC_models.InventoryDataStatus;
 import com.JK.SIMS.models.IC_models.InventoryMetrics;
 import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -41,4 +44,7 @@ public interface IC_repository extends JpaRepository<InventoryData, String> {
             "LOWER(ic.product.category) LIKE LOWER(CONCAT('%', :text, '%'))"
     )
     List<InventoryData> searchProducts(String text);
+
+
+    Page<InventoryData> findByStatus(InventoryDataStatus status, Pageable pageable);
 }

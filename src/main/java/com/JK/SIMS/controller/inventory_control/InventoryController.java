@@ -57,7 +57,7 @@ public class InventoryController {
      * @param status optional status filter
      * @param page requested page number (zero-based)
      * @param size number of items per page
-     * @return ResponseEntity with filtered product list
+     * @return ResponseEntity with a filtered product list
      */
     @GetMapping("/filter")
     public ResponseEntity<?> filterProducts(
