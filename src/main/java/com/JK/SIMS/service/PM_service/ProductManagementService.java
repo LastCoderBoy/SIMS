@@ -173,6 +173,11 @@ public class ProductManagementService {
             ProductsForPM currentProduct = pmRepository.findById(productId)
                     .orElseThrow(() -> new BadRequestException("PM (updateProduct): Product with ID " + productId + " not found"));
 
+            if(isAllFieldsNull(newProduct)){
+                logger.info("PM (updateProduct): No fields to update. Product with ID {} not updated.", productId);
+                return new ApiResponse(false, "Missing fields to update.");
+            }
+
             if (newProduct.getName() != null) {
                 currentProduct.setName(newProduct.getName());
             }

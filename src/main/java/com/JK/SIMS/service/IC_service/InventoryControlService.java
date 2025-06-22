@@ -4,11 +4,13 @@ import com.JK.SIMS.exceptionHandler.DatabaseException;
 import com.JK.SIMS.exceptionHandler.InventoryException;
 import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
+import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.*;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.IC_repo.IC_repository;
+import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +24,8 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
+
+import static com.JK.SIMS.service.IC_service.InventoryServiceHelper.validateUpdateRequest;
 
 @Service
 public class InventoryControlService {
@@ -286,6 +290,67 @@ public class InventoryControlService {
             logger.error("IC: SKU generation failed due to malformed productID {} or category {}: {}",
                     productID, category, sioobe.getMessage());
             throw new InventoryException("IC: Malformed product ID or category for SKU generation", sioobe);
+        }
+    }
+
+
+    // Only currentStock and minLevel can be updated in the IC section
+    public ApiResponse updateProduct(String sku, InventoryData newInventoryData) throws BadRequestException {
+        try {
+            // Validate input parameters
+            validateUpdateRequest(sku, newInventoryData);
+
+            // Find and validate existing product
+            InventoryData existingProduct = icRepository.findBySKU(sku)
+                    .orElseThrow(() -> new BadRequestException(
+                            "IC (updateProduct): No product with SKU " + sku + " found"));
+
+            // Update stock levels
+            updateStockLevels(existingProduct, newInventoryData);
+
+            // Save and return
+            icRepository.save(existingProduct);
+            logger.info("IC (updateProduct): Product with SKU {} updated successfully", sku);
+            return new ApiResponse(true, sku + " is updated successfully");
+
+        } catch (DataAccessException da) {
+            logger.error("IC (updateProduct): Database error while updating SKU {}: {}",
+                    sku, da.getMessage());
+            throw new DatabaseException("IC (updateProduct): Database error", da);
+        } catch (BadRequestException | ValidationException e) {
+            logger.warn("IC (updateProduct): Validation failed for SKU {}: {}",
+                    sku, e.getMessage());
+            throw e;
+        } catch (Exception ex) {
+            logger.error("IC (updateProduct): Unexpected error while updating SKU {}: {}",
+                    sku, ex.getMessage());
+            throw new ServiceException("IC (updateProduct): Internal Service error", ex);
+        }
+    }
+    private void updateStockLevels(InventoryData existingProduct,
+                                   InventoryData newInventoryData) {
+        // Update current stock if provided
+        if (newInventoryData.getCurrentStock() != null) {
+            existingProduct.setCurrentStock(newInventoryData.getCurrentStock());
+        }
+
+        // Update minimum level if provided
+        if (newInventoryData.getMinLevel() != null) {
+            existingProduct.setMinLevel(newInventoryData.getMinLevel());
+        }
+
+        //Update the status as well based on the latest update
+        updateInventoryStatus(existingProduct);
+
+        // Update last update timestamp
+        existingProduct.setLastUpdate(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
+    }
+
+    private void updateInventoryStatus(InventoryData product) {
+        if (product.getCurrentStock() <= product.getMinLevel()) {
+            product.setStatus(InventoryDataStatus.LOW_STOCK);
+        } else {
+            product.setStatus(InventoryDataStatus.IN_STOCK);
         }
     }
 

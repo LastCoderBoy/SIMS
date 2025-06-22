@@ -1,18 +1,18 @@
 package com.JK.SIMS.controller.inventory_control;
 
 
+import com.JK.SIMS.models.ApiResponse;
+import com.JK.SIMS.models.IC_models.InventoryData;
 import com.JK.SIMS.models.IC_models.InventoryDataDTO;
 import com.JK.SIMS.models.IC_models.InventoryPageResponse;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.IC_service.InventoryControlService;
+import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/products/inventory")
@@ -76,4 +76,14 @@ public class InventoryController {
         PaginatedResponse<InventoryDataDTO> filteredDTOs = icService.filterProducts(filter, sortBy, sortDirection, page, size);
         return ResponseEntity.ok(filteredDTOs);
     }
+
+    @PutMapping("/{sku}")
+    public ResponseEntity<?> updateProduct(@PathVariable String sku, @RequestBody InventoryData newInventoryData) throws BadRequestException {
+        if(sku == null || sku.trim().isEmpty() || newInventoryData == null){
+            throw new IllegalArgumentException("IC: SKU or new input body cannot be null or empty");
+        }
+        ApiResponse response = icService.updateProduct(sku, newInventoryData);
+        return ResponseEntity.ok(response);
+    }
+
 }

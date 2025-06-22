@@ -13,6 +13,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface IC_repository extends JpaRepository<InventoryData, String> {
@@ -59,4 +60,5 @@ public interface IC_repository extends JpaRepository<InventoryData, String> {
             "LOWER(i.product.name) LIKE %:term%")
     Page<InventoryData> findByGeneralSearch(@Param("term") String searchTerm, Pageable pageable);
 
+    Optional<InventoryData> findBySKU(String sku);
 }

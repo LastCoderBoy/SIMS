@@ -57,7 +57,7 @@ public class ProductController {
     @PutMapping("/{id}")
     public ResponseEntity<?> updateProduct(@PathVariable String id, @RequestBody ProductsForPM newProduct) throws BadRequestException {
         if (id == null || newProduct == null || id.trim().isEmpty()) {
-            throw new ValidationException("PM (updateProduct): Product ID or New product cannot be null");
+            throw new BadRequestException("PM (updateProduct): Product ID or New product cannot be null");
         }
         logger.info("PM: updateProduct() calling...");
         ApiResponse response = pmService.updateProduct(id.toUpperCase(), newProduct);

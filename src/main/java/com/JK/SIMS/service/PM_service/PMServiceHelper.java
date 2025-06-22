@@ -6,6 +6,7 @@ import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.service.IC_service.InventoryControlService;
+import com.JK.SIMS.service.IC_service.InventoryServiceHelper;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -29,7 +30,7 @@ public class PMServiceHelper {
      * @return true if validation passes
      * @throws ValidationException if any validation rule is violated, with detailed error message
      */
-    public static boolean validateProduct(ProductsForPM product) throws ValidationException {
+    protected static boolean validateProduct(ProductsForPM product) throws ValidationException {
         StringBuilder errorMessage = new StringBuilder();
 
         if (product.getName() == null || product.getName().trim().isEmpty()) {
@@ -59,14 +60,16 @@ public class PMServiceHelper {
         return true;
     }
 
-    private static boolean isValidField(String fieldName) {
-        return Set.of("name", "category", "price", "status", "location")
-                .contains(fieldName.toLowerCase());
+    protected static boolean isAllFieldsNull(ProductsForPM product) {
+        return product.getName() == null &&
+                product.getCategory() == null &&
+                product.getPrice() == null &&
+                product.getStatus() == null &&
+                product.getLocation() == null;
     }
 
 
-
-    public static void validateLocationFormat(String location) {
+    protected static void validateLocationFormat(String location) {
         Pattern locationPattern = Pattern.compile("^[A-Za-z]\\d{1,2}-\\d{3}$");
         if (!locationPattern.matcher(location).matches()) {
             throw new ValidationException("PM (updateProduct): Invalid location format.");
