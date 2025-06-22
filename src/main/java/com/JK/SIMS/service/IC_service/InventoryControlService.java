@@ -8,7 +8,6 @@ import com.JK.SIMS.models.IC_models.*;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.repository.IC_repo.IC_repository;
-import com.JK.SIMS.service.IC_service.IC_serviceHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +22,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -41,28 +39,28 @@ public class InventoryControlService {
 
     /**
      * Loads inventory page data with pagination.
-     * Returns InventoryDataResponse with paginated InventoryDataLoad list and aggregated metrics.
+     * Returns InventoryPageResponse with paginated InventoryDataDTO list and aggregated metrics.
      * @param page requested page (zero-based)
      * @param size number of items per page
-     * @return InventoryDataResponse
+     * @return InventoryPageResponse
      */
     //Which loads all information of the IC page.
-    public InventoryDataResponse loadIcPageData(int page, int size) {
+    public InventoryPageResponse loadIcPageData(int page, int size) {
         try {
             InventoryMetrics metrics = icRepository.getInventoryMetrics();
 
-            List<InventoryDataLoad> inventoryDataLoadStorage = getInventoryDataLoadList(page, size);
+            List<InventoryDataDTO> inventoryDataDTOStorage = getInventoryDataLoadList(page, size);
 
             // Create the response DTO
-            InventoryDataResponse inventoryDataResponse = new InventoryDataResponse();
-            inventoryDataResponse.setInventoryDataLoadList(inventoryDataLoadStorage);
-            inventoryDataResponse.setTotalInventorySize(metrics.getTotalCount().intValue());
-            inventoryDataResponse.setLowStockSize(metrics.getLowStockCount().intValue());
-            inventoryDataResponse.setIncomingStockSize(metrics.getIncomingCount().intValue());
-            inventoryDataResponse.setOutgoingStockSize(metrics.getOutgoingCount().intValue());
-            inventoryDataResponse.setDamageLossSize(metrics.getDamageLossCount().intValue());
-            logger.info("IC (loadIcPageData): Sending page {} with {} products.", page, inventoryDataLoadStorage.size());
-            return inventoryDataResponse;
+            InventoryPageResponse inventoryPageResponse = new InventoryPageResponse();
+            inventoryPageResponse.setInventoryDataDTOList(inventoryDataDTOStorage);
+            inventoryPageResponse.setTotalInventorySize(metrics.getTotalCount().intValue());
+            inventoryPageResponse.setLowStockSize(metrics.getLowStockCount().intValue());
+            inventoryPageResponse.setIncomingStockSize(metrics.getIncomingCount().intValue());
+            inventoryPageResponse.setOutgoingStockSize(metrics.getOutgoingCount().intValue());
+            inventoryPageResponse.setDamageLossSize(metrics.getDamageLossCount().intValue());
+            logger.info("IC (loadIcPageData): Sending page {} with {} products.", page, inventoryDataDTOStorage.size());
+            return inventoryPageResponse;
         }
         catch (DataAccessException e) {
             logger.error("IC (loadIcPageData): Database access error while retrieving inventory data.", e);
@@ -77,7 +75,7 @@ public class InventoryControlService {
     /**
      * Search products by SKU, Location, Status, Category and Product Name.
      * @param text search text
-     * @return ResponseEntity with List of InventoryDataLoad or full inventory data if a text is empty
+     * @return ResponseEntity with List of InventoryDataDTO or full inventory data if a text is empty
      */
     public ResponseEntity<?> searchProduct(String text) {
 
@@ -86,7 +84,7 @@ public class InventoryControlService {
             if (inputText.isPresent() && !inputText.get().trim().isEmpty()) {
                 List<InventoryData> inventoryData = icRepository.searchProducts(inputText.get().trim().toLowerCase());
 
-                List<InventoryDataLoad> searchResult = inventoryData.stream()
+                List<InventoryDataDTO> searchResult = inventoryData.stream()
                         .map(this::transformToInventoryDataLoadSingle)
                         .collect(Collectors.toList());
 
@@ -100,87 +98,94 @@ public class InventoryControlService {
         }
     }
 
-
     /**
-     * Filter products by currentStock and location sorting, and optional status.
-     * Sorting is applied in-memory on the paged results.
-     * @param sortByCurrentStock boolean flag to sort by current stock ascending
-     * @param sortByLocation boolean flag to sort by location ascending
-     * @param status optional status filter
+     * Filter and sort inventory products with pagination.
+     * @param filter Optional filter string in format "field:value". Supported fields: status, stock, location
+     * @param sortBy Field to sort by
+     * @param sortDirection Sort direction (asc/desc)
      * @param page zero-based page number
      * @param size page size
-     * @return ResponseEntity with List of filtered and sorted InventoryDataLoad
+     * @return ResponseEntity with Page of filtered and sorted InventoryDataLoad
      */
-    public ResponseEntity<?> filterProducts(boolean sortByCurrentStock, boolean sortByLocation, String status, int page, int size) {
+    public ResponseEntity<?> filterProducts(String filter, String sortBy, String sortDirection, int page, int size) {
         try {
-            Sort sort = Sort.unsorted();
+            // Parse sort direction
+            Sort.Direction direction = sortDirection.equalsIgnoreCase("desc") ?
+                    Sort.Direction.DESC : Sort.Direction.ASC;
 
-            if (sortByLocation) {
-                sort = sort.and(Sort.by("location"));
-            }
-            if (sortByCurrentStock) {
-                sort = sort.and(Sort.by("currentStock"));
-            }
-
+            // Create sort
+            Sort sort = Sort.by(direction, sortBy);
             Pageable pageable = PageRequest.of(page, size, sort);
-            Page<InventoryData> resultPage;
 
-            if (status != null && !status.trim().isEmpty()) {
-                InventoryDataStatus inventoryDataStatus = InventoryDataStatus.valueOf(status.toUpperCase().trim());
-                resultPage = icRepository.findByStatus(inventoryDataStatus, pageable);
+            // Handle filtering
+            Page<InventoryData> resultPage;
+            if (filter != null && !filter.trim().isEmpty()) {
+                String[] filterParts = filter.trim().split(":");
+                if (filterParts.length == 2) {
+                    String field = filterParts[0].toLowerCase();
+                    String value = filterParts[1];
+
+                    resultPage = switch (field) {
+                        case "status" -> {
+                            InventoryDataStatus status = InventoryDataStatus.valueOf(value.toUpperCase());
+                            yield icRepository.findByStatus(status, pageable);
+                        }
+                        case "stock" -> icRepository.findByStockLevel(Integer.parseInt(value), pageable);
+                        case "location" -> icRepository.findByLocationContainingIgnoreCase(value, pageable);
+                        default -> icRepository.findAll(pageable);
+                    };
+                } else {
+                    // Use as general search term
+                    resultPage = icRepository.findByGeneralSearch(filter.trim().toLowerCase(), pageable);
+                }
             } else {
                 resultPage = icRepository.findAll(pageable);
             }
 
-            List<InventoryDataLoad> inventoryDataLoadList = resultPage.getContent().stream()
-                    .map(this::transformToInventoryDataLoadSingle)
-                    .collect(Collectors.toList());
+            Page<InventoryDataDTO> responseData = resultPage.map(this::transformToInventoryDataLoadSingle);
 
-            logger.info("IC (filterProducts): {} products retrieved.", inventoryDataLoadList.size());
-            return new ResponseEntity<>(inventoryDataLoadList, HttpStatus.OK);
-        }
-        catch (IllegalArgumentException iae) {
-            throw new ValidationException("IC (filterProducts): Invalid status value.");
-        }
-        catch (DataAccessException da) {
-            throw new DatabaseException("IC (filterProducts): Failed to retrieve products due to database error", da);
-        }
-        catch (Exception e) {
-            throw new ServiceException("IC (filterProducts): Internal Service Error!", e);
+            logger.info("IC (filterProducts): {} products retrieved.", responseData.getContent().size());
+            return new ResponseEntity<>(responseData, HttpStatus.OK);
+        } catch (IllegalArgumentException iae) {
+            throw new ValidationException("IC (filterProducts): Invalid filter value: " + iae.getMessage());
+        } catch (DataAccessException da) {
+            throw new DatabaseException("IC (filterProducts): Database error", da);
+        } catch (Exception e) {
+            throw new ServiceException("IC (filterProducts): Internal error", e);
         }
     }
 
 
-    private List<InventoryDataLoad> getInventoryDataLoadList(int page, int size) {
+    private List<InventoryDataDTO> getInventoryDataLoadList(int page, int size) {
         try{
             Pageable pageable = PageRequest.of(page, size, Sort.by("product.name").ascending());
 
             Page<InventoryData> inventoryPage = icRepository.findAll(pageable);
 
-            List<InventoryDataLoad> inventoryDataLoadStorage = inventoryPage.stream()
+            List<InventoryDataDTO> inventoryDataDTOStorage = inventoryPage.stream()
                     .map(this::transformToInventoryDataLoadSingle)
                     .collect(Collectors.toList());
-            return inventoryDataLoadStorage;
+            return inventoryDataDTOStorage;
         }
         catch (DataAccessException da){
-            throw new DatabaseException("IC (getInventoryDataLoadList): Failed to retrieve products due to database error", da);
+            throw new DatabaseException("IC (getInventoryDataDTOList): Failed to retrieve products due to database error", da);
         }
         catch (Exception e){
-            throw new ServiceException("IC (getInventoryDataLoadList): Failed to retrieve products", e);
+            throw new ServiceException("IC (getInventoryDataDTOList): Failed to retrieve products", e);
         }
     }
 
     /**
-     * Helper method to transform a single InventoryData entity to InventoryDataLoad DTO.
+     * Helper method to transform a single InventoryData entity to InventoryDataDTO DTO.
      * @param currentProduct InventoryData entity
-     * @return InventoryDataLoad DTO
+     * @return InventoryDataDTO DTO
      */
-    private InventoryDataLoad transformToInventoryDataLoadSingle(InventoryData currentProduct) {
-        InventoryDataLoad inventoryDataLoad = new InventoryDataLoad();
-        inventoryDataLoad.setInventoryData(currentProduct);
-        inventoryDataLoad.setProductName(currentProduct.getProduct().getName());
-        inventoryDataLoad.setCategory(currentProduct.getProduct().getCategory());
-        return inventoryDataLoad;
+    private InventoryDataDTO transformToInventoryDataLoadSingle(InventoryData currentProduct) {
+        InventoryDataDTO inventoryDataDTO = new InventoryDataDTO();
+        inventoryDataDTO.setInventoryData(currentProduct);
+        inventoryDataDTO.setProductName(currentProduct.getProduct().getName());
+        inventoryDataDTO.setCategory(currentProduct.getProduct().getCategory());
+        return inventoryDataDTO;
     }
 
 
@@ -222,7 +227,7 @@ public class InventoryControlService {
 
     /**
      * Our SKU will be: 3 letters from {@code Category} slash and last digits from the {@code productID}
-     * @return EDU-001 as an example.
+     * @return String representation of EDU-001 as an example.
      */
     private String generateSKU(String productID, ProductCategories category){
         try {

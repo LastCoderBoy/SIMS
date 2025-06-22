@@ -5,6 +5,7 @@ import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
+import com.JK.SIMS.service.IC_service.InventoryControlService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,28 +82,11 @@ public class PMServiceHelper {
         }
     }
 
-    public static void sortProducts(List<ProductsForPM> products, String sortBy) {
-        switch (sortBy.toLowerCase().trim()) {
-            case "lowtohighprice":
-                products.sort(Comparator.comparing(ProductsForPM::getPrice,
-                        Comparator.nullsLast(Comparator.naturalOrder())));
-                logger.info("PM: Sorted {} products by price (ascending)", products.size());
-                break;
-            case "hightolowprice":
-                products.sort(Comparator.comparing(ProductsForPM::getPrice,
-                        Comparator.nullsLast(Comparator.naturalOrder())).reversed());
-                logger.info("PM: Sorted {} products by price (descending)", products.size());
-                break;
-            case "lowtohighbyid":
-                // No need to sort as the list is already in ascending order
-                logger.info("PM: Products are already sorted by ID (ascending)");
-                break;
-            case "hightolowbyid":
-                // Reverse the list for descending order
-                Collections.reverse(products);
-                logger.info("PM: Sorted {} products by ID (descending)", products.size());
-                break;
 
+    public static void validateLocationFormat(String location) {
+        Pattern locationPattern = Pattern.compile("^[A-Za-z]\\d{1,2}-\\d{3}$");
+        if (!locationPattern.matcher(location).matches()) {
+            throw new ValidationException("PM (updateProduct): Invalid location format.");
         }
     }
 

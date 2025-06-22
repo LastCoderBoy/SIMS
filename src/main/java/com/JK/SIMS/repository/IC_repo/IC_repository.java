@@ -1,7 +1,6 @@
 package com.JK.SIMS.repository.IC_repo;
 
 import com.JK.SIMS.models.IC_models.InventoryData;
-import com.JK.SIMS.models.IC_models.InventoryDataLoad;
 import com.JK.SIMS.models.IC_models.InventoryDataStatus;
 import com.JK.SIMS.models.IC_models.InventoryMetrics;
 import jakarta.transaction.Transactional;
@@ -37,14 +36,27 @@ public interface IC_repository extends JpaRepository<InventoryData, String> {
 
 
     @Query("SELECT ic FROM InventoryData ic WHERE " +
-            "LOWER(ic.SKU) LIKE LOWER(CONCAT('%', :text, '%')) OR " +
-            "LOWER(ic.location) LIKE LOWER(CONCAT('%', :text, '%')) OR " +
-            "LOWER(ic.status) LIKE LOWER(CONCAT('%', :text, '%')) OR " +
-            "LOWER(ic.product.name) LIKE LOWER(CONCAT('%', :text, '%')) OR " +
-            "LOWER(ic.product.category) LIKE LOWER(CONCAT('%', :text, '%'))"
+            "LOWER(ic.SKU) LIKE CONCAT('%', :text, '%') OR " +
+            "LOWER(ic.location) LIKE CONCAT('%', :text, '%') OR " +
+            "LOWER(ic.status) LIKE CONCAT('%', :text, '%') OR " +
+            "LOWER(ic.product.name) LIKE CONCAT('%', :text, '%') OR " +
+            "LOWER(ic.product.category) LIKE CONCAT('%', :text, '%')"
     )
     List<InventoryData> searchProducts(String text);
 
 
     Page<InventoryData> findByStatus(InventoryDataStatus status, Pageable pageable);
+
+    Page<InventoryData> findByLocationContainingIgnoreCase(String location, Pageable pageable);
+
+    @Query("SELECT i FROM InventoryData i WHERE i.currentStock <= :level")
+    Page<InventoryData> findByStockLevel(@Param("level") Integer level, Pageable pageable);
+
+    @Query("SELECT i FROM InventoryData i WHERE " +
+            "LOWER(i.SKU) LIKE %:term% OR " +
+            "LOWER(i.location) LIKE %:term% OR " +
+            "LOWER(i.status) LIKE %:term% OR " +
+            "LOWER(i.product.name) LIKE %:term%")
+    Page<InventoryData> findByGeneralSearch(@Param("term") String searchTerm, Pageable pageable);
+
 }

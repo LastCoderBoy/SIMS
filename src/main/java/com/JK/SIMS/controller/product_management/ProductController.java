@@ -3,6 +3,7 @@ package com.JK.SIMS.controller.product_management;
 import com.JK.SIMS.config.SecurityUtils;
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
+import com.JK.SIMS.models.PM_models.ProductManagementDTO;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.service.PM_service.ProductManagementService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -10,7 +11,10 @@ import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.method.P;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.file.AccessDeniedException;
@@ -32,11 +36,13 @@ public class ProductController {
     }
 
     @GetMapping
-    public ResponseEntity<?> getAllProducts() {
+    public ResponseEntity<?> getAllProducts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
         logger.info("PM: getAllProducts() calling...");
-        List<ProductsForPM> products = pmService.getAllProducts();
+        Page<ProductManagementDTO> products = pmService.getAllProducts(page, size);
         return ResponseEntity.ok(
-                (products.isEmpty()) ? new ApiResponse(false, "No products found.") : products
+                (products.isEmpty()) ? new ApiResponse(true, "No products found.") : products
         );
     }
 
@@ -69,18 +75,24 @@ public class ProductController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<?> searchProduct(@RequestParam String text){
+    public ResponseEntity<?> searchProduct(
+            @RequestParam(required = false) String text,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size){
         logger.info("PM: searchProduct() calling...");
-        return pmService.searchProduct(text);
+        Page<ProductManagementDTO> productManagementDTOResponse = pmService.searchProduct(text, page, size);
+        return ResponseEntity.ok(productManagementDTOResponse);
     }
 
     @GetMapping("/filter")
-    public ResponseEntity<List<ProductsForPM>> filterProducts(
-            @RequestParam(required = false) String category,
-            @RequestParam(required = false) String sortBy,
-            @RequestParam(required = false) String status){
-        logger.info("PM: filterProducts() calling...");
-        return pmService.filterProducts(category, sortBy, status);
+    public ResponseEntity<Page<ProductManagementDTO>> filterProducts(
+            @RequestParam(required = false) String filter,
+            @RequestParam(defaultValue = "productID") String sortBy,
+            @RequestParam(defaultValue = "asc") String direction,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Page<ProductManagementDTO> result = pmService.filterProducts(filter, sortBy, direction, page, size);
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/report")
@@ -89,9 +101,9 @@ public class ProductController {
         String headerKey = "Content-Disposition";
         String headerValue = "attachment; filename=product.xlsx";
         response.setHeader(headerKey, headerValue);
-
-        List<ProductsForPM> allProducts = pmService.getAllProducts();
         logger.info("PM: generatePMReport() calling...");
+
+        List<ProductManagementDTO> allProducts = pmService.getAllProducts();
         pmService.generatePMReport(response, allProducts);
     }
 

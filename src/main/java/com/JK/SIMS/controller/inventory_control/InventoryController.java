@@ -1,7 +1,7 @@
 package com.JK.SIMS.controller.inventory_control;
 
 
-import com.JK.SIMS.models.IC_models.InventoryDataResponse;
+import com.JK.SIMS.models.IC_models.InventoryPageResponse;
 import com.JK.SIMS.service.IC_service.InventoryControlService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,15 +27,15 @@ public class InventoryController {
      * Load inventory control data with pagination.
      * @param page requested page number (zero-based)
      * @param size number of items per page
-     * @return ResponseEntity with InventoryDataResponse
+     * @return ResponseEntity with InventoryPageResponse
      */
     @GetMapping
     public ResponseEntity<?> loadInventoryControlData(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         logger.info("IC: loadInventoryControlData() calling with page {} and size {}...", page, size);
-        InventoryDataResponse inventoryDataResponse = icService.loadIcPageData(page, size);
-        return ResponseEntity.ok(inventoryDataResponse);
+        InventoryPageResponse inventoryPageResponse = icService.loadIcPageData(page, size);
+        return ResponseEntity.ok(inventoryPageResponse);
     }
 
 
@@ -52,21 +52,21 @@ public class InventoryController {
 
     /**
      * Filter products based on current stock, location, and status.
-     * @param currentStock boolean flag to filter by current stock
-     * @param sortByLocation boolean flag to sort by location
-     * @param status optional status filter
+     * @param filter Optional filter string in format "field:value". Supported fields: status, stock, location
+     * @param sortBy Field to sort by
+     * @param sortDirection Sort direction (asc/desc)
      * @param page requested page number (zero-based)
      * @param size number of items per page
      * @return ResponseEntity with a filtered product list
      */
     @GetMapping("/filter")
     public ResponseEntity<?> filterProducts(
-            @RequestParam(required = false) boolean currentStock,
-            @RequestParam(required = false) boolean sortByLocation,
-            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String filter,
+            @RequestParam(defaultValue = "product.name") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortDirection,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         logger.info("IC: filterProducts() calling with page {} and size {}...", page, size);
-        return icService.filterProducts(currentStock, sortByLocation, status, page, size);
+        return icService.filterProducts(filter, sortBy, sortDirection, page, size);
     }
 }

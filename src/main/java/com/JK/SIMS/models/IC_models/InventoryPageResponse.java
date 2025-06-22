@@ -9,7 +9,7 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class InventoryDataResponse {
+public class InventoryPageResponse {
     private Integer totalInventorySize;
     
     private Integer lowStockSize;
@@ -20,5 +20,5 @@ public class InventoryDataResponse {
 
     private Integer damageLossSize;
 
-    private List<InventoryDataLoad> inventoryDataLoadList;
+    private List<InventoryDataDTO> inventoryDataDTOList;
 }

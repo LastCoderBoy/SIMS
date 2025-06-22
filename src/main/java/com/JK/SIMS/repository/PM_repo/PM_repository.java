@@ -3,6 +3,8 @@ package com.JK.SIMS.repository.PM_repo;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -21,21 +23,23 @@ public interface PM_repository extends JpaRepository<ProductsForPM, String> {
             "LOWER(pm.productID) LIKE LOWER(CONCAT('%', :text, '%')) OR " +
             "LOWER(pm.location) LIKE LOWER(CONCAT('%', :text, '%')) OR " +
             "LOWER(pm.name) LIKE LOWER(CONCAT('%', :text, '%'))")
-    Optional<List<ProductsForPM>> searchByProductIDAndCategoryAndNameAndLocation (String text);
+    Page<ProductsForPM> searchProducts(String text, Pageable pageable);
 
 
-    @Query("SELECT pm FROM ProductsForPM pm WHERE " +
-            "(:category IS NULL OR pm.category = :category) AND " +
-            "(:status IS NULL OR pm.status = :status)")
-    List<ProductsForPM> findByFilters(
-            @Param("category") ProductCategories category,
-            @Param("status") ProductStatus status
-    );
+    @Query("SELECT p FROM ProductsForPM p WHERE " +
+            "LOWER(p.productID) LIKE %:filter% OR " +
+            "LOWER(p.name) LIKE %:filter% OR " +
+            "LOWER(p.location) LIKE %:filter% OR " +
+            "LOWER(p.category) LIKE %:filter% OR " +
+            "LOWER(p.status) LIKE %:filter%")
+    Page<ProductsForPM> findByGeneralFilter(@Param("filter") String filter, Pageable pageable);
 
+    Page<ProductsForPM> findByCategory(ProductCategories category, Pageable pageable);
 
-    // This one is Sort By Category
-    public List<ProductsForPM> findAllByCategory(ProductCategories category);
+    Page<ProductsForPM> findByLocation(String value, Pageable pageable);
 
-    // This one is Sort By Status
-    public List<ProductsForPM> findAllByStatus(ProductStatus status);
+    @Query("SELECT p FROM ProductsForPM p WHERE p.price <= :price")
+    Page<ProductsForPM> findByPriceLevel(int price, Pageable pageable);
+
+    Page<ProductsForPM> findByStatus(ProductStatus status, Pageable pageable);
 }
