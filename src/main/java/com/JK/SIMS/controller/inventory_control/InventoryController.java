@@ -1,7 +1,9 @@
 package com.JK.SIMS.controller.inventory_control;
 
 
+import com.JK.SIMS.models.IC_models.InventoryDataDTO;
 import com.JK.SIMS.models.IC_models.InventoryPageResponse;
+import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.IC_service.InventoryControlService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,9 +47,13 @@ public class InventoryController {
      * @return ResponseEntity with search results
      */
     @GetMapping("/search")
-    public ResponseEntity<?> searchProduct(@RequestParam(required = false) String text){
+    public ResponseEntity<?> searchProduct(
+            @RequestParam(required = false) String text,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size){
         logger.info("IC: searchProduct() calling...");
-        return icService.searchProduct(text);
+        PaginatedResponse<InventoryDataDTO> inventoryDataDTOList = icService.searchProduct(text, page, size);
+        return ResponseEntity.ok(inventoryDataDTOList);
     }
 
     /**
@@ -67,6 +73,7 @@ public class InventoryController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         logger.info("IC: filterProducts() calling with page {} and size {}...", page, size);
-        return icService.filterProducts(filter, sortBy, sortDirection, page, size);
+        PaginatedResponse<InventoryDataDTO> filteredDTOs = icService.filterProducts(filter, sortBy, sortDirection, page, size);
+        return ResponseEntity.ok(filteredDTOs);
     }
 }

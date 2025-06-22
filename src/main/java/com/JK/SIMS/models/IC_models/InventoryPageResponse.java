@@ -1,5 +1,6 @@
 package com.JK.SIMS.models.IC_models;
 
+import com.JK.SIMS.models.PaginatedResponse;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -20,5 +21,5 @@ public class InventoryPageResponse {
 
     private Integer damageLossSize;
 
-    private List<InventoryDataDTO> inventoryDataDTOList;
+    private PaginatedResponse<InventoryDataDTO> inventoryDataDTOList;
 }

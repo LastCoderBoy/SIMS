@@ -22,6 +22,7 @@ public interface PM_repository extends JpaRepository<ProductsForPM, String> {
             "LOWER(pm.category) LIKE LOWER(CONCAT('%', :text, '%')) OR " +
             "LOWER(pm.productID) LIKE LOWER(CONCAT('%', :text, '%')) OR " +
             "LOWER(pm.location) LIKE LOWER(CONCAT('%', :text, '%')) OR " +
+            "LOWER(pm.status) LIKE LOWER(CONCAT('%', :text, '%')) OR " +
             "LOWER(pm.name) LIKE LOWER(CONCAT('%', :text, '%'))")
     Page<ProductsForPM> searchProducts(String text, Pageable pageable);
 

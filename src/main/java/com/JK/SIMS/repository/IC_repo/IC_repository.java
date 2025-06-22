@@ -42,7 +42,7 @@ public interface IC_repository extends JpaRepository<InventoryData, String> {
             "LOWER(ic.product.name) LIKE CONCAT('%', :text, '%') OR " +
             "LOWER(ic.product.category) LIKE CONCAT('%', :text, '%')"
     )
-    List<InventoryData> searchProducts(String text);
+    Page<InventoryData> searchProducts(String text, Pageable pageable);
 
 
     Page<InventoryData> findByStatus(InventoryDataStatus status, Pageable pageable);

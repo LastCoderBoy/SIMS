@@ -5,16 +5,14 @@ import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.PM_models.ProductManagementDTO;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
+import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.PM_service.ProductManagementService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.method.P;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.file.AccessDeniedException;
@@ -40,9 +38,9 @@ public class ProductController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         logger.info("PM: getAllProducts() calling...");
-        Page<ProductManagementDTO> products = pmService.getAllProducts(page, size);
+        PaginatedResponse<ProductManagementDTO> products = pmService.getAllProducts(page, size);
         return ResponseEntity.ok(
-                (products.isEmpty()) ? new ApiResponse(true, "No products found.") : products
+                (products.getContent().isEmpty()) ? new ApiResponse(true, "No products found.") : products
         );
     }
 
@@ -58,11 +56,12 @@ public class ProductController {
 
     @PutMapping("/{id}")
     public ResponseEntity<?> updateProduct(@PathVariable String id, @RequestBody ProductsForPM newProduct) throws BadRequestException {
-        if(id == null || newProduct == null || id.trim().isEmpty()){
+        if (id == null || newProduct == null || id.trim().isEmpty()) {
             throw new ValidationException("PM (updateProduct): Product ID or New product cannot be null");
         }
         logger.info("PM: updateProduct() calling...");
-        return pmService.updateProduct(id.toUpperCase(), newProduct);
+        ApiResponse response = pmService.updateProduct(id.toUpperCase(), newProduct);
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{id}")
@@ -80,18 +79,20 @@ public class ProductController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size){
         logger.info("PM: searchProduct() calling...");
-        Page<ProductManagementDTO> productManagementDTOResponse = pmService.searchProduct(text, page, size);
-        return ResponseEntity.ok(productManagementDTOResponse);
+        PaginatedResponse<ProductManagementDTO> result = pmService.searchProduct(text, page, size);
+        logger.info("PM (searchProduct): Returning {} paginated data", result.getContent().size());
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/filter")
-    public ResponseEntity<Page<ProductManagementDTO>> filterProducts(
+    public ResponseEntity<?> filterProducts(
             @RequestParam(required = false) String filter,
             @RequestParam(defaultValue = "productID") String sortBy,
             @RequestParam(defaultValue = "asc") String direction,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        Page<ProductManagementDTO> result = pmService.filterProducts(filter, sortBy, direction, page, size);
+        PaginatedResponse<ProductManagementDTO> result = pmService.filterProducts(filter, sortBy, direction, page, size);
+        logger.info("PM (filterProducts): Returning {} paginated data", result.getContent().size());
         return ResponseEntity.ok(result);
     }
 
