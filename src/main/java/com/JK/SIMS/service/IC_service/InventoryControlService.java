@@ -7,9 +7,12 @@ import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.*;
 import com.JK.SIMS.models.PM_models.ProductCategories;
+import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.IC_repo.IC_repository;
+import com.JK.SIMS.repository.PM_repo.PM_repository;
+import jakarta.transaction.Transactional;
 import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,15 +28,18 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 
+import static com.JK.SIMS.service.GlobalServiceHelper.amongInvalidStatus;
 import static com.JK.SIMS.service.IC_service.InventoryServiceHelper.validateUpdateRequest;
 
 @Service
 public class InventoryControlService {
     private static Logger logger = LoggerFactory.getLogger(InventoryControlService.class);
 
+    private final PM_repository pmRepository;
     private final IC_repository icRepository;
     @Autowired
-    public InventoryControlService(IC_repository icRepository) {
+    public InventoryControlService(PM_repository pmRepository, IC_repository icRepository) {
+        this.pmRepository = pmRepository;
         this.icRepository = icRepository;
     }
 
@@ -92,7 +98,7 @@ public class InventoryControlService {
             if (inputText.isPresent() && !inputText.get().trim().isEmpty()) {
                 Pageable pageable = PageRequest.of(page, size, Sort.by("product.name").ascending());
                 Page<InventoryData> inventoryData = icRepository.searchProducts(inputText.get().trim().toLowerCase(), pageable);
-
+                logger.info("IC (searchProduct): {} products retrieved.", inventoryData.getContent().size());
                 return transformToPaginatedDTOResponse(inventoryData) ;
             }
             logger.info("IC (searchProduct): No search text provided. Retrieving first page with default size.");
@@ -245,7 +251,11 @@ public class InventoryControlService {
 
             inventoryData.setLastUpdate(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
             inventoryData.setMinLevel(0);
-            inventoryData.setStatus(InventoryDataStatus.LOW_STOCK);
+            if(amongInvalidStatus(product.getStatus())){
+                inventoryData.setStatus(InventoryDataStatus.INVALID);
+            }else {
+                inventoryData.setStatus(InventoryDataStatus.LOW_STOCK);
+            }
             icRepository.save(inventoryData);
             logger.info("IC: New product is added with the {} SKU", sku);
         } catch (DataAccessException da){
@@ -295,12 +305,13 @@ public class InventoryControlService {
 
 
     // Only currentStock and minLevel can be updated in the IC section
+    @Transactional
     public ApiResponse updateProduct(String sku, InventoryData newInventoryData) throws BadRequestException {
         try {
             // Validate input parameters
-            validateUpdateRequest(sku, newInventoryData);
+            validateUpdateRequest(newInventoryData);
 
-            // Find and validate existing product
+            // Find and validate the existing product
             InventoryData existingProduct = icRepository.findBySKU(sku)
                     .orElseThrow(() -> new BadRequestException(
                             "IC (updateProduct): No product with SKU " + sku + " found"));
@@ -327,8 +338,8 @@ public class InventoryControlService {
             throw new ServiceException("IC (updateProduct): Internal Service error", ex);
         }
     }
-    private void updateStockLevels(InventoryData existingProduct,
-                                   InventoryData newInventoryData) {
+
+    private void updateStockLevels(InventoryData existingProduct, InventoryData newInventoryData) {
         // Update current stock if provided
         if (newInventoryData.getCurrentStock() != null) {
             existingProduct.setCurrentStock(newInventoryData.getCurrentStock());
@@ -355,4 +366,48 @@ public class InventoryControlService {
     }
 
 
+    /**
+     * Deletes a product from the inventory control system and archives it in the Product Management system.
+     *
+     * @param sku The Stock Keeping Unit identifier of the product to delete
+     * @return ApiResponse containing success status and confirmation message
+     * @throws BadRequestException if product is not found in IC or PM system
+     * @throws DatabaseException   if database operation fails
+     * @throws ServiceException    if any other error occurs during deletion
+     */
+    @Transactional
+    public ApiResponse deleteProduct(String sku) throws BadRequestException {
+        try{
+            Optional<InventoryData> product = icRepository.findBySKU(sku);
+            if(product.isPresent()){
+                InventoryData productToBeDeleted = product.get();
+                String id = productToBeDeleted.getProduct().getProductID();
+
+                Optional<ProductsForPM> productInPM = pmRepository.findById(id);
+
+                if(productInPM.isEmpty()){
+                    logger.warn("IC (deleteProduct): Product with SKU {} not found in PM, searched with {} ID", sku, id);
+                    throw new BadRequestException("IC (deleteProduct): Product with SKU " + sku + " not found in PM");
+                }
+                if(productInPM.get().getStatus().equals(ProductStatus.ACTIVE) ||
+                        productInPM.get().getStatus().equals(ProductStatus.PLANNING) ||
+                        productInPM.get().getStatus().equals(ProductStatus.ON_ORDER) ) {
+                    productInPM.get().setStatus(ProductStatus.ARCHIVED);
+                    pmRepository.save(productInPM.get());
+                }
+
+                icRepository.deleteBySKU(sku);
+
+                logger.info("IC (deleteProduct): Product {} is deleted successfully.", sku);
+                return new ApiResponse(true, "Product " + sku + " is deleted successfully.");
+            }
+            throw new BadRequestException("IC (deleteProduct): Product with SKU " + sku + " not found");
+        }catch (DataAccessException de){
+            throw new DatabaseException("IC (deleteProduct): Database error occurred.", de);
+        }catch (BadRequestException be){
+            throw be;
+        }catch (Exception e){
+            throw new ServiceException("IC (deleteProduct): Failed to delete product", e);
+        }
+    }
 }

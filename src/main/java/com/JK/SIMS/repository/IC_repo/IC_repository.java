@@ -61,4 +61,8 @@ public interface IC_repository extends JpaRepository<InventoryData, String> {
     Page<InventoryData> findByGeneralSearch(@Param("term") String searchTerm, Pageable pageable);
 
     Optional<InventoryData> findBySKU(String sku);
+
+    void deleteBySKU(String sku);
+
+    Optional<InventoryData> findByProductProductID(String productId);
 }

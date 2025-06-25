@@ -19,7 +19,6 @@ import java.util.regex.Pattern;
 public class PMServiceHelper {
 
     private static final Logger logger = LoggerFactory.getLogger(PMServiceHelper.class);
-    private static final Set<String> VALID_SORT_OPTIONS = Set.of("lowtohighprice", "hightolowprice", "lowtohighbyid", "hightolowbyid");
     private static final Pattern LOCATION_PATTERN = Pattern.compile("^[A-Za-z]\\d{1,2}-\\d{3}$");
 
 
@@ -68,6 +67,15 @@ public class PMServiceHelper {
                 product.getLocation() == null;
     }
 
+
+    protected static boolean validateStatusBeforeAdding(ProductsForPM currentProduct, ProductsForPM newProduct){
+        if(currentProduct.getStatus().equals(ProductStatus.PLANNING) || currentProduct.getStatus().equals(ProductStatus.ARCHIVED)){
+            if(!newProduct.getStatus().equals(ProductStatus.PLANNING)){
+                return true;
+            }
+        }
+        return false;
+    }
 
     protected static void validateLocationFormat(String location) {
         Pattern locationPattern = Pattern.compile("^[A-Za-z]\\d{1,2}-\\d{3}$");

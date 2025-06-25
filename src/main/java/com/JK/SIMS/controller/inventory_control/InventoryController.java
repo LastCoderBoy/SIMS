@@ -80,9 +80,20 @@ public class InventoryController {
     @PutMapping("/{sku}")
     public ResponseEntity<?> updateProduct(@PathVariable String sku, @RequestBody InventoryData newInventoryData) throws BadRequestException {
         if(sku == null || sku.trim().isEmpty() || newInventoryData == null){
-            throw new IllegalArgumentException("IC: SKU or new input body cannot be null or empty");
+            throw new BadRequestException("IC: updateProduct() SKU or new input body cannot be null or empty");
         }
-        ApiResponse response = icService.updateProduct(sku, newInventoryData);
+        ApiResponse response = icService.updateProduct(sku.toUpperCase(), newInventoryData);
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{sku}")
+    public ResponseEntity<?> deleteProduct(@PathVariable String sku) throws BadRequestException {
+        if(sku == null || sku.trim().isEmpty()){
+            throw new BadRequestException("IC: deleteProduct() SKU cannot be empty");
+        }
+        logger.info("IC: deleteProduct() calling...");
+
+        ApiResponse response = icService.deleteProduct(sku);
         return ResponseEntity.ok(response);
     }
 
