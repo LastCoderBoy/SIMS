@@ -47,7 +47,7 @@ public class UserService {
         try {
             Authentication authentication = authManager
                     .authenticate(new UsernamePasswordAuthenticationToken(
-                            loginRequest.getUsername(),
+                            loginRequest.getLogin(),
                             loginRequest.getPassword()
                     ));
             if(authentication.isAuthenticated()){
@@ -68,7 +68,7 @@ public class UserService {
             throw new AuthenticationFailedException("UM (verify): Invalid credentials ", e);
         }
         catch (Exception e) {
-            logger.error("Unexpected authentication error for user: {}. Reason: {}", loginRequest.getUsername(), e.getMessage(), e);
+            logger.error("Unexpected authentication error for user: {}. Reason: {}", loginRequest.getLogin(), e.getMessage(), e);
             throw new AuthenticationFailedException("UM (verify): Unexpected authentication error");
         }
     }
@@ -101,12 +101,12 @@ public class UserService {
         }
 
         try {
-            String username = jwtService.extractUserName(jwtToken);
+            String username = jwtService.extractUsername(jwtToken);
             if (username == null) {
                 throw new InvalidTokenException("UM (updateUser): Could not extract username from token");
             }
 
-            Users currentUser = userRepository.findByUsername(username)
+            Users currentUser = userRepository.findByUsernameOrEmail(username)
                     .orElseThrow(() -> new EntityNotFoundException("UM (updateUser): User not found"));
 
             updateUserFields(currentUser, user);

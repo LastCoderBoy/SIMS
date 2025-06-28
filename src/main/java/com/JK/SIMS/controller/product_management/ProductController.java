@@ -1,6 +1,5 @@
 package com.JK.SIMS.controller.product_management;
 
-import com.JK.SIMS.config.SecurityUtils;
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.PM_models.ProductManagementDTO;
@@ -15,7 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.nio.file.AccessDeniedException;
 import java.util.List;
 
 /**
@@ -23,7 +21,7 @@ import java.util.List;
  */
 
 @RestController
-@RequestMapping("/api/v1/products") // Endpoint requires Authentication.
+@RequestMapping("/api/v1/priority/products") // Endpoint requires Authentication.
 public class ProductController {
 
     private static final Logger logger = LoggerFactory.getLogger(ProductController.class);
@@ -45,13 +43,13 @@ public class ProductController {
     }
 
     @PostMapping
-    public ResponseEntity<?> addProduct(@RequestBody ProductsForPM newProduct) throws AccessDeniedException {
+    public ResponseEntity<?> addProduct(@RequestBody ProductsForPM newProduct){
         if (newProduct == null) {
             throw new ValidationException("PM: Product data cannot be null");
         }
         //Only the Admins and Managers can add new products.
         logger.info("PM: addProduct() calling...");
-        return ResponseEntity.ok(pmService.addProduct(newProduct, SecurityUtils.hasAccess()));
+        return ResponseEntity.ok(pmService.addProduct(newProduct));
     }
 
     @PutMapping("/{id}")

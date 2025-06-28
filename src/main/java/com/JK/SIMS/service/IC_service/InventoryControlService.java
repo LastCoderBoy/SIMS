@@ -66,7 +66,10 @@ public class InventoryControlService {
 
             inventoryPageResponse.setInventoryDataDTOList(inventoryDtoResponse);
             inventoryPageResponse.setTotalInventorySize(metrics.getTotalCount().intValue());
+
+            // Product is not part of the low stock when the status is on INVALID.
             inventoryPageResponse.setLowStockSize(metrics.getLowStockCount().intValue());
+
             inventoryPageResponse.setIncomingStockSize(metrics.getIncomingCount().intValue());
             inventoryPageResponse.setOutgoingStockSize(metrics.getOutgoingCount().intValue());
             inventoryPageResponse.setDamageLossSize(metrics.getDamageLossCount().intValue());
@@ -317,6 +320,9 @@ public class InventoryControlService {
                             "IC (updateProduct): No product with SKU " + sku + " found"));
 
             // Update stock levels
+            if(existingProduct.getStatus() == InventoryDataStatus.INVALID){
+                throw new BadRequestException("IC (updateProduct): Product with SKU " + sku + " is invalid and cannot be updated");
+            }
             updateStockLevels(existingProduct, newInventoryData);
 
             // Save and return
@@ -329,8 +335,6 @@ public class InventoryControlService {
                     sku, da.getMessage());
             throw new DatabaseException("IC (updateProduct): Database error", da);
         } catch (BadRequestException | ValidationException e) {
-            logger.warn("IC (updateProduct): Validation failed for SKU {}: {}",
-                    sku, e.getMessage());
             throw e;
         } catch (Exception ex) {
             logger.error("IC (updateProduct): Unexpected error while updating SKU {}: {}",

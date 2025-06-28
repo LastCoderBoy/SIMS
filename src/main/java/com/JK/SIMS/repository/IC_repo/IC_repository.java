@@ -26,10 +26,10 @@ public interface IC_repository extends JpaRepository<InventoryData, String> {
     @Query("""
         SELECT new com.JK.SIMS.models.IC_models.InventoryMetrics(
             COUNT(*),
-            COUNT(CASE WHEN i.currentStock <= i.minLevel THEN 1 END),
-            COUNT(CASE WHEN i.status = 'INCOMING' THEN 1 END),
-            COUNT(CASE WHEN i.status = 'OUTGOING' THEN 1 END),
-            COUNT(CASE WHEN i.status = 'DAMAGE_LOSS' THEN 1 END)
+            COUNT(CASE WHEN i.currentStock <= i.minLevel AND i.status != 'LOW_STOCK' THEN 1 ELSE NULL END),
+            COUNT(CASE WHEN i.status = 'INCOMING' THEN 1 ELSE NULL END),
+            COUNT(CASE WHEN i.status = 'OUTGOING' THEN 1 ELSE NULL  END),
+            COUNT(CASE WHEN i.status = 'DAMAGE_LOSS' THEN 1 ELSE NULL  END)
         )
         FROM InventoryData i
     """)

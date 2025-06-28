@@ -102,31 +102,27 @@ public class ProductManagementService {
      * If the product status is not in PLANNING and ARCHIVED, it will also be added to IC section.
      *
      * @param newProduct The product object containing all required product details
-     * @param hasAccess  Boolean flag indicating if the user has permission to add products
      * @return ApiResponse object containing success status and message
-     * @throws AccessDeniedException if user doesn't have required access
      * @throws ValidationException   if product details are invalid
      * @throws ServiceException      if there's an error during product addition
      */
     @Transactional
-    public ApiResponse addProduct(ProductsForPM newProduct, boolean hasAccess) throws AccessDeniedException {
+    public ApiResponse addProduct(ProductsForPM newProduct){
         try {
-            if (hasAccess) {
-                if (validateProduct(newProduct)) {
-                    String newID = generateProductId();
-                    newProduct.setProductID(newID);
-                    pmRepository.save(newProduct);
-                    if (!newProduct.getStatus().equals(ProductStatus.PLANNING) &&
-                            !newProduct.getStatus().equals(ProductStatus.ARCHIVED)) {
-                        icService.addProduct(newProduct);
-                    }
-                    logger.info("PM (addProduct): New product added: ID = {}, Name = {}", newID, newProduct.getName());
-                    return new ApiResponse(true, "PM: Product added successfully with ID: " + newID);
+            if (validateProduct(newProduct)) {
+                String newID = generateProductId();
+                newProduct.setProductID(newID);
+                pmRepository.save(newProduct);
+                if (!newProduct.getStatus().equals(ProductStatus.PLANNING) &&
+                        !newProduct.getStatus().equals(ProductStatus.ARCHIVED)) {
+                    icService.addProduct(newProduct);
                 }
+                logger.info("PM (addProduct): New product added: ID = {}, Name = {}", newID, newProduct.getName());
+                return new ApiResponse(true, "PM: Product added successfully with ID: " + newID);
             }
-            throw new AccessDeniedException("PM (addProduct): Forbidden access");
-        } catch (ValidationException | AccessDeniedException e) {
-            throw e;
+            throw new ValidationException("PM (addProduct): Invalid product details");
+        } catch (ValidationException ve) {
+            throw ve;
         } catch (Exception e) {
             throw new ServiceException("PM (addProduct): Failed to add product ", e);
         }

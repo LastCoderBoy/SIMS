@@ -1,6 +1,5 @@
 package com.JK.SIMS.config.secFilter;
 
-import com.JK.SIMS.exceptionHandler.InvalidTokenException;
 import com.JK.SIMS.exceptionHandler.JwtAuthenticationException;
 import com.JK.SIMS.service.TokenUtils;
 import com.JK.SIMS.service.UM_service.JWTService;
@@ -35,7 +34,7 @@ public class JWTFilter extends OncePerRequestFilter {
         try {
             String authHeader = request.getHeader("Authorization");
             String token = null;
-            String username = null;
+            String userInfo = null;
 
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 try {
@@ -43,14 +42,14 @@ public class JWTFilter extends OncePerRequestFilter {
                     if (jwtService.isTokenBlacklisted(token)) {
                         throw new JwtAuthenticationException("Token has been blacklisted");
                     }
-                    username = jwtService.extractUserName(token);
+                    userInfo = jwtService.extractUsername(token);
                 } catch (JwtAuthenticationException e) {
                     throw new JwtAuthenticationException("Invalid token format");
                 }
             }
 
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UserDetails userDetails = context.getBean(UserDetailsServiceImpl.class).loadUserByUsername(username);
+            if (userInfo != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                UserDetails userDetails = context.getBean(UserDetailsServiceImpl.class).loadUserByUsername(userInfo);
                 if (jwtService.validateToken(token, userDetails)) {
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails, null, userDetails.getAuthorities()

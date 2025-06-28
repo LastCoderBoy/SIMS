@@ -31,7 +31,7 @@ public class UserController {
         if (response.getToken() == null) {
             throw new InvalidTokenException("UM: Invalid credentials provided. Failed to generate token.");
         }
-        logger.info("User '{}' logged in successfully.", loginRequest.getUsername());
+        logger.info("User '{}' logged in successfully.", loginRequest.getLogin());
         return ResponseEntity.ok(response);
     }
 
