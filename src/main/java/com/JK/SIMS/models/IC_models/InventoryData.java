@@ -17,7 +17,7 @@ public class InventoryData {
 
     @ManyToOne
     @JoinColumn(name = "productID", nullable = false)
-    private ProductsForPM product;
+    private ProductsForPM pmProduct;
 
     @Column(name = "Location")
     private String location;

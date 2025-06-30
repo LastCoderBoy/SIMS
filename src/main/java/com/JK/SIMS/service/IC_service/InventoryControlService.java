@@ -55,7 +55,7 @@ public class InventoryControlService {
      * @throws DatabaseException if database access fails
      * @throws ServiceException if any other error occurs during data retrieval
      */
-    public InventoryPageResponse loadIcPageData(int page, int size) {
+    public InventoryPageResponse getInventoryControlPageData(int page, int size) {
         try {
             InventoryMetrics metrics = icRepository.getInventoryMetrics();
 
@@ -73,14 +73,38 @@ public class InventoryControlService {
             inventoryPageResponse.setIncomingStockSize(metrics.getIncomingCount().intValue());
             inventoryPageResponse.setOutgoingStockSize(metrics.getOutgoingCount().intValue());
             inventoryPageResponse.setDamageLossSize(metrics.getDamageLossCount().intValue());
-            logger.info("IC (loadIcPageData): Sending page {} with {} products.", page, inventoryDtoResponse.getContent().size());
+            logger.info("IC (getInventoryControlPageData): Sending page {} with {} products.", page, inventoryDtoResponse.getContent().size());
             return inventoryPageResponse;
         } catch (DataAccessException e) {
-            logger.error("IC (loadIcPageData): Database access error while retrieving inventory data.", e);
-            throw new DatabaseException("IC (loadIcPageData): Failed to retrieve products from database", e);
+            logger.error("IC (getInventoryControlPageData): Database access error while retrieving inventory data.", e);
+            throw new DatabaseException("IC (getInventoryControlPageData): Failed to retrieve products from database", e);
         } catch (Exception e) {
-            logger.error("IC (loadIcPageData): Unexpected error occurred while loading IC page data.", e);
-            throw new ServiceException("IC (loadIcPageData): Failed to retrieve products", e);
+            logger.error("IC (getInventoryControlPageData): Unexpected error occurred while loading IC page data.", e);
+            throw new ServiceException("IC (getInventoryControlPageData): Failed to retrieve products", e);
+        }
+    }
+
+
+    /**
+     * Retrieves a paginated list of inventory items sorted by product name.
+     * Internal helper method used by other service methods to get paginated data.
+     *
+     * @param page Zero-based page number
+     * @param size Number of items per page
+     * @return PaginatedResponse of InventoryDataDTO
+     * @throws DatabaseException if database access fails
+     * @throws ServiceException if any other error occurs
+     */
+    private PaginatedResponse<InventoryDataDTO> getInventoryDto(int page, int size) {
+        try{
+            Pageable pageable = PageRequest.of(page, size, Sort.by("pmProduct.name").ascending());
+            Page<InventoryData> inventoryPage = icRepository.findAll(pageable);
+            return transformToPaginatedDTOResponse(inventoryPage);
+
+        } catch (DataAccessException da){
+            throw new DatabaseException("IC (getInventoryDataDTOList): Failed to retrieve products due to database error", da);
+        } catch (Exception e){
+            throw new ServiceException("IC (getInventoryDataDTOList): Failed to retrieve products", e);
         }
     }
 
@@ -181,28 +205,6 @@ public class InventoryControlService {
     }
 
 
-    /**
-     * Retrieves a paginated list of inventory items sorted by product name.
-     * Internal helper method used by other service methods to get paginated data.
-     *
-     * @param page Zero-based page number
-     * @param size Number of items per page
-     * @return PaginatedResponse of InventoryDataDTO
-     * @throws DatabaseException if database access fails
-     * @throws ServiceException if any other error occurs
-     */
-    private PaginatedResponse<InventoryDataDTO> getInventoryDto(int page, int size) {
-        try{
-            Pageable pageable = PageRequest.of(page, size, Sort.by("product.name").ascending());
-            Page<InventoryData> inventoryPage = icRepository.findAll(pageable);
-            return transformToPaginatedDTOResponse(inventoryPage);
-
-        } catch (DataAccessException da){
-            throw new DatabaseException("IC (getInventoryDataDTOList): Failed to retrieve products due to database error", da);
-        } catch (Exception e){
-            throw new ServiceException("IC (getInventoryDataDTOList): Failed to retrieve products", e);
-        }
-    }
 
     private PaginatedResponse<InventoryDataDTO> transformToPaginatedDTOResponse(Page<InventoryData> inventoryPage){
         PaginatedResponse<InventoryDataDTO> dtoResponse = new PaginatedResponse<>();
@@ -224,8 +226,8 @@ public class InventoryControlService {
     private InventoryDataDTO convertToDTO(InventoryData currentProduct) {
         InventoryDataDTO inventoryDataDTO = new InventoryDataDTO();
         inventoryDataDTO.setInventoryData(currentProduct);
-        inventoryDataDTO.setProductName(currentProduct.getProduct().getName());
-        inventoryDataDTO.setCategory(currentProduct.getProduct().getCategory());
+        inventoryDataDTO.setProductName(currentProduct.getPmProduct().getName());
+        inventoryDataDTO.setCategory(currentProduct.getPmProduct().getCategory());
         return inventoryDataDTO;
     }
 
@@ -248,7 +250,7 @@ public class InventoryControlService {
             InventoryData inventoryData = new InventoryData();
             String sku = generateSKU(product.getProductID(), product.getCategory());
             inventoryData.setSKU(sku);
-            inventoryData.setProduct(product);
+            inventoryData.setPmProduct(product);
             inventoryData.setLocation(product.getLocation());
             inventoryData.setCurrentStock(0);
 
@@ -355,18 +357,10 @@ public class InventoryControlService {
         }
 
         //Update the status as well based on the latest update
-        updateInventoryStatus(existingProduct);
+        InventoryServiceHelper.updateInventoryStatus(existingProduct);
 
         // Update last update timestamp
         existingProduct.setLastUpdate(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
-    }
-
-    private void updateInventoryStatus(InventoryData product) {
-        if (product.getCurrentStock() <= product.getMinLevel()) {
-            product.setStatus(InventoryDataStatus.LOW_STOCK);
-        } else {
-            product.setStatus(InventoryDataStatus.IN_STOCK);
-        }
     }
 
 
@@ -385,7 +379,7 @@ public class InventoryControlService {
             Optional<InventoryData> product = icRepository.findBySKU(sku);
             if(product.isPresent()){
                 InventoryData productToBeDeleted = product.get();
-                String id = productToBeDeleted.getProduct().getProductID();
+                String id = productToBeDeleted.getPmProduct().getProductID();
 
                 Optional<ProductsForPM> productInPM = pmRepository.findById(id);
 

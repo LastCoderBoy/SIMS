@@ -2,6 +2,9 @@ package com.JK.SIMS.service.IC_service;
 
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.IC_models.InventoryData;
+import com.JK.SIMS.models.IC_models.InventoryDataStatus;
+import com.JK.SIMS.models.IC_models.damage_loss.DamageLossDTO;
+import com.JK.SIMS.models.IC_models.damage_loss.DamageLossDTORequest;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,4 +33,33 @@ public class InventoryServiceHelper {
         }
     }
 
+    protected static void validateDamageLossDTOInput(DamageLossDTORequest dto){
+        List<String> errors = new ArrayList<>();
+        if(dto != null){
+            if(dto.sku() == null){
+                errors.add("SKU cannot be null.");
+            }
+            if(dto.quantityLost() == null){
+                errors.add("Lost quantity cannot be null.");
+            }
+            if(dto.reason() == null){
+                errors.add("Reason cannot be null.");
+            }
+        }
+        if(dto == null){
+            throw new ValidationException("DL (addDamageLoss): DTO cannot be null.");
+        }
+
+        if(!errors.isEmpty()){
+            throw new ValidationException(errors);
+        }
+    }
+
+    protected static void updateInventoryStatus(InventoryData product) {
+        if (product.getCurrentStock() <= product.getMinLevel()) {
+            product.setStatus(InventoryDataStatus.LOW_STOCK);
+        } else {
+            product.setStatus(InventoryDataStatus.IN_STOCK);
+        }
+    }
 }

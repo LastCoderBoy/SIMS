@@ -215,7 +215,7 @@ public class ProductManagementService {
 
     private void updateProductStatus(ProductsForPM currentProduct, ProductsForPM newProduct, String productId) {
         if (newProduct.getStatus() != null) {
-            Optional<InventoryData> productInIC = icRepository.findByProductProductID(productId);
+            Optional<InventoryData> productInIC = icRepository.findByPmProduct_ProductID(productId);
             ProductStatus previousStatus = currentProduct.getStatus();
 
             if (validateStatusBeforeAdding(currentProduct, newProduct)) {
@@ -225,6 +225,14 @@ public class ProductManagementService {
                 currentProduct.setStatus(newProduct.getStatus());
                 if (amongInvalidStatus(newProduct.getStatus())) {
                     updateInventoryDataStatus(productInIC, InventoryDataStatus.INVALID);
+                }else{
+                    if(productInIC.isPresent()){
+                        if(productInIC.get().getCurrentStock() <= productInIC.get().getMinLevel()){
+                            updateInventoryDataStatus(productInIC, InventoryDataStatus.LOW_STOCK);
+                        }else {
+                            updateInventoryDataStatus(productInIC, InventoryDataStatus.IN_STOCK);
+                        }
+                    }
                 }
             }
         }
@@ -389,7 +397,6 @@ public class ProductManagementService {
      *
      * @param response HttpServletResponse to write the Excel file to
      * @param allProducts List of products to include in the report
-     * @throws IOException if there's an error writing to the response
      */
     public void generatePMReport(HttpServletResponse response, List<ProductManagementDTO> allProducts) {
         XSSFWorkbook workbook = new XSSFWorkbook();

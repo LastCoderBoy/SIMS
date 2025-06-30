@@ -20,13 +20,13 @@ public interface IC_repository extends JpaRepository<InventoryData, String> {
 
     @Modifying // Tells Spring this is a modifying query (not a SELECT)
     @Transactional // Ensures the delete operation is atomic (either all or none)
-    @Query("DELETE FROM InventoryData ic WHERE ic.product.productID = :productId")
+    @Query("DELETE FROM InventoryData ic WHERE ic.pmProduct.productID = :productId")
     void deleteByProduct_ProductID(@Param("productId") String productId);
 
     @Query("""
         SELECT new com.JK.SIMS.models.IC_models.InventoryMetrics(
             COUNT(*),
-            COUNT(CASE WHEN i.currentStock <= i.minLevel AND i.status != 'LOW_STOCK' THEN 1 ELSE NULL END),
+            COUNT(CASE WHEN i.currentStock <= i.minLevel AND i.status != 'INVALID' THEN 1 ELSE NULL END),
             COUNT(CASE WHEN i.status = 'INCOMING' THEN 1 ELSE NULL END),
             COUNT(CASE WHEN i.status = 'OUTGOING' THEN 1 ELSE NULL  END),
             COUNT(CASE WHEN i.status = 'DAMAGE_LOSS' THEN 1 ELSE NULL  END)
@@ -40,8 +40,8 @@ public interface IC_repository extends JpaRepository<InventoryData, String> {
             "LOWER(ic.SKU) LIKE CONCAT('%', :text, '%') OR " +
             "LOWER(ic.location) LIKE CONCAT('%', :text, '%') OR " +
             "LOWER(ic.status) LIKE CONCAT('%', :text, '%') OR " +
-            "LOWER(ic.product.name) LIKE CONCAT('%', :text, '%') OR " +
-            "LOWER(ic.product.category) LIKE CONCAT('%', :text, '%')"
+            "LOWER(ic.pmProduct.name) LIKE CONCAT('%', :text, '%') OR " +
+            "LOWER(ic.pmProduct.category) LIKE CONCAT('%', :text, '%')"
     )
     Page<InventoryData> searchProducts(String text, Pageable pageable);
 
@@ -57,12 +57,12 @@ public interface IC_repository extends JpaRepository<InventoryData, String> {
             "LOWER(i.SKU) LIKE %:term% OR " +
             "LOWER(i.location) LIKE %:term% OR " +
             "LOWER(i.status) LIKE %:term% OR " +
-            "LOWER(i.product.name) LIKE %:term%")
+            "LOWER(i.pmProduct.name) LIKE %:term%")
     Page<InventoryData> findByGeneralSearch(@Param("term") String searchTerm, Pageable pageable);
 
     Optional<InventoryData> findBySKU(String sku);
 
     void deleteBySKU(String sku);
 
-    Optional<InventoryData> findByProductProductID(String productId);
+    Optional<InventoryData> findByPmProduct_ProductID(String productId);
 }

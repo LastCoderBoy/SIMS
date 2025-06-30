@@ -1,11 +1,13 @@
 package com.JK.SIMS.models.IC_models.damage_loss;
 
+import com.JK.SIMS.models.IC_models.InventoryData;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -19,8 +21,8 @@ public class DamageLoss {
     private Integer id;
 
     @ManyToOne
-    @JoinColumn(name = "productID", nullable = false)
-    private ProductsForPM product;
+    @JoinColumn(name = "sku", nullable = false)
+    private InventoryData icProduct;
 
     @Column(nullable = false)
     private Integer quantityLost;
@@ -28,6 +30,9 @@ public class DamageLoss {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private LossReason reason;    // will be dropdown for fast and easy options
+
+    @Column(nullable = false)
+    private BigDecimal lossValue;
 
     @Column(nullable = false)
     private LocalDateTime lossDate; //if lossDate is not provided, by default will be same as createdAt column

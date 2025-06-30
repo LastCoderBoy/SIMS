@@ -32,11 +32,11 @@ public class InventoryController {
      * @return ResponseEntity with InventoryPageResponse
      */
     @GetMapping
-    public ResponseEntity<?> loadInventoryControlData(
+    public ResponseEntity<?> getInventoryControlPageData(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        logger.info("IC: loadInventoryControlData() calling with page {} and size {}...", page, size);
-        InventoryPageResponse inventoryPageResponse = icService.loadIcPageData(page, size);
+        logger.info("IC: getInventoryControlPageData() calling with page {} and size {}...", page, size);
+        InventoryPageResponse inventoryPageResponse = icService.getInventoryControlPageData(page, size);
         return ResponseEntity.ok(inventoryPageResponse);
     }
 
