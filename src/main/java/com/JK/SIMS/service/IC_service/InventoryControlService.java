@@ -6,10 +6,12 @@ import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.*;
+import com.JK.SIMS.models.IC_models.damage_loss.DamageLossMetrics;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
+import com.JK.SIMS.repository.IC_repo.DamageLoss_repository;
 import com.JK.SIMS.repository.IC_repo.IC_repository;
 import com.JK.SIMS.repository.PM_repo.PM_repository;
 import jakarta.transaction.Transactional;
@@ -37,24 +39,15 @@ public class InventoryControlService {
 
     private final PM_repository pmRepository;
     private final IC_repository icRepository;
+    private final DamageLoss_repository damageLoss_repository;
     @Autowired
-    public InventoryControlService(PM_repository pmRepository, IC_repository icRepository) {
+    public InventoryControlService(PM_repository pmRepository, IC_repository icRepository, DamageLoss_repository damageLoss_repository) {
         this.pmRepository = pmRepository;
         this.icRepository = icRepository;
+        this.damageLoss_repository = damageLoss_repository;
     }
 
 
-    /**
-     * Loads inventory page data with pagination and aggregated metrics.
-     * Retrieves inventory data along with various metrics including total count,
-     * low stock items, incoming/outgoing items, and damage/loss items.
-     *
-     * @param page Zero-based page number
-     * @param size Number of items per page
-     * @return InventoryPageResponse containing paginated data and metrics
-     * @throws DatabaseException if database access fails
-     * @throws ServiceException if any other error occurs during data retrieval
-     */
     public InventoryPageResponse getInventoryControlPageData(int page, int size) {
         try {
             InventoryMetrics metrics = icRepository.getInventoryMetrics();
@@ -72,7 +65,9 @@ public class InventoryControlService {
 
             inventoryPageResponse.setIncomingStockSize(metrics.getIncomingCount().intValue());
             inventoryPageResponse.setOutgoingStockSize(metrics.getOutgoingCount().intValue());
-            inventoryPageResponse.setDamageLossSize(metrics.getDamageLossCount().intValue());
+
+            DamageLossMetrics damageLossMetrics = getDamageLossMetrics();
+            inventoryPageResponse.setDamageLossSize(damageLossMetrics.getTotalReport());
             logger.info("IC (getInventoryControlPageData): Sending page {} with {} products.", page, inventoryDtoResponse.getContent().size());
             return inventoryPageResponse;
         } catch (DataAccessException e) {
@@ -81,6 +76,16 @@ public class InventoryControlService {
         } catch (Exception e) {
             logger.error("IC (getInventoryControlPageData): Unexpected error occurred while loading IC page data.", e);
             throw new ServiceException("IC (getInventoryControlPageData): Failed to retrieve products", e);
+        }
+    }
+
+    private DamageLossMetrics getDamageLossMetrics() {
+        try {
+            return damageLoss_repository.getDamageLossMetrics();
+        } catch (DataAccessException de) {
+            throw new DatabaseException("IC (getDamageLossMetrics): Failed to retrieve damage/loss metrics", de);
+        } catch (Exception e) {
+            throw new ServiceException("IC (getDamageLossMetrics): Unexpected error retrieving damage/loss metrics", e);
         }
     }
 
@@ -109,6 +114,25 @@ public class InventoryControlService {
     }
 
 
+    private PaginatedResponse<InventoryDataDTO> transformToPaginatedDTOResponse(Page<InventoryData> inventoryPage){
+        PaginatedResponse<InventoryDataDTO> dtoResponse = new PaginatedResponse<>();
+        dtoResponse.setContent(inventoryPage.getContent().stream().map(this::convertToDTO).toList());
+        dtoResponse.setTotalPages(inventoryPage.getTotalPages());
+        dtoResponse.setTotalElements(inventoryPage.getTotalElements());
+
+        return dtoResponse;
+    }
+
+
+    private InventoryDataDTO convertToDTO(InventoryData currentProduct) {
+        InventoryDataDTO inventoryDataDTO = new InventoryDataDTO();
+        // TODO: Instead of setting the whole product, consider displaying only name, category and price
+        inventoryDataDTO.setInventoryData(currentProduct);
+        inventoryDataDTO.setProductName(currentProduct.getPmProduct().getName());
+        inventoryDataDTO.setCategory(currentProduct.getPmProduct().getCategory());
+        return inventoryDataDTO;
+    }
+
     /**
      * Performs a comprehensive search across inventory items.
      * Searches through multiple fields including SKU, Location, Status,
@@ -123,7 +147,7 @@ public class InventoryControlService {
         try {
             Optional<String> inputText = Optional.ofNullable((text));
             if (inputText.isPresent() && !inputText.get().trim().isEmpty()) {
-                Pageable pageable = PageRequest.of(page, size, Sort.by("product.name").ascending());
+                Pageable pageable = PageRequest.of(page, size, Sort.by("pmProduct.name").ascending());
                 Page<InventoryData> inventoryData = icRepository.searchProducts(inputText.get().trim().toLowerCase(), pageable);
                 logger.info("IC (searchProduct): {} products retrieved.", inventoryData.getContent().size());
                 return transformToPaginatedDTOResponse(inventoryData) ;
@@ -205,31 +229,6 @@ public class InventoryControlService {
     }
 
 
-
-    private PaginatedResponse<InventoryDataDTO> transformToPaginatedDTOResponse(Page<InventoryData> inventoryPage){
-        PaginatedResponse<InventoryDataDTO> dtoResponse = new PaginatedResponse<>();
-        dtoResponse.setContent(inventoryPage.getContent().stream().map(this::convertToDTO).toList());
-        dtoResponse.setTotalPages(inventoryPage.getTotalPages());
-        dtoResponse.setTotalElements(inventoryPage.getTotalElements());
-
-        return dtoResponse;
-    }
-
-
-    /**
-     * Converts an InventoryData entity to its DTO representation.
-     * Maps all relevant fields including associated product information.
-     *
-     * @param currentProduct InventoryData entity to convert
-     * @return InventoryDataDTO containing the mapped data
-     */
-    private InventoryDataDTO convertToDTO(InventoryData currentProduct) {
-        InventoryDataDTO inventoryDataDTO = new InventoryDataDTO();
-        inventoryDataDTO.setInventoryData(currentProduct);
-        inventoryDataDTO.setProductName(currentProduct.getPmProduct().getName());
-        inventoryDataDTO.setCategory(currentProduct.getPmProduct().getCategory());
-        return inventoryDataDTO;
-    }
 
 
     /**

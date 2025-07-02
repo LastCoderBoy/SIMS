@@ -19,7 +19,7 @@ public class InventoryPageResponse {
 
     private Integer outgoingStockSize;
 
-    private Integer damageLossSize;
+    private Long damageLossSize;
 
     private PaginatedResponse<InventoryDataDTO> inventoryDataDTOList;
 }

@@ -5,6 +5,8 @@ import com.JK.SIMS.models.IC_models.InventoryData;
 import com.JK.SIMS.models.IC_models.InventoryDataStatus;
 import com.JK.SIMS.models.IC_models.damage_loss.DamageLossDTO;
 import com.JK.SIMS.models.IC_models.damage_loss.DamageLossDTORequest;
+import com.JK.SIMS.models.IC_models.damage_loss.DamageLossMetrics;
+import com.JK.SIMS.repository.IC_repo.DamageLoss_repository;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,7 +35,7 @@ public class InventoryServiceHelper {
         }
     }
 
-    protected static void validateDamageLossDTOInput(DamageLossDTORequest dto){
+    protected static void nullCheckValidation(DamageLossDTORequest dto){
         List<String> errors = new ArrayList<>();
         if(dto != null){
             if(dto.sku() == null){

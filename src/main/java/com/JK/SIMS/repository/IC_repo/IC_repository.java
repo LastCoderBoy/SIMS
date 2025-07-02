@@ -28,8 +28,7 @@ public interface IC_repository extends JpaRepository<InventoryData, String> {
             COUNT(*),
             COUNT(CASE WHEN i.currentStock <= i.minLevel AND i.status != 'INVALID' THEN 1 ELSE NULL END),
             COUNT(CASE WHEN i.status = 'INCOMING' THEN 1 ELSE NULL END),
-            COUNT(CASE WHEN i.status = 'OUTGOING' THEN 1 ELSE NULL  END),
-            COUNT(CASE WHEN i.status = 'DAMAGE_LOSS' THEN 1 ELSE NULL  END)
+            COUNT(CASE WHEN i.status = 'OUTGOING' THEN 1 ELSE NULL  END)
         )
         FROM InventoryData i
     """)

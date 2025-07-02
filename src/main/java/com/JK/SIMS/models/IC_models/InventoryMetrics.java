@@ -12,5 +12,4 @@ public class InventoryMetrics {
     private Long lowStockCount;
     private Long incomingCount;
     private Long outgoingCount;
-    private Long damageLossCount;
 }

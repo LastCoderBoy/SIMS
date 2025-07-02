@@ -6,6 +6,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public record DamageLossDTO (
+        Integer id,
         String productName,
         ProductCategories category,
         String sku,

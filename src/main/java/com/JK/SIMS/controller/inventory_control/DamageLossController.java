@@ -8,6 +8,7 @@ import com.JK.SIMS.models.IC_models.damage_loss.DamageLossPageResponse;
 import com.JK.SIMS.service.IC_service.DamageLossService;
 import com.JK.SIMS.service.TokenUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -53,4 +54,10 @@ public class DamageLossController {
     }
 
     // TODO: Implement the UPDATE method.
+
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateDamageLossProduct(@PathVariable Integer id, @RequestBody DamageLossDTORequest request) throws BadRequestException {
+        ApiResponse response = damageLossService.updateDamageLossProduct(id, request);
+        return ResponseEntity.ok(response);
+    }
 }

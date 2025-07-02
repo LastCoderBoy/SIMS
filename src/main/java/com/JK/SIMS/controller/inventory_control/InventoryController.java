@@ -68,7 +68,7 @@ public class InventoryController {
     @GetMapping("/filter")
     public ResponseEntity<?> filterProducts(
             @RequestParam(required = false) String filter,
-            @RequestParam(defaultValue = "product.name") String sortBy,
+            @RequestParam(defaultValue = "pmProduct.name") String sortBy,
             @RequestParam(defaultValue = "asc") String sortDirection,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
