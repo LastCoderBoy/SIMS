@@ -5,7 +5,7 @@ import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.InventoryData;
-import com.JK.SIMS.models.IC_models.InventoryDataStatus;
+import com.JK.SIMS.models.IC_models.InventoryDataDTO;
 import com.JK.SIMS.models.IC_models.damage_loss.*;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.IC_repo.DamageLoss_repository;
@@ -26,10 +26,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.Optional;
-
-import static com.JK.SIMS.service.GlobalServiceHelper.now;
 
 @Service
 public class DamageLossService {
@@ -68,7 +65,7 @@ public class DamageLossService {
 
     private PaginatedResponse<DamageLossDTO> getDamageLossData(int page, int size) {
         try {
-            Pageable pageable = PageRequest.of(page, size);
+            Pageable pageable = PageRequest.of(page, size, Sort.by("icProduct.pmProduct.name").ascending());
             Page<DamageLoss> dbResponse = damageLoss_repository.findAll(pageable);
 
             PaginatedResponse<DamageLossDTO> dtoResult = transformToPaginatedDTO(dbResponse);
@@ -168,23 +165,9 @@ public class DamageLossService {
                 throw new IllegalArgumentException("DL (updateDamageLossProduct): At least one field required to update.");
             }
 
-            InventoryData currentProduct = report.getIcProduct();
-
-            if (request.sku() != null) {
-                // Find the new product by SKU
-                InventoryData newProduct = getInventoryProduct(request.sku());
-                validateStockInput(newProduct, report.getQuantityLost());
-
-                // Restore stock to original product
-                returnBackStockLevel(currentProduct, report.getQuantityLost());
-
-                // Subtract lost quantity from the new SKU
-                int remainingStock = newProduct.getCurrentStock() - report.getQuantityLost();
-                newProduct.setCurrentStock(remainingStock);
-                InventoryServiceHelper.updateInventoryStatus(newProduct);
-                ic_repository.save(newProduct);
-
-                report.setIcProduct(newProduct);
+            // WE DON'T UPDATE THE SKU, if the record is wrong, delete and create a new one.
+            if(request.sku() != null){
+                throw new ValidationException("DL (update): Cannot update the SKU, please recreate a new report");
             }
 
             if (request.lossDate() != null) {
@@ -193,19 +176,24 @@ public class DamageLossService {
                 }
                 report.setLossDate(request.lossDate());
             }
+            InventoryData currentProduct = report.getIcProduct();
 
             if (request.quantityLost() != null) {
                 int newQuantity = request.quantityLost();
                 validateStockInput(currentProduct, newQuantity);
                 int currentLostQuantity = report.getQuantityLost();
 
+                // Update the Inventory Stock level
                 int stockAdjustment = currentLostQuantity - newQuantity;
-                int newStock = currentProduct.getCurrentStock() + stockAdjustment;
-                currentProduct.setCurrentStock(newStock);
-                InventoryServiceHelper.updateInventoryStatus(currentProduct);
+                restoreStockLevel(currentProduct, stockAdjustment);
 
-                ic_repository.save(currentProduct);
+                // Set the new Quantity
                 report.setQuantityLost(newQuantity);
+
+                // Update the Loss Value based on the new Quantity
+                BigDecimal price = currentProduct.getPmProduct().getPrice();
+                BigDecimal updatedLossValue = price.multiply(BigDecimal.valueOf(newQuantity));
+                report.setLossValue(updatedLossValue);
             }
 
             if (request.reason() != null) {
@@ -228,9 +216,9 @@ public class DamageLossService {
         }
     }
 
-    private void returnBackStockLevel(InventoryData product, int quantityToRestore) {
+    private void restoreStockLevel(InventoryData product, int quantityToRestore) {
         if (quantityToRestore <= 0) {
-            logger.warn("DL (returnBackStockLevel): Quantity to restore is zero or negative. Skipping update.");
+            logger.warn("DL (restoreStockLevel): Quantity to restore is zero or negative. Skipping update.");
             return;
         }
 
@@ -240,7 +228,7 @@ public class DamageLossService {
         InventoryServiceHelper.updateInventoryStatus(product);
         ic_repository.save(product);
 
-        logger.info("DL (returnBackStockLevel): Restored {} units to SKU {}. New stock: {}",
+        logger.info("DL (restoreStockLevel): Restored {} units to SKU {}. New stock: {}",
                 quantityToRestore, product.getSKU(), updatedStock);
     }
 
@@ -251,13 +239,51 @@ public class DamageLossService {
             DamageLoss report = damageLoss_repository.findById(id)
                     .orElseThrow(() -> new BadRequestException("DL (delete): Report not found for ID: " + id));
 
-            returnBackStockLevel(report.getIcProduct(), report.getQuantityLost());
+            restoreStockLevel(report.getIcProduct(), report.getQuantityLost());
             damageLoss_repository.delete(report);
 
             logger.info("DL (delete): Deleted damage/loss report and restored inventory for SKU {}", report.getIcProduct().getSKU());
             return new ApiResponse(true, "Report deleted and stock restored for SKU: " + report.getIcProduct().getSKU());
         } catch (Exception e) {
             throw new ServiceException("DL (delete): Error while deleting report", e);
+        }
+    }
+
+    public PaginatedResponse<DamageLossDTO> searchProduct(String text, int page, int size) {
+        try {
+            Optional<String> inputText = Optional.ofNullable((text));
+            if (inputText.isPresent() && !inputText.get().trim().isEmpty()) {
+                Pageable pageable = PageRequest.of(page, size, Sort.by("icProduct.pmProduct.name").ascending());
+                Page<DamageLoss> damageLossReports = damageLoss_repository.searchProducts(inputText.get().trim().toLowerCase(), pageable);
+                logger.info("DL (searchProduct): {} products retrieved.", damageLossReports.getContent().size());
+                return transformToPaginatedDTO(damageLossReports);
+            }
+            logger.info("DL (searchProduct): No search text provided. Retrieving first page with default size.");
+            return getDamageLossData(page,size);
+        } catch (DataAccessException e) {
+            throw new DatabaseException("DL (searchProduct): Database error", e);
+        } catch (Exception e) {
+            throw new ServiceException("DL (searchProduct): Failed to retrieve products", e);
+        }
+    }
+
+    public PaginatedResponse<DamageLossDTO> filterProducts(String reason, String sortBy, String sortDirection, int page, int size) {
+        try {
+            // Parse sort direction
+            Sort.Direction direction = sortDirection.equalsIgnoreCase("desc") ?
+                    Sort.Direction.DESC : Sort.Direction.ASC;
+
+            // Create sort 
+            Sort sort = Sort.by(direction, sortBy);
+            Pageable pageable = PageRequest.of(page, size, sort);
+
+            reason = reason.trim().toUpperCase();
+            LossReason lossReason = LossReason.valueOf(reason);
+            Page<DamageLoss> foundReports = damageLoss_repository.findByReason(lossReason, pageable);
+            logger.info("DL (filterProducts): {} products retrieved.", foundReports.getContent().size());
+            return transformToPaginatedDTO(foundReports);
+        } catch (IllegalArgumentException e) {
+            throw new ValidationException(e.getMessage());
         }
     }
 }

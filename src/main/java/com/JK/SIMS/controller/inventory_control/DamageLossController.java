@@ -3,8 +3,12 @@ package com.JK.SIMS.controller.inventory_control;
 import com.JK.SIMS.config.SecurityUtils;
 import com.JK.SIMS.exceptionHandler.InvalidTokenException;
 import com.JK.SIMS.models.ApiResponse;
+import com.JK.SIMS.models.IC_models.InventoryDataDTO;
+import com.JK.SIMS.models.IC_models.damage_loss.DamageLossDTO;
 import com.JK.SIMS.models.IC_models.damage_loss.DamageLossDTORequest;
 import com.JK.SIMS.models.IC_models.damage_loss.DamageLossPageResponse;
+import com.JK.SIMS.models.IC_models.damage_loss.LossReason;
+import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.IC_service.DamageLossService;
 import com.JK.SIMS.service.TokenUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -69,5 +73,27 @@ public class DamageLossController {
             return ResponseEntity.ok(response);
         }
         throw new AccessDeniedException("DL (delete): No access for the current user.");
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<?> searchProduct(
+            @RequestParam(required = false) String text,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size){
+        logger.info("DL: searchProduct() calling...");
+        PaginatedResponse<DamageLossDTO> dtoResponse = damageLossService.searchProduct(text, page, size);
+        return ResponseEntity.ok(dtoResponse);
+    }
+
+    @GetMapping("/filter")
+    public ResponseEntity<?> filterProducts(
+            @RequestParam String reason,
+            @RequestParam(defaultValue = "icProduct.pmProduct.name") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortDirection,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        logger.info("IC: filterProducts() calling with page {} and size {}...", page, size);
+        PaginatedResponse<DamageLossDTO> filteredDTOs = damageLossService.filterProducts(reason, sortBy, sortDirection, page, size);
+        return ResponseEntity.ok(filteredDTOs);
     }
 }
