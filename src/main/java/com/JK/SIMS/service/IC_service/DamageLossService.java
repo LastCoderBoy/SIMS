@@ -131,7 +131,7 @@ public class DamageLossService {
             if(lostQuantity <= 0){
                 throw new IllegalArgumentException("Lost level cannot be zero or negative.");
             }
-            throw new IllegalArgumentException("Lost level must be lower than Stock Level.");
+            throw new IllegalArgumentException("Lost level must be lower than or equal to Stock Level.");
         }
     }
 
@@ -171,17 +171,19 @@ public class DamageLossService {
             InventoryData currentProduct = report.getIcProduct();
 
             if (request.sku() != null) {
-                returnBackStockLevel(currentProduct, report.getQuantityLost());
-                InventoryServiceHelper.updateInventoryStatus(currentProduct);
-
+                // Find the new product by SKU
                 InventoryData newProduct = getInventoryProduct(request.sku());
                 validateStockInput(newProduct, report.getQuantityLost());
 
+                // Restore stock to original product
+                returnBackStockLevel(currentProduct, report.getQuantityLost());
+
+                // Subtract lost quantity from the new SKU
                 int remainingStock = newProduct.getCurrentStock() - report.getQuantityLost();
                 newProduct.setCurrentStock(remainingStock);
                 InventoryServiceHelper.updateInventoryStatus(newProduct);
-
                 ic_repository.save(newProduct);
+
                 report.setIcProduct(newProduct);
             }
 
@@ -219,16 +221,43 @@ public class DamageLossService {
 
         } catch (DataAccessException e) {
             throw new DatabaseException("Failed to update damage/loss report due to database error", e);
-        } catch (ValidationException | IllegalArgumentException e) {
+        } catch (ValidationException | BadRequestException | IllegalArgumentException e) {
             throw e;
         } catch (Exception e) {
             throw new ServiceException("Failed to update damage/loss report due to internal error", e);
         }
     }
 
-    private void returnBackStockLevel(InventoryData previousProduct, Integer previousReportQuantity){
-        int totalStockAfterReturn = previousProduct.getCurrentStock() + previousReportQuantity;
-        previousProduct.setCurrentStock(totalStockAfterReturn);
-        ic_repository.save(previousProduct);
+    private void returnBackStockLevel(InventoryData product, int quantityToRestore) {
+        if (quantityToRestore <= 0) {
+            logger.warn("DL (returnBackStockLevel): Quantity to restore is zero or negative. Skipping update.");
+            return;
+        }
+
+        int updatedStock = product.getCurrentStock() + quantityToRestore;
+        product.setCurrentStock(updatedStock);
+
+        InventoryServiceHelper.updateInventoryStatus(product);
+        ic_repository.save(product);
+
+        logger.info("DL (returnBackStockLevel): Restored {} units to SKU {}. New stock: {}",
+                quantityToRestore, product.getSKU(), updatedStock);
+    }
+
+
+    @Transactional
+    public ApiResponse deleteDamageLossReport(Integer id) {
+        try {
+            DamageLoss report = damageLoss_repository.findById(id)
+                    .orElseThrow(() -> new BadRequestException("DL (delete): Report not found for ID: " + id));
+
+            returnBackStockLevel(report.getIcProduct(), report.getQuantityLost());
+            damageLoss_repository.delete(report);
+
+            logger.info("DL (delete): Deleted damage/loss report and restored inventory for SKU {}", report.getIcProduct().getSKU());
+            return new ApiResponse(true, "Report deleted and stock restored for SKU: " + report.getIcProduct().getSKU());
+        } catch (Exception e) {
+            throw new ServiceException("DL (delete): Error while deleting report", e);
+        }
     }
 }

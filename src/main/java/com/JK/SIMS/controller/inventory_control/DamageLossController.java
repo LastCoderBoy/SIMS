@@ -53,11 +53,21 @@ public class DamageLossController {
         throw new AccessDeniedException("DL (addDamageLoss): No access for the current user.");
     }
 
-    // TODO: Implement the UPDATE method.
-
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateDamageLossProduct(@PathVariable Integer id, @RequestBody DamageLossDTORequest request) throws BadRequestException {
-        ApiResponse response = damageLossService.updateDamageLossProduct(id, request);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<?> updateDamageLossProduct(@PathVariable Integer id, @RequestBody DamageLossDTORequest request) throws BadRequestException, AccessDeniedException {
+        if(SecurityUtils.hasAccess()) {
+            ApiResponse response = damageLossService.updateDamageLossProduct(id, request);
+            return ResponseEntity.ok(response);
+        }
+        throw new AccessDeniedException("DL (update): You cannot perform the following operation.");
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteDamageLossReport(@PathVariable Integer id) throws AccessDeniedException {
+        if (SecurityUtils.hasAccess()) {
+            ApiResponse response = damageLossService.deleteDamageLossReport(id);
+            return ResponseEntity.ok(response);
+        }
+        throw new AccessDeniedException("DL (delete): No access for the current user.");
     }
 }
