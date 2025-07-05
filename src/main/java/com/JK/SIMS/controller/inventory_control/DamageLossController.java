@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -48,7 +49,9 @@ public class DamageLossController {
                 String jwtToken = TokenUtils.extractToken(token);
                 damageLossService.addDamageLoss(dtoRequest, jwtToken);
                 logger.info("DL (addDamageLoss): {} sku report is created successfully.", dtoRequest.sku());
-                return ResponseEntity.ok(new ApiResponse(true, dtoRequest.sku() + " sku report is created successfully"));
+                return new ResponseEntity<>(
+                        new ApiResponse(true, dtoRequest.sku() + " sku report is created successfully"),
+                        HttpStatus.CREATED);
             }
             throw new InvalidTokenException("DL (addDamageLoss): Invalid Token provided.");
         }

@@ -11,7 +11,6 @@ import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.IC_repo.DamageLoss_repository;
 import com.JK.SIMS.repository.IC_repo.IC_repository;
 import com.JK.SIMS.service.UM_service.JWTService;
-import jakarta.transaction.Transactional;
 import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,6 +21,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -45,7 +45,7 @@ public class DamageLossService {
         this.clock = clock;
     }
 
-
+    @Transactional(readOnly = true)
     public DamageLossPageResponse getDamageLossDashboardData(int page, int size) {
         try {
             DamageLossMetrics damageLossMetrics = damageLoss_repository.getDamageLossMetrics();
@@ -176,9 +176,9 @@ public class DamageLossService {
                 }
                 report.setLossDate(request.lossDate());
             }
-            InventoryData currentProduct = report.getIcProduct();
 
             if (request.quantityLost() != null) {
+                InventoryData currentProduct = report.getIcProduct();
                 int newQuantity = request.quantityLost();
                 validateStockInput(currentProduct, newQuantity);
                 int currentLostQuantity = report.getQuantityLost();

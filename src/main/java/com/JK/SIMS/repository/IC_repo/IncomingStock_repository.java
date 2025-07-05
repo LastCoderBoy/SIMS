@@ -7,6 +7,4 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface IncomingStock_repository extends JpaRepository<IncomingStock, Integer> {
-    @Query("SELECT SUM(i.quantity) FROM IncomingStock i")
-    Integer getTotalIncomingStockQuantity();
 }

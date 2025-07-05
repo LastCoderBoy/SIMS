@@ -11,6 +11,7 @@ import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -49,7 +50,7 @@ public class ProductController {
         }
         //Only the Admins and Managers can add new products.
         logger.info("PM: addProduct() calling...");
-        return ResponseEntity.ok(pmService.addProduct(newProduct));
+        return new ResponseEntity<>(pmService.addProduct(newProduct), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
