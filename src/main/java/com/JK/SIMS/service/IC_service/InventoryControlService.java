@@ -126,7 +126,6 @@ public class InventoryControlService {
 
     private InventoryDataDTO convertToDTO(InventoryData currentProduct) {
         InventoryDataDTO inventoryDataDTO = new InventoryDataDTO();
-        // TODO: Instead of setting the whole product, consider displaying only name, category and price
         inventoryDataDTO.setInventoryData(currentProduct);
         inventoryDataDTO.setProductName(currentProduct.getPmProduct().getName());
         inventoryDataDTO.setCategory(currentProduct.getPmProduct().getCategory());
