@@ -21,7 +21,7 @@ public class IncomingStock {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "order_id", unique = true, nullable = false)
+    @Column(name = "PO_Number", unique = true, nullable = false)
     private String PONumber; // PO Invoice Number, will be [PO-supplierName-ID]
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -45,7 +45,7 @@ public class IncomingStock {
     private String notes; // Any additional notes about the incoming shipment
 
     @ManyToOne
-    @JoinColumn(name = "supplier_id")
+    @JoinColumn(name = "supplier_name")
     private Supplier supplier; // The supplier from whom the stock is coming
 
     @Column(nullable = false)

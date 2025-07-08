@@ -7,4 +7,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface IncomingStock_repository extends JpaRepository<IncomingStock, Integer> {
+
+    boolean existsByPONumber(String potentialPONumber);
 }

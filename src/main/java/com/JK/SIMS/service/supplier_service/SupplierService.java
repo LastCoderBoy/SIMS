@@ -5,6 +5,7 @@ import com.JK.SIMS.models.supplier.Supplier;
 import com.JK.SIMS.models.supplier.SupplierRequest;
 import com.JK.SIMS.models.supplier.SupplierResponse;
 import com.JK.SIMS.repository.supplier_repo.SupplierRepository;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -112,6 +113,6 @@ public class SupplierService {
     @Transactional(readOnly = true)
     public Supplier getSupplierEntityById(Long id) {
         return supplierRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Supplier not found with ID: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Supplier not found with ID: " + id));
     }
 }

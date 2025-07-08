@@ -14,6 +14,7 @@ import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.IC_repo.IC_repository;
 import com.JK.SIMS.repository.PM_repo.PM_repository;
 import com.JK.SIMS.service.IC_service.InventoryControlService;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.transaction.Transactional;
@@ -115,7 +116,7 @@ public class ProductManagementService {
                 pmRepository.save(newProduct);
                 if (!newProduct.getStatus().equals(ProductStatus.PLANNING) &&
                         !newProduct.getStatus().equals(ProductStatus.ARCHIVED)) {
-                    icService.addProduct(newProduct);
+                    icService.addProduct(newProduct, false);
                 }
                 logger.info("PM (addProduct): New product added: ID = {}, Name = {}", newID, newProduct.getName());
                 return new ApiResponse(true, "PM: Product added successfully with ID: " + newID);
@@ -166,11 +167,11 @@ public class ProductManagementService {
      * @param productId  The unique identifier of the product to update
      * @param newProduct The product object containing the new values to update
      * @return ApiResponse indicating success or failure of the update operation
-     * @throws BadRequestException if the product with given ID is not found
+     * @throws EntityNotFoundException if the product with given ID is not found
      * @throws ValidationException if the new location format is invalid
      * @throws ServiceException    if any other error occurs during update
      */
-    public ApiResponse updateProduct(String productId, ProductsForPM newProduct) throws BadRequestException {
+    public ApiResponse updateProduct(String productId, ProductsForPM newProduct) {
         try {
             ProductsForPM currentProduct = findProductById(productId);
 
@@ -187,18 +188,13 @@ public class ProductManagementService {
             logger.info("PM (updateProduct): Product with ID {} updated successfully", productId);
 
             return new ApiResponse(true, "Product with ID " + productId + " updated successfully!");
-        }catch (BadRequestException e) {
-            throw e;
+        } catch (EntityNotFoundException e) {
+            throw new EntityNotFoundException("PM (updateProduct): Product with ID " + productId + " not found");
         } catch (ValidationException e) {
             throw new ValidationException(e.getMessage());
         } catch (Exception e) {
             throw new ServiceException("PM (updateProduct): Internal error " + productId, e);
         }
-    }
-
-    private ProductsForPM findProductById(String productId) throws BadRequestException {
-        return pmRepository.findById(productId)
-                .orElseThrow(() -> new BadRequestException("PM (updateProduct): Product with ID " + productId + " not found"));
     }
 
     private void updateProductFields(ProductsForPM currentProduct, ProductsForPM newProduct) {
@@ -242,10 +238,10 @@ public class ProductManagementService {
         if (newProduct.getStatus().equals(ProductStatus.ACTIVE) || newProduct.getStatus().equals(ProductStatus.ON_ORDER)) {
             if (previousStatus.equals(ProductStatus.ARCHIVED)) {
                 if (productInIC.isEmpty()) {
-                    icService.addProduct(currentProduct);
+                    icService.addProduct(currentProduct, false);
                 }
             } else {
-                icService.addProduct(currentProduct);
+                icService.addProduct(currentProduct, false);
             }
         } else {
             // No need to add to IC, because the product is already present in the IC and we have to change to INVALID status
@@ -438,6 +434,12 @@ public class ProductManagementService {
         } catch (IOException e) {
             logger.error("PM (generatePMReport): Error writing Excel file", e);
         }
+    }
+
+    // Helper method for internal use
+    public ProductsForPM findProductById(String productId) {
+        return pmRepository.findById(productId)
+                .orElseThrow(() -> new EntityNotFoundException("PM (updateProduct): Product with ID " + productId + " not found"));
     }
 }
 

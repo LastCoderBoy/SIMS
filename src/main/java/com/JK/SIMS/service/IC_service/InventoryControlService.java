@@ -14,7 +14,6 @@ import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.IC_repo.DamageLoss_repository;
 import com.JK.SIMS.repository.IC_repo.IC_repository;
 import com.JK.SIMS.repository.PM_repo.PM_repository;
-import jakarta.transaction.Transactional;
 import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +24,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -243,21 +243,31 @@ public class InventoryControlService {
      * @throws InventoryException if product data is invalid or operation fails
      * @throws ServiceException if any other error occurs during product addition
      */
-    public void addProduct(ProductsForPM product){
+    public void addProduct(ProductsForPM product, boolean isUnderTransfer){
         try {
             InventoryData inventoryData = new InventoryData();
+
+            //Generating the SKU and populating the object field
             String sku = generateSKU(product.getProductID(), product.getCategory());
             inventoryData.setSKU(sku);
+
+            // Set the basic fields
             inventoryData.setPmProduct(product);
             inventoryData.setLocation(product.getLocation());
             inventoryData.setCurrentStock(0);
-
             inventoryData.setLastUpdate(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
             inventoryData.setMinLevel(0);
+
+            // Handle the status properly
             if(amongInvalidStatus(product.getStatus())){
                 inventoryData.setStatus(InventoryDataStatus.INVALID);
             }else {
-                inventoryData.setStatus(InventoryDataStatus.LOW_STOCK);
+                // isUnderTransfer means the Product is INCOMING
+                if(isUnderTransfer){
+                    inventoryData.setStatus(InventoryDataStatus.INCOMING);
+                } else {
+                    inventoryData.setStatus(InventoryDataStatus.LOW_STOCK);
+                }
             }
             icRepository.save(inventoryData);
             logger.info("IC: New product is added with the {} SKU", sku);
@@ -315,9 +325,7 @@ public class InventoryControlService {
             validateUpdateRequest(newInventoryData);
 
             // Find and validate the existing product
-            InventoryData existingProduct = icRepository.findBySKU(sku)
-                    .orElseThrow(() -> new BadRequestException(
-                            "IC (updateProduct): No product with SKU " + sku + " found"));
+            InventoryData existingProduct = getInventoryDataBySku(sku);
 
             // Update stock levels
             if(existingProduct.getStatus() == InventoryDataStatus.INVALID){
@@ -341,6 +349,12 @@ public class InventoryControlService {
                     sku, ex.getMessage());
             throw new ServiceException("IC (updateProduct): Internal Service error", ex);
         }
+    }
+
+    private InventoryData getInventoryDataBySku(String sku) throws BadRequestException {
+        return icRepository.findBySKU(sku)
+                .orElseThrow(() -> new BadRequestException(
+                        "IC (updateProduct): No product with SKU " + sku + " found"));
     }
 
     private void updateStockLevels(InventoryData existingProduct, InventoryData newInventoryData) {
@@ -405,5 +419,11 @@ public class InventoryControlService {
         }catch (Exception e){
             throw new ServiceException("IC (deleteProduct): Failed to delete product", e);
         }
+    }
+
+    // Helper method.
+    @Transactional(readOnly = true)
+    public boolean isInventoryProductExists(String productId) {
+        return icRepository.findByPmProduct_ProductID(productId).isPresent();
     }
 }
