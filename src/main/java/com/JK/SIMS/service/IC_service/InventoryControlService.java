@@ -24,6 +24,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -165,7 +166,6 @@ public class InventoryControlService {
      * Filters and sorts inventory products with advanced filtering options.
      * Supports filtering by specific fields using the format "field:value"
      * and general text search if no specific field is specified.
-     *
      * Supported filter fields:
      * - status: Matches InventoryDataStatus enum values
      * - stock: Filters by stock level (numeric comparison)
@@ -328,13 +328,10 @@ public class InventoryControlService {
             InventoryData existingProduct = getInventoryDataBySku(sku);
 
             // Update stock levels
-            if(existingProduct.getStatus() == InventoryDataStatus.INVALID){
-                throw new BadRequestException("IC (updateProduct): Product with SKU " + sku + " is invalid and cannot be updated");
-            }
-            updateStockLevels(existingProduct, newInventoryData);
+            updateStockLevels(existingProduct,
+                    Optional.of(newInventoryData.getCurrentStock()),
+                    Optional.of(newInventoryData.getMinLevel()));
 
-            // Save and return
-            icRepository.save(existingProduct);
             logger.info("IC (updateProduct): Product with SKU {} updated successfully", sku);
             return new ApiResponse(true, sku + " is updated successfully");
 
@@ -357,22 +354,20 @@ public class InventoryControlService {
                         "IC (updateProduct): No product with SKU " + sku + " found"));
     }
 
-    private void updateStockLevels(InventoryData existingProduct, InventoryData newInventoryData) {
+    public void updateStockLevels(InventoryData existingProduct, Optional<Integer> newStockLevel, Optional<Integer> newMinLevel ) {
         // Update current stock if provided
-        if (newInventoryData.getCurrentStock() != null) {
-            existingProduct.setCurrentStock(newInventoryData.getCurrentStock());
-        }
+        newStockLevel.ifPresent(existingProduct::setCurrentStock);
 
         // Update minimum level if provided
-        if (newInventoryData.getMinLevel() != null) {
-            existingProduct.setMinLevel(newInventoryData.getMinLevel());
-        }
+        newMinLevel.ifPresent(existingProduct::setMinLevel);
 
         //Update the status as well based on the latest update
         InventoryServiceHelper.updateInventoryStatus(existingProduct);
 
         // Update last update timestamp
         existingProduct.setLastUpdate(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
+
+        icRepository.save(existingProduct);
     }
 
 
@@ -423,7 +418,25 @@ public class InventoryControlService {
 
     // Helper method.
     @Transactional(readOnly = true)
-    public boolean isInventoryProductExists(String productId) {
-        return icRepository.findByPmProduct_ProductID(productId).isPresent();
+    public Optional<InventoryData> getInventoryProductByProductId(String productId) {
+        return icRepository.findByPmProduct_ProductID(productId);
+    }
+
+    // Helper method for internal use
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void saveInventoryProduct(InventoryData inventoryData) {
+        try {
+            icRepository.save(inventoryData);
+            logger.info("IC (saveInventoryProduct): Successfully saved/updated inventory data with SKU {}",
+                    inventoryData.getSKU());
+        } catch (DataAccessException da) {
+            logger.error("IC (saveInventoryProduct): Database error while saving inventory data: {}",
+                    da.getMessage());
+            throw new DatabaseException("Failed to save inventory data", da);
+        } catch (Exception e) {
+            logger.error("IC (saveInventoryProduct): Unexpected error while saving inventory data: {}",
+                    e.getMessage());
+            throw new ServiceException("Failed to save inventory data", e);
+        }
     }
 }

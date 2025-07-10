@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface IncomingStock_repository extends JpaRepository<IncomingStock, Integer> {
+public interface IncomingStock_repository extends JpaRepository<IncomingStock, Long> {
 
     boolean existsByPONumber(String potentialPONumber);
 }

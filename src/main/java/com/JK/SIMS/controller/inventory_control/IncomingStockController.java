@@ -4,6 +4,7 @@ import com.JK.SIMS.config.SecurityUtils;
 import com.JK.SIMS.exceptionHandler.InvalidTokenException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.incoming.IncomingStockRequest;
+import com.JK.SIMS.models.IC_models.incoming.ReceiveStockRequest;
 import com.JK.SIMS.service.IC_service.IncomingStockService;
 import com.JK.SIMS.service.TokenUtils;
 import jakarta.validation.Valid;
@@ -46,7 +47,22 @@ public class IncomingStockController {
         throw new AccessDeniedException("IC: createPurchaseOrder() No access for the current user.");
     }
 
-    // TODO: Update incoming stock order manually
+    @PutMapping("/{id}/receive")
+    public ResponseEntity<?> updateIncomingStockOrder(@Valid @RequestBody ReceiveStockRequest receiveRequest,
+                                                      @PathVariable Long id,
+                                                      @RequestHeader("Authorization") String token) throws BadRequestException, AccessDeniedException {
+        logger.info("IC: updateIncomingStockOrder() calling...");
+        if(SecurityUtils.hasAccess()){
+            if(token != null && !token.trim().isEmpty()) {
+                String jwtToken = TokenUtils.extractToken(token);
+                ApiResponse response =  incomingStockService.receiveIncomingStock(id, receiveRequest, jwtToken);
+
+                return new ResponseEntity<>(new ApiResponse(true, "Incoming stock order updated successfully"), HttpStatus.OK);
+            }
+            throw new InvalidTokenException("IC: updateIncomingStockOrder() Invalid Token provided.");
+        }
+        throw new AccessDeniedException("IC: updateIncomingStockOrder() No access for the current user.");
+    }
 
     // TODO: GET : Get all incoming stock records.
 

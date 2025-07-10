@@ -25,7 +25,7 @@ public class IncomingStockRequest {
     @FutureOrPresent(message = "Arrival date must be today or in the future")
     private LocalDate expectedArrivalDate;
 
-    // Optional field
+    // Optional field, and better info in Email. And will show up when the status is on Cancelled and Failed
     @Size(max = 500, message = "Notes cannot exceed 500 characters")
     private String notes;
 }

@@ -3,10 +3,13 @@ package com.JK.SIMS.service.IC_service;
 import com.JK.SIMS.exceptionHandler.DatabaseException;
 import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
+import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.InventoryData;
+import com.JK.SIMS.models.IC_models.InventoryDataStatus;
 import com.JK.SIMS.models.IC_models.incoming.IncomingStock;
 import com.JK.SIMS.models.IC_models.incoming.IncomingStockRequest;
 import com.JK.SIMS.models.IC_models.incoming.IncomingStockStatus;
+import com.JK.SIMS.models.IC_models.incoming.ReceiveStockRequest;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.supplier.Supplier;
@@ -30,125 +33,245 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDate;
-import java.util.NoSuchElementException;
+import java.time.temporal.ChronoUnit;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
 public class IncomingStockService {
 
     private static final Logger logger = LoggerFactory.getLogger(IncomingStockService.class);
+    private static final int MAX_PO_GENERATION_RETRIES = 5;
 
     private final SupplierService supplierService;
     private final EmailService emailService;
     private final Clock clock;
-    private final ProductManagementService pm_service;
-    private final IncomingStock_repository incomingStock_repository;
+    private final ProductManagementService pmService;
+    private final IncomingStock_repository incomingStockRepository;
     private final JWTService jWTService;
-    private final PM_repository pM_repository;
     private final InventoryControlService inventoryControlService;
 
     @Autowired
-    public IncomingStockService(SupplierService supplierService, EmailService emailService, Clock clock, ProductManagementService pmService, IncomingStock_repository incomingStockRepository, JWTService jWTService, PM_repository pM_repository, InventoryControlService inventoryControlService) {
+    public IncomingStockService(SupplierService supplierService, EmailService emailService, Clock clock, ProductManagementService pmService, IncomingStock_repository incomingStockRepository, JWTService jWTService, InventoryControlService inventoryControlService) {
         this.supplierService = supplierService;
         this.emailService = emailService;
         this.clock = clock;
-        pm_service = pmService;
-        this.incomingStock_repository = incomingStockRepository;
+        this.pmService = pmService;
+        this.incomingStockRepository = incomingStockRepository;
         this.jWTService = jWTService;
-        this.pM_repository = pM_repository;
         this.inventoryControlService = inventoryControlService;
     }
 
     @Transactional
-    public void createPurchaseOrder(@Valid IncomingStockRequest stockRequest, String jwtToken) {
+    public void createPurchaseOrder(@Valid IncomingStockRequest stockRequest, String jwtToken) throws BadRequestException {
         try {
-            // We don't have to validate the stockRequest as it is validated by the incomingStockRequest object
-
-            // Validate the Token and extract the User
-            String orderedPerson = jWTService.extractUsername(jwtToken);
-            if (orderedPerson == null || orderedPerson.isEmpty()) {
-                throw new BadRequestException("Invalid JWT token: Cannot determine ordering user.");
-            }
-
-            // Helper method will throw an exception if the product is not found.
-            ProductsForPM orderedProduct = pm_service.findProductById(stockRequest.getProductId());
-
-            if (GlobalServiceHelper.amongInvalidStatus(orderedProduct.getStatus())) {
-                throw new ValidationException("Following product is not for sale and cannot be ordered, " +
-                        "please update the status in the PM section first.");
-            }
-
-            // If the product status was on PLANNING, we have to the IC as well if not present.
-            if(orderedProduct.getStatus() == ProductStatus.PLANNING){
-                // Change from PLANNING -> ON_ORDER
-                orderedProduct.setStatus(ProductStatus.ON_ORDER);
-
-                // It might be present if the product before updated to ACTIVE -> PLANNING
-                boolean isProductPresent = inventoryControlService.isInventoryProductExists(orderedProduct.getProductID());
-                if(!isProductPresent) {
-                    inventoryControlService.addProduct(orderedProduct, true);
-                }
-
-                pM_repository.save(orderedProduct);
-            }
-
-            // Creating the Entity object
-            IncomingStock order = new IncomingStock();
-
-            // Validate the provided supplier and set the supplier field
-            Supplier supplier = supplierService.getSupplierEntityById(stockRequest.getSupplierId());
-            order.setSupplier(supplier);
-
-            // Set basic fields
-            order.setOrderedQuantity(stockRequest.getOrderQuantity());
-            order.setProduct(orderedProduct);
-            order.setExpectedArrivalDate(stockRequest.getExpectedArrivalDate());
-            order.setNotes(stockRequest.getNotes() != null ? stockRequest.getNotes() : "");
-
-            // Generate the PO number and save it to the database 
-            order.setPONumber(generatePoNumber(supplier.getId()));
-
-            // Set default values explicitly
-            order.setOrderDate(LocalDate.from(GlobalServiceHelper.now(clock)));
-            order.setStatus(IncomingStockStatus.PENDING);
-            order.setLastUpdated(GlobalServiceHelper.now(clock));
-            order.setUpdatedBy(orderedPerson);
-
-            incomingStock_repository.save(order);
-
-            // Send email to supplier's email address
-            emailService.sendOrderRequest(supplier.getEmail(), order);
+            String orderedPerson = validateAndExtractUser(jwtToken);
+            ProductsForPM orderedProduct = validateAndGetProduct(stockRequest.getProductId());
+            handleInventoryStatusUpdates(orderedProduct);
+            IncomingStock order = createOrderEntity(stockRequest, orderedProduct, orderedPerson);
+            saveOrder(order);
 
             logger.info("IS (createPurchaseOrder): Product ordered successfully. PO Number: {}", order.getPONumber());
-
-        }catch (EntityNotFoundException e){
-            throw new EntityNotFoundException("IS (createPurchaseOrder): " + e.getMessage());
         } catch (DataIntegrityViolationException de) {
             throw new DatabaseException("IS (createPurchaseOrder): Failed to create incoming stock due to PO Number collision. Please try again.");
         } catch (ConstraintViolationException ve) {
             throw new ValidationException("IS (createPurchaseOrder): Invalid purchase order request: " + ve.getMessage());
         } catch (Exception e) {
+            if (e instanceof EntityNotFoundException || e instanceof ValidationException || e instanceof BadRequestException) {
+                throw e;
+            }
             throw new ServiceException("IS (createPurchaseOrder): Failed to create purchase order: " + e.getMessage());
         }
     }
 
-    private String generatePoNumber(Long supplierId) throws RuntimeException {
-        String generatedPONumber = null;
-        int maxRetries = 5;
-        for (int i = 0; i < maxRetries; i++) {
+    @Transactional
+    public ApiResponse receiveIncomingStock(Long orderId, @Valid ReceiveStockRequest receiveRequest, String jwtToken) throws BadRequestException {
+        try {
+            // Validate the Token and extract the User
+            String updatedPerson = jWTService.extractUsername(jwtToken);
+            if (updatedPerson == null || updatedPerson.isEmpty()) {
+                throw new BadRequestException("Invalid JWT token: Cannot determine the user.");
+            }
+
+            if (orderId == null) {
+                throw new IllegalArgumentException("IS (updateIncomingStockOrder): Order ID cannot be null or empty");
+            }
+
+            IncomingStock order = getIncomingStockOrder(orderId);
+
+            // Set the Actual arrival date
+            if (receiveRequest.getActualArrivalDate() != null) {
+                if (receiveRequest.getActualArrivalDate().isAfter(LocalDate.now())) {
+                    throw new ValidationException("IS (updateIncomingStockOrder): Actual arrival date cannot be in the future");
+                }
+                if (!receiveRequest.getActualArrivalDate().equals(order.getActualArrivalDate())) {
+                    order.setActualArrivalDate(receiveRequest.getActualArrivalDate());
+                }
+            } else {
+                // If actualArrivalDate is not provided in the request, set it to now if not already set
+                if (order.getActualArrivalDate() == null) {
+                    order.setActualArrivalDate(GlobalServiceHelper.now(clock).toLocalDate());
+                }
+            }
+            //TODO: ON_ORDER -> ACTIVE in PM section
+
+            // @NotNull and @Min(0) on quantityToReceiveInThisUpdate in the DTO ensures it's valid.
+            int quantityToReceiveInThisUpdate = receiveRequest.getReceivedQuantity();
+            order.setReceivedQuantity(quantityToReceiveInThisUpdate + order.getReceivedQuantity());
+
+            // Update the status based on the received quantity.
+            if (order.getReceivedQuantity() >= order.getOrderedQuantity()) {
+                order.setStatus(IncomingStockStatus.RECEIVED);
+            } else if (order.getReceivedQuantity() > 0) {
+                order.setStatus(IncomingStockStatus.PARTIALLY_RECEIVED);
+            }
+            // If quantityToReceiveInThisUpdate is 0, status remains as it was (PENDING...)
+
+
+            // Update the IC stock level for that product.
+            Optional<InventoryData> inventoryProduct = inventoryControlService.getInventoryProductByProductId(order.getProduct().getProductID());
+            if (inventoryProduct.isPresent()) {
+                try {
+                    // Increase the stock level, update the status and save the product.
+                    int newStockLevel = inventoryProduct.get().getCurrentStock() + quantityToReceiveInThisUpdate;
+                    inventoryControlService.updateStockLevels(inventoryProduct.get(),
+                            Optional.of(newStockLevel),
+                            Optional.empty());
+                } catch (Exception e) {
+                    throw new ServiceException("IS (updateIncomingStockOrder): Failed to update inventory levels: " + e.getMessage());
+                }
+            }else {
+                // Cannot reach, The Product will always be present in the InventoryData table.
+                logger.error("IS (updateIncomingStockOrder): Product {} (ID: {}) found in IncomingStock but not in InventoryData. Inventory levels not updated.",
+                        order.getProduct().getName(), order.getProduct().getProductID());
+                throw new ServiceException("Inventory data not found for product " + order.getProduct().getName() + ". Please check inventory consistency.");
+            }
+
+            order.setLastUpdated(GlobalServiceHelper.now(clock));
+            order.setUpdatedBy(updatedPerson);
+            try {
+                incomingStockRepository.save(order);
+                logger.info("IS (updateIncomingStockOrder): Updated incoming stock order successfully. PO Number: {}", order.getPONumber());
+                return new ApiResponse(true, "Incoming stock order updated successfully.");
+            } catch (DataIntegrityViolationException e) {
+                logger.error("IS (updateIncomingStockOrder): Database error while saving order {}: {}", orderId, e.getMessage(), e);
+                throw new DatabaseException("Database error while saving order: " + e.getMessage());
+            }
+
+        } catch (NumberFormatException e) {
+            throw new ValidationException("IS (updateIncomingStockOrder): Invalid order ID format");
+        } catch (EntityNotFoundException e) {
+            throw new EntityNotFoundException("IS (updateIncomingStockOrder): " + e.getMessage());
+        } catch (IllegalArgumentException | ValidationException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new ServiceException("IS (updateIncomingStockOrder): Unexpected error occurred: " + e.getMessage());
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public IncomingStock getIncomingStockOrder(Long orderId) {
+        return incomingStockRepository.findById(orderId)
+                .orElseThrow(() -> new EntityNotFoundException("IS (getIncomingStockOrder): No incoming stock order found for ID: " + orderId));
+    }
+
+    // Private helper methods
+
+    private String validateAndExtractUser(String jwtToken) throws BadRequestException {
+        String username = jWTService.extractUsername(jwtToken);
+        if (username == null || username.isEmpty()) {
+            throw new BadRequestException("Invalid JWT token: Cannot determine user.");
+        }
+        return username;
+    }
+
+    private ProductsForPM validateAndGetProduct(String productId) {
+        ProductsForPM product = pmService.findProductById(productId);
+
+        if (GlobalServiceHelper.amongInvalidStatus(product.getStatus())) {
+            throw new ValidationException("Product is not for sale and cannot be ordered. Please update the status in the PM section first.");
+        }
+
+        return product;
+    }
+
+    private void handleInventoryStatusUpdates(ProductsForPM orderedProduct) {
+        Optional<InventoryData> inventoryProductOpt = inventoryControlService.getInventoryProductByProductId(orderedProduct.getProductID());
+
+        if (orderedProduct.getStatus() == ProductStatus.PLANNING) {
+            handlePlanningStatusUpdate(orderedProduct, inventoryProductOpt);
+        } else if (orderedProduct.getStatus() == ProductStatus.ACTIVE) {
+            handleActiveStatusUpdate(inventoryProductOpt);
+        }
+    }
+
+    private void handlePlanningStatusUpdate(ProductsForPM orderedProduct, Optional<InventoryData> inventoryProductOpt) {
+        // Update product status from PLANNING to ON_ORDER
+        orderedProduct.setStatus(ProductStatus.ON_ORDER);
+        pmService.saveProduct(orderedProduct);
+
+        if (inventoryProductOpt.isEmpty()) {
+            // Product not in inventory, add it
+            inventoryControlService.addProduct(orderedProduct, true);
+        } else {
+            // Update existing inventory status to INCOMING
+            InventoryData inventoryData = inventoryProductOpt.get();
+            if (inventoryData.getStatus() != InventoryDataStatus.INCOMING) {
+                inventoryData.setStatus(InventoryDataStatus.INCOMING);
+                inventoryData.setLastUpdate(GlobalServiceHelper.now(clock).truncatedTo(ChronoUnit.SECONDS));
+                inventoryControlService.saveInventoryProduct(inventoryData);
+            }
+        }
+    }
+
+    private void handleActiveStatusUpdate(Optional<InventoryData> inventoryProductOpt) {
+        if (inventoryProductOpt.isPresent()) {
+            InventoryData inventoryData = inventoryProductOpt.get();
+            if (inventoryData.getStatus() != InventoryDataStatus.INCOMING) {
+                inventoryData.setStatus(InventoryDataStatus.INCOMING);
+                inventoryData.setLastUpdate(GlobalServiceHelper.now(clock).truncatedTo(ChronoUnit.SECONDS));
+                inventoryControlService.saveInventoryProduct(inventoryData);
+            }
+        }
+    }
+
+    private IncomingStock createOrderEntity(IncomingStockRequest stockRequest, ProductsForPM orderedProduct, String orderedPerson) {
+        Supplier supplier = supplierService.getSupplierEntityById(stockRequest.getSupplierId());
+
+        IncomingStock order = new IncomingStock();
+        order.setSupplier(supplier);
+        order.setOrderedQuantity(stockRequest.getOrderQuantity());
+        order.setProduct(orderedProduct);
+        order.setExpectedArrivalDate(stockRequest.getExpectedArrivalDate());
+        order.setNotes(stockRequest.getNotes() != null ? stockRequest.getNotes() : "");
+        order.setPONumber(generatePoNumber(supplier.getId()));
+        order.setOrderDate(LocalDate.from(GlobalServiceHelper.now(clock)));
+        order.setStatus(IncomingStockStatus.PENDING);
+        order.setLastUpdated(GlobalServiceHelper.now(clock));
+        order.setUpdatedBy(orderedPerson);
+
+        return order;
+    }
+
+    private void saveOrder(IncomingStock order) {
+        incomingStockRepository.save(order);
+        //emailService.sendOrderRequest(order.getSupplier().getEmail(), order);
+    }
+
+
+    private String generatePoNumber(Long supplierId) {
+        for (int attempt = 0; attempt < MAX_PO_GENERATION_RETRIES; attempt++) {
             String uniqueIdPart = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
             String potentialPONumber = "PO-" + supplierId + "-" + uniqueIdPart;
 
-            if (!incomingStock_repository.existsByPONumber(potentialPONumber)) {
-                generatedPONumber = potentialPONumber;
-                break; // Found a unique one, break loop
+            if (!incomingStockRepository.existsByPONumber(potentialPONumber)) {
+                return potentialPONumber;
             }
-            logger.warn("IS (generatePoNumber): Collision detected for potential PO Number: {}. Retrying...", potentialPONumber);
+
+            logger.warn("IS (generatePoNumber): Collision detected for potential PO Number: {}. Retrying... (Attempt {}/{})",
+                    potentialPONumber, attempt + 1, MAX_PO_GENERATION_RETRIES);
         }
 
-        if (generatedPONumber == null) {
-            throw new RuntimeException("Failed to generate a unique PO Number after " + maxRetries + " attempts.");
-        }
-        return generatedPONumber;
+        throw new ServiceException("Failed to generate a unique PO Number after " + MAX_PO_GENERATION_RETRIES + " attempts.");
     }
 }
