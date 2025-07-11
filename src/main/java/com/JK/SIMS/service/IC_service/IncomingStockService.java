@@ -23,6 +23,8 @@ import com.JK.SIMS.service.supplier_service.SupplierService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,82 +89,27 @@ public class IncomingStockService {
     @Transactional
     public ApiResponse receiveIncomingStock(Long orderId, @Valid ReceiveStockRequest receiveRequest, String jwtToken) throws BadRequestException {
         try {
-            // Validate the Token and extract the User
-            String updatedPerson = jWTService.extractUsername(jwtToken);
-            if (updatedPerson == null || updatedPerson.isEmpty()) {
-                throw new BadRequestException("Invalid JWT token: Cannot determine the user.");
-            }
-
-            if (orderId == null) {
-                throw new IllegalArgumentException("IS (updateIncomingStockOrder): Order ID cannot be null or empty");
-            }
+            String updatedPerson = validateAndExtractUser(jwtToken);
+            validateOrderId(orderId);
 
             IncomingStock order = getIncomingStockOrder(orderId);
 
-            // Set the Actual arrival date
-            if (receiveRequest.getActualArrivalDate() != null) {
-                if (receiveRequest.getActualArrivalDate().isAfter(LocalDate.now())) {
-                    throw new ValidationException("IS (updateIncomingStockOrder): Actual arrival date cannot be in the future");
-                }
-                if (!receiveRequest.getActualArrivalDate().equals(order.getActualArrivalDate())) {
-                    order.setActualArrivalDate(receiveRequest.getActualArrivalDate());
-                }
-            } else {
-                // If actualArrivalDate is not provided in the request, set it to now if not already set
-                if (order.getActualArrivalDate() == null) {
-                    order.setActualArrivalDate(GlobalServiceHelper.now(clock).toLocalDate());
-                }
-            }
-            //TODO: ON_ORDER -> ACTIVE in PM section
-
-            // @NotNull and @Min(0) on quantityToReceiveInThisUpdate in the DTO ensures it's valid.
-            int quantityToReceiveInThisUpdate = receiveRequest.getReceivedQuantity();
-            order.setReceivedQuantity(quantityToReceiveInThisUpdate + order.getReceivedQuantity());
-
-            // Update the status based on the received quantity.
-            if (order.getReceivedQuantity() >= order.getOrderedQuantity()) {
-                order.setStatus(IncomingStockStatus.RECEIVED);
-            } else if (order.getReceivedQuantity() > 0) {
-                order.setStatus(IncomingStockStatus.PARTIALLY_RECEIVED);
-            }
-            // If quantityToReceiveInThisUpdate is 0, status remains as it was (PENDING...)
-
-
-            // Update the IC stock level for that product.
-            Optional<InventoryData> inventoryProduct = inventoryControlService.getInventoryProductByProductId(order.getProduct().getProductID());
-            if (inventoryProduct.isPresent()) {
-                try {
-                    // Increase the stock level, update the status and save the product.
-                    int newStockLevel = inventoryProduct.get().getCurrentStock() + quantityToReceiveInThisUpdate;
-                    inventoryControlService.updateStockLevels(inventoryProduct.get(),
-                            Optional.of(newStockLevel),
-                            Optional.empty());
-                } catch (Exception e) {
-                    throw new ServiceException("IS (updateIncomingStockOrder): Failed to update inventory levels: " + e.getMessage());
-                }
-            }else {
-                // Cannot reach, The Product will always be present in the InventoryData table.
-                logger.error("IS (updateIncomingStockOrder): Product {} (ID: {}) found in IncomingStock but not in InventoryData. Inventory levels not updated.",
-                        order.getProduct().getName(), order.getProduct().getProductID());
-                throw new ServiceException("Inventory data not found for product " + order.getProduct().getName() + ". Please check inventory consistency.");
+            if(order.isFinalized()){
+                throw new ValidationException("IS (receiveIncomingStock): Cannot receive stock for finalized order");
             }
 
-            order.setLastUpdated(GlobalServiceHelper.now(clock));
-            order.setUpdatedBy(updatedPerson);
-            try {
-                incomingStockRepository.save(order);
-                logger.info("IS (updateIncomingStockOrder): Updated incoming stock order successfully. PO Number: {}", order.getPONumber());
-                return new ApiResponse(true, "Incoming stock order updated successfully.");
-            } catch (DataIntegrityViolationException e) {
-                logger.error("IS (updateIncomingStockOrder): Database error while saving order {}: {}", orderId, e.getMessage(), e);
-                throw new DatabaseException("Database error while saving order: " + e.getMessage());
-            }
+            updateOrderWithReceivedStock(order, receiveRequest);
+            updateInventoryLevels(order, receiveRequest.getReceivedQuantity());
+            finalizeOrderUpdate(order, updatedPerson);
+
+            logger.info("IS (receiveIncomingStock): Updated incoming stock order successfully. PO Number: {}", order.getPONumber());
+            return new ApiResponse(true, "Incoming stock order updated successfully.");
 
         } catch (NumberFormatException e) {
             throw new ValidationException("IS (updateIncomingStockOrder): Invalid order ID format");
         } catch (EntityNotFoundException e) {
             throw new EntityNotFoundException("IS (updateIncomingStockOrder): " + e.getMessage());
-        } catch (IllegalArgumentException | ValidationException e) {
+        } catch (IllegalArgumentException | ValidationException | BadRequestException e) {
             throw e;
         } catch (Exception e) {
             throw new ServiceException("IS (updateIncomingStockOrder): Unexpected error occurred: " + e.getMessage());
@@ -237,20 +184,18 @@ public class IncomingStockService {
 
     private IncomingStock createOrderEntity(IncomingStockRequest stockRequest, ProductsForPM orderedProduct, String orderedPerson) {
         Supplier supplier = supplierService.getSupplierEntityById(stockRequest.getSupplierId());
+        String poNumber = generatePoNumber(supplier.getId());
 
-        IncomingStock order = new IncomingStock();
-        order.setSupplier(supplier);
-        order.setOrderedQuantity(stockRequest.getOrderQuantity());
-        order.setProduct(orderedProduct);
-        order.setExpectedArrivalDate(stockRequest.getExpectedArrivalDate());
-        order.setNotes(stockRequest.getNotes() != null ? stockRequest.getNotes() : "");
-        order.setPONumber(generatePoNumber(supplier.getId()));
-        order.setOrderDate(LocalDate.from(GlobalServiceHelper.now(clock)));
-        order.setStatus(IncomingStockStatus.PENDING);
-        order.setLastUpdated(GlobalServiceHelper.now(clock));
-        order.setUpdatedBy(orderedPerson);
-
-        return order;
+        return new IncomingStock(
+                orderedProduct,
+                supplier,
+                stockRequest.getOrderQuantity(),
+                stockRequest.getExpectedArrivalDate(),
+                stockRequest.getNotes(),
+                poNumber,
+                orderedPerson,
+                clock
+        );
     }
 
     private void saveOrder(IncomingStock order) {
@@ -258,6 +203,80 @@ public class IncomingStockService {
         //emailService.sendOrderRequest(order.getSupplier().getEmail(), order);
     }
 
+    private void validateOrderId(Long orderId) {
+        if (orderId == null) {
+            throw new IllegalArgumentException("IS (receiveIncomingStock): Order ID cannot be null");
+        }
+    }
+
+    private void updateOrderWithReceivedStock(IncomingStock order, ReceiveStockRequest receiveRequest) {
+        // Set actual arrival date
+        if (receiveRequest.getActualArrivalDate() != null) {
+            if (receiveRequest.getActualArrivalDate().isAfter(LocalDate.now())) {
+                throw new ValidationException("IS (updateIncomingStockOrder): Actual arrival date cannot be in the future");
+            }
+            if (!receiveRequest.getActualArrivalDate().equals(order.getActualArrivalDate())) {
+                order.setActualArrivalDate(receiveRequest.getActualArrivalDate());
+            }
+        } else if (order.getActualArrivalDate() == null) {
+            order.setActualArrivalDate(GlobalServiceHelper.now(clock).toLocalDate());
+        }
+
+        // Update received quantity
+        int quantityToReceive = receiveRequest.getReceivedQuantity();
+        order.setReceivedQuantity(order.getReceivedQuantity() + quantityToReceive);
+
+        // Update status based on received quantity
+        updateOrderStatus(order);
+    }
+
+    private void updateOrderStatus(IncomingStock order) {
+        if (order.getReceivedQuantity() >= order.getOrderedQuantity()) {
+            order.setStatus(IncomingStockStatus.RECEIVED);
+            updateProductManagementStatus(order.getProduct());
+        } else if (order.getReceivedQuantity() > 0) {
+            order.setStatus(IncomingStockStatus.PARTIALLY_RECEIVED);
+        }
+        // If no quantity received, status remains unchanged
+    }
+
+    private void updateProductManagementStatus(ProductsForPM orderedProduct) {
+        if (orderedProduct.getStatus() == ProductStatus.ON_ORDER) {
+            orderedProduct.setStatus(ProductStatus.ACTIVE);
+            pmService.saveProduct(orderedProduct);
+        }
+    }
+
+    private void updateInventoryLevels(IncomingStock order, int receivedQuantity) {
+        if (receivedQuantity <= 0) {
+            return; // No inventory update needed
+        }
+
+        Optional<InventoryData> inventoryProduct = inventoryControlService.getInventoryProductByProductId(order.getProduct().getProductID());
+        if (inventoryProduct.isPresent()) {
+            try {
+                int newStockLevel = inventoryProduct.get().getCurrentStock() + receivedQuantity;
+
+                // The service method to update stock levels with proper error handling
+                inventoryControlService.updateStockLevels(inventoryProduct.get(),
+                        Optional.of(newStockLevel),
+                        Optional.empty());
+            } catch (Exception e) {
+                throw new ServiceException("IS (updateIncomingStockOrder): Failed to update inventory levels: " + e.getMessage());
+            }
+        }else {
+            // This should not happen in normal flow
+            logger.error("IS (updateIncomingStockOrder): Product {} (ID: {}) found in IncomingStock but not in InventoryData. Inventory levels not updated.",
+                    order.getProduct().getName(), order.getProduct().getProductID());
+            throw new ServiceException("Inventory data not found for product " + order.getProduct().getName() + ". Please check inventory consistency.");
+        }
+    }
+
+    private void finalizeOrderUpdate(IncomingStock order, String updatedPerson) {
+        order.setLastUpdated(GlobalServiceHelper.now(clock));
+        order.setUpdatedBy(updatedPerson);
+        incomingStockRepository.save(order);
+    }
 
     private String generatePoNumber(Long supplierId) {
         for (int attempt = 0; attempt < MAX_PO_GENERATION_RETRIES; attempt++) {

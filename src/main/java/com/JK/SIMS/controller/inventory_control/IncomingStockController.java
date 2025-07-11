@@ -56,8 +56,7 @@ public class IncomingStockController {
             if(token != null && !token.trim().isEmpty()) {
                 String jwtToken = TokenUtils.extractToken(token);
                 ApiResponse response =  incomingStockService.receiveIncomingStock(id, receiveRequest, jwtToken);
-
-                return new ResponseEntity<>(new ApiResponse(true, "Incoming stock order updated successfully"), HttpStatus.OK);
+                return new ResponseEntity<>(response, HttpStatus.OK);
             }
             throw new InvalidTokenException("IC: updateIncomingStockOrder() Invalid Token provided.");
         }

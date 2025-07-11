@@ -3,13 +3,16 @@ package com.JK.SIMS.models.IC_models.incoming;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.UM_models.Users;
 import com.JK.SIMS.models.supplier.Supplier;
+import com.JK.SIMS.service.GlobalServiceHelper;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 @Entity
 @Data
@@ -21,7 +24,7 @@ public class IncomingStock {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "PO_Number", unique = true, nullable = false)
+    @Column(name = "po_number", unique = true, nullable = false)
     private String PONumber; // PO Invoice Number, will be [PO-supplierName-ID]
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -44,8 +47,8 @@ public class IncomingStock {
     @Column(columnDefinition = "TEXT")
     private String notes; // Any additional notes about the incoming shipment
 
-    @ManyToOne
-    @JoinColumn(name = "supplier_name")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "supplier_id")
     private Supplier supplier; // The supplier from whom the stock is coming
 
     @Column(nullable = false)
@@ -53,4 +56,52 @@ public class IncomingStock {
 
     @Column(nullable = false)
     private String updatedBy; // User who last updated this record
+
+
+    // Business constructor for creating new purchase orders
+    public IncomingStock(ProductsForPM product,
+                         Supplier supplier,
+                         Integer orderedQuantity,
+                         LocalDate expectedArrivalDate,
+                         String notes,
+                         String poNumber,
+                         LocalDate orderDate,
+                         LocalDateTime lastUpdated,
+                         String updatedBy) {
+        this.product = Objects.requireNonNull(product, "Product cannot be null");
+        this.supplier = Objects.requireNonNull(supplier, "Supplier cannot be null");
+        this.orderedQuantity = Objects.requireNonNull(orderedQuantity, "Ordered quantity cannot be null");
+        this.expectedArrivalDate = expectedArrivalDate;
+        this.notes = notes != null ? notes : "";
+        this.PONumber = Objects.requireNonNull(poNumber, "PO Number cannot be null");
+        this.orderDate = Objects.requireNonNull(orderDate, "Order date cannot be null");
+        this.lastUpdated = Objects.requireNonNull(lastUpdated, "Last updated cannot be null");
+        this.updatedBy = Objects.requireNonNull(updatedBy, "Updated by cannot be null");
+
+        // Set defaults
+        this.receivedQuantity = 0;
+        this.status = IncomingStockStatus.PENDING;
+        this.actualArrivalDate = null;
+    }
+
+    // Convenience constructor with common defaults
+    public IncomingStock(ProductsForPM product,
+                         Supplier supplier,
+                         Integer orderedQuantity,
+                         LocalDate expectedArrivalDate,
+                         String notes,
+                         String poNumber,
+                         String updatedBy,
+                         Clock clock) {
+        this(product, supplier, orderedQuantity, expectedArrivalDate, notes, poNumber,
+                LocalDate.from(GlobalServiceHelper.now(clock)),    //  Calculate orderDate
+                GlobalServiceHelper.now(clock),                    //  Calculate lastUpdated
+                updatedBy);                                        //  Pass through updatedBy
+    }
+
+    public boolean isFinalized() {
+        return this.status == IncomingStockStatus.RECEIVED ||
+                this.status == IncomingStockStatus.CANCELLED ||
+                this.status == IncomingStockStatus.FAILED;
+    }
 }
