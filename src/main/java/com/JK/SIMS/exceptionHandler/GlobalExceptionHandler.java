@@ -113,9 +113,9 @@ public class GlobalExceptionHandler {
                 .body(new ApiResponse(false, ex.getMessage()));
     }
 
-    @ExceptionHandler(EntityNotFoundException.class)
-    public ResponseEntity<?> handleEntityNotFoundException(EntityNotFoundException ex) {
-        logger.warn("Entity not found: {}", ex.getMessage());
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<?> handleResourceNotFoundException(ResourceNotFoundException ex) {
+        logger.warn("Resource not found: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new ApiResponse(false, ex.getMessage()));
     }

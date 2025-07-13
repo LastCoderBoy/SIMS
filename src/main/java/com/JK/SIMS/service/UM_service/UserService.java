@@ -1,15 +1,11 @@
 package com.JK.SIMS.service.UM_service;
 
-import com.JK.SIMS.exceptionHandler.AuthenticationFailedException;
-import com.JK.SIMS.exceptionHandler.InvalidTokenException;
-import com.JK.SIMS.exceptionHandler.JwtAuthenticationException;
-import com.JK.SIMS.exceptionHandler.PasswordValidationException;
+import com.JK.SIMS.exceptionHandler.*;
 import com.JK.SIMS.models.UM_models.*;
 import com.JK.SIMS.repository.UM_repo.BlackListTokenRepository;
 import com.JK.SIMS.repository.UM_repo.UserRepository;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
-import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -107,7 +103,7 @@ public class UserService {
             }
 
             Users currentUser = userRepository.findByUsernameOrEmail(username)
-                    .orElseThrow(() -> new EntityNotFoundException("UM (updateUser): User not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("UM (updateUser): User not found"));
 
             updateUserFields(currentUser, user);
             userRepository.save(currentUser);

@@ -1,6 +1,7 @@
 package com.JK.SIMS.service.PM_service;
 
 import com.JK.SIMS.exceptionHandler.DatabaseException;
+import com.JK.SIMS.exceptionHandler.ResourceNotFoundException;
 import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
@@ -14,7 +15,6 @@ import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.IC_repo.IC_repository;
 import com.JK.SIMS.repository.PM_repo.PM_repository;
 import com.JK.SIMS.service.IC_service.InventoryControlService;
-import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.coyote.BadRequestException;
@@ -167,7 +167,7 @@ public class ProductManagementService {
      * @param productId  The unique identifier of the product to update
      * @param newProduct The product object containing the new values to update
      * @return ApiResponse indicating success or failure of the update operation
-     * @throws EntityNotFoundException if the product with given ID is not found
+     * @throws ResourceNotFoundException if the product with given ID is not found
      * @throws ValidationException if the new location format is invalid
      * @throws ServiceException    if any other error occurs during update
      */
@@ -188,8 +188,8 @@ public class ProductManagementService {
             logger.info("PM (updateProduct): Product with ID {} updated successfully", productId);
 
             return new ApiResponse(true, "Product with ID " + productId + " updated successfully!");
-        } catch (EntityNotFoundException e) {
-            throw new EntityNotFoundException("PM (updateProduct): Product with ID " + productId + " not found");
+        } catch (ResourceNotFoundException e) {
+            throw new ResourceNotFoundException("PM (updateProduct): Product with ID " + productId + " not found");
         } catch (ValidationException e) {
             throw new ValidationException(e.getMessage());
         } catch (Exception e) {
@@ -440,7 +440,7 @@ public class ProductManagementService {
     @Transactional(readOnly = true)
     public ProductsForPM findProductById(String productId) {
         return pmRepository.findById(productId)
-                .orElseThrow(() -> new EntityNotFoundException("PM (updateProduct): Product with ID " + productId + " not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("PM (updateProduct): Product with ID " + productId + " not found"));
     }
 
     @Transactional(propagation = Propagation.MANDATORY)

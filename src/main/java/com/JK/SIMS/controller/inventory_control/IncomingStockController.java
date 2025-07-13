@@ -1,10 +1,13 @@
 package com.JK.SIMS.controller.inventory_control;
 
-import com.JK.SIMS.config.SecurityUtils;
 import com.JK.SIMS.exceptionHandler.InvalidTokenException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.incoming.IncomingStockRequest;
+import com.JK.SIMS.models.IC_models.incoming.IncomingStockResponse;
+import com.JK.SIMS.models.IC_models.incoming.IncomingStockStatus;
 import com.JK.SIMS.models.IC_models.incoming.ReceiveStockRequest;
+import com.JK.SIMS.models.PM_models.ProductCategories;
+import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.IC_service.IncomingStockService;
 import com.JK.SIMS.service.TokenUtils;
 import jakarta.validation.Valid;
@@ -16,10 +19,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.nio.file.AccessDeniedException;
-
 @RestController
-@RequestMapping("/api/v1/products/inventory/incoming-stock")
+@RequestMapping("/api/v1/priority/inventory/incoming-stock")
 public class IncomingStockController {
 
     private static final Logger logger = LoggerFactory.getLogger(IncomingStockController.class);
@@ -31,41 +32,71 @@ public class IncomingStockController {
 
     @PostMapping
     public ResponseEntity<?> createPurchaseOrder(@Valid @RequestBody IncomingStockRequest stockRequest,
-                                                 @RequestHeader("Authorization") String token) throws AccessDeniedException, BadRequestException {
-        logger.info("IC: createPurchaseOrder() calling...");
-        if(SecurityUtils.hasAccess()){
-            if(token != null && !token.trim().isEmpty()) {
-                String jwtToken = TokenUtils.extractToken(token);
-                incomingStockService.createPurchaseOrder(stockRequest, jwtToken);
+                                                 @RequestHeader("Authorization") String token) throws BadRequestException {
+        logger.info("IS: createPurchaseOrder() calling...");
+        if(token != null && !token.trim().isEmpty()) {
+            String jwtToken = TokenUtils.extractToken(token);
+            incomingStockService.createPurchaseOrder(stockRequest, jwtToken);
 
-                return new ResponseEntity<>(
-                        new ApiResponse(true, stockRequest.getProductId() + "is ordered successfully"),
-                        HttpStatus.CREATED);
-            }
-            throw new InvalidTokenException("IC: createPurchaseOrder() Invalid Token provided.");
+            return new ResponseEntity<>(
+                    new ApiResponse(true, stockRequest.getProductId() + "is ordered successfully"),
+                    HttpStatus.CREATED);
         }
-        throw new AccessDeniedException("IC: createPurchaseOrder() No access for the current user.");
+        throw new InvalidTokenException("IS: createPurchaseOrder() Invalid Token provided.");
     }
 
     @PutMapping("/{id}/receive")
     public ResponseEntity<?> updateIncomingStockOrder(@Valid @RequestBody ReceiveStockRequest receiveRequest,
                                                       @PathVariable Long id,
-                                                      @RequestHeader("Authorization") String token) throws BadRequestException, AccessDeniedException {
-        logger.info("IC: updateIncomingStockOrder() calling...");
-        if(SecurityUtils.hasAccess()){
-            if(token != null && !token.trim().isEmpty()) {
-                String jwtToken = TokenUtils.extractToken(token);
-                ApiResponse response =  incomingStockService.receiveIncomingStock(id, receiveRequest, jwtToken);
-                return new ResponseEntity<>(response, HttpStatus.OK);
-            }
-            throw new InvalidTokenException("IC: updateIncomingStockOrder() Invalid Token provided.");
+                                                      @RequestHeader("Authorization") String token) throws BadRequestException {
+        logger.info("IS: updateIncomingStockOrder() calling...");
+        if(token != null && !token.trim().isEmpty()) {
+            String jwtToken = TokenUtils.extractToken(token);
+            ApiResponse response =  incomingStockService.receiveIncomingStock(id, receiveRequest, jwtToken);
+            return new ResponseEntity<>(response, HttpStatus.OK);
         }
-        throw new AccessDeniedException("IC: updateIncomingStockOrder() No access for the current user.");
+        throw new InvalidTokenException("IS: updateIncomingStockOrder() Invalid Token provided.");
     }
 
-    // TODO: GET : Get all incoming stock records.
+    @GetMapping
+    public ResponseEntity<?> getAllIncomingStockRecords(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size){
+        PaginatedResponse<IncomingStockResponse> paginatedStockResponse =
+                incomingStockService.getAllIncomingStockRecords(page, size);
+        return ResponseEntity.ok(paginatedStockResponse);
+    }
 
-    // TODO: GET /?status=PENDING: Filter records by status.
+    @PutMapping("{id}/cancel-order")
+    public ResponseEntity<?> cancelIncomingStockInternal(@PathVariable Long id, @RequestHeader("Authorization") String token) throws BadRequestException {
+        if(token != null && !token.trim().isEmpty()) {
+            String jwtToken = TokenUtils.extractToken(token);
+            ApiResponse response = incomingStockService.cancelIncomingStockInternal(id, jwtToken);
+            return ResponseEntity.ok(response);
+        }
+        throw new InvalidTokenException("IS: cancelIncomingStockInternal() Invalid Token provided.");
+    }
 
-    // TODO: GET /api/incoming-stock?startDate=2025-07-01&endDate=2025-07-31: Filter by order date range.
+
+    @GetMapping("/search")
+    public ResponseEntity<?> searchProduct(
+            @RequestParam(required = false) String text,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size){
+        logger.info("IS: searchProduct() calling with text: {}", text);
+        PaginatedResponse<IncomingStockResponse> dtoResponse = incomingStockService.searchProduct(text, page, size);
+        return ResponseEntity.ok(dtoResponse);
+    }
+
+    @GetMapping("/filter")
+    public ResponseEntity<?> filterStock(
+            @RequestParam(required = false) IncomingStockStatus status,
+            @RequestParam(required = false) ProductCategories category,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        PaginatedResponse<IncomingStockResponse> filterResponse = incomingStockService.filterIncomingStock(status, category, page, size);
+        logger.info("IS filterStock(): Returning {} paginated data", filterResponse.getContent().size());
+        return ResponseEntity.ok(filterResponse);
+    }
+
 }

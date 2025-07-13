@@ -1,5 +1,6 @@
 package com.JK.SIMS.controller.product_management;
 
+import com.JK.SIMS.config.SecurityUtils;
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.PM_models.ProductManagementDTO;
@@ -15,6 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.file.AccessDeniedException;
 import java.util.List;
 
 /**
@@ -22,7 +24,7 @@ import java.util.List;
  */
 
 @RestController
-@RequestMapping("/api/v1/priority/products") // Endpoint requires Authentication.
+@RequestMapping("/api/v1/products")
 public class ProductController {
 
     private static final Logger logger = LoggerFactory.getLogger(ProductController.class);
@@ -44,32 +46,43 @@ public class ProductController {
     }
 
     @PostMapping
-    public ResponseEntity<?> addProduct(@RequestBody ProductsForPM newProduct){
-        if (newProduct == null) {
-            throw new ValidationException("PM: Product data cannot be null");
+    public ResponseEntity<?> addProduct(@RequestBody ProductsForPM newProduct) throws AccessDeniedException {
+        if(SecurityUtils.hasAccess()) {
+            if (newProduct == null) {
+                throw new ValidationException("PM: Product data cannot be null");
+            }
+            //Only the Admins and Managers can add new products.
+            logger.info("PM: addProduct() calling...");
+            ApiResponse response = pmService.addProduct(newProduct);
+            return new ResponseEntity<>(response, HttpStatus.CREATED);
         }
-        //Only the Admins and Managers can add new products.
-        logger.info("PM: addProduct() calling...");
-        return new ResponseEntity<>(pmService.addProduct(newProduct), HttpStatus.CREATED);
+        throw new AccessDeniedException("PM addProduct(): You do not have access to perform that operation.");
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateProduct(@PathVariable String id, @RequestBody ProductsForPM newProduct) throws BadRequestException {
-        if (id == null || newProduct == null || id.trim().isEmpty()) {
-            throw new BadRequestException("PM (updateProduct): Product ID or New product cannot be null");
+    public ResponseEntity<?> updateProduct(@PathVariable String id, @RequestBody ProductsForPM newProduct) throws BadRequestException, AccessDeniedException {
+        if(SecurityUtils.hasAccess()) {
+            if (id == null || newProduct == null || id.trim().isEmpty()) {
+                throw new BadRequestException("PM (updateProduct): Product ID or New product cannot be null");
+            }
+            logger.info("PM: updateProduct() calling...");
+            ApiResponse response = pmService.updateProduct(id.toUpperCase(), newProduct);
+            return ResponseEntity.ok(response);
         }
-        logger.info("PM: updateProduct() calling...");
-        ApiResponse response = pmService.updateProduct(id.toUpperCase(), newProduct);
-        return ResponseEntity.ok(response);
+        throw new AccessDeniedException("PM updateProduct(): You do not have access to perform that operation.");
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteProduct(@PathVariable String id) throws BadRequestException {
-        if(id == null || id.trim().isEmpty()){
-            throw new ValidationException("PM: Product ID cannot be null");
+    public ResponseEntity<?> deleteProduct(@PathVariable String id) throws BadRequestException, AccessDeniedException {
+        if(SecurityUtils.hasAccess()){
+            if (id == null || id.trim().isEmpty()) {
+                throw new ValidationException("PM: Product ID cannot be null");
+            }
+            logger.info("PM: deleteProduct() calling...");
+            return pmService.deleteProduct(id);
         }
-        logger.info("PM: deleteProduct() calling...");
-        return pmService.deleteProduct(id);
+        throw new AccessDeniedException("PM deleteProduct(): You do not have access to perform that operation.");
+
     }
 
     @GetMapping("/search")

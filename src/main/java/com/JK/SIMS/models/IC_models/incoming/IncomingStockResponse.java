@@ -6,7 +6,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Data
 @AllArgsConstructor
@@ -23,8 +22,8 @@ public class IncomingStockResponse {
     private String productName;
     private ProductCategories productCategory;
     private String supplierName;
-    private String updatedBy;
-    private LocalDateTime lastUpdated;
+    private String orderedBy;
+    private String receivedBy;
 
     public IncomingStockResponse(IncomingStock incomingStock){
         this.id = incomingStock.getId();
@@ -38,7 +37,7 @@ public class IncomingStockResponse {
         this.productName = incomingStock.getProduct().getName();
         this.productCategory = incomingStock.getProduct().getCategory();
         this.supplierName = incomingStock.getSupplier().getName();
-        this.updatedBy = incomingStock.getUpdatedBy();
-        this.lastUpdated = incomingStock.getLastUpdated();
+        this.orderedBy = incomingStock.getOrderedBy();
+        this.receivedBy = incomingStock.getUpdatedBy();
     }
 }

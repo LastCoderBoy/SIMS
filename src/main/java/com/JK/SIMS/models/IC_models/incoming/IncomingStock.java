@@ -1,7 +1,6 @@
 package com.JK.SIMS.models.IC_models.incoming;
 
 import com.JK.SIMS.models.PM_models.ProductsForPM;
-import com.JK.SIMS.models.UM_models.Users;
 import com.JK.SIMS.models.supplier.Supplier;
 import com.JK.SIMS.service.GlobalServiceHelper;
 import jakarta.persistence.*;
@@ -55,8 +54,10 @@ public class IncomingStock {
     private LocalDateTime lastUpdated;
 
     @Column(nullable = false)
-    private String updatedBy; // User who last updated this record
+    private String orderedBy;
 
+    @Column
+    private String updatedBy;
 
     // Business constructor for creating new purchase orders
     public IncomingStock(ProductsForPM product,
@@ -67,7 +68,7 @@ public class IncomingStock {
                          String poNumber,
                          LocalDate orderDate,
                          LocalDateTime lastUpdated,
-                         String updatedBy) {
+                         String orderedBy) {
         this.product = Objects.requireNonNull(product, "Product cannot be null");
         this.supplier = Objects.requireNonNull(supplier, "Supplier cannot be null");
         this.orderedQuantity = Objects.requireNonNull(orderedQuantity, "Ordered quantity cannot be null");
@@ -76,12 +77,13 @@ public class IncomingStock {
         this.PONumber = Objects.requireNonNull(poNumber, "PO Number cannot be null");
         this.orderDate = Objects.requireNonNull(orderDate, "Order date cannot be null");
         this.lastUpdated = Objects.requireNonNull(lastUpdated, "Last updated cannot be null");
-        this.updatedBy = Objects.requireNonNull(updatedBy, "Updated by cannot be null");
+        this.orderedBy = Objects.requireNonNull(orderedBy, "Updated by cannot be null");
 
         // Set defaults
         this.receivedQuantity = 0;
         this.status = IncomingStockStatus.PENDING;
         this.actualArrivalDate = null;
+        this.updatedBy = null;
     }
 
     // Convenience constructor with common defaults
@@ -91,12 +93,12 @@ public class IncomingStock {
                          LocalDate expectedArrivalDate,
                          String notes,
                          String poNumber,
-                         String updatedBy,
+                         String orderedBy,
                          Clock clock) {
         this(product, supplier, orderedQuantity, expectedArrivalDate, notes, poNumber,
                 LocalDate.from(GlobalServiceHelper.now(clock)),    //  Calculate orderDate
                 GlobalServiceHelper.now(clock),                    //  Calculate lastUpdated
-                updatedBy);                                        //  Pass through updatedBy
+                orderedBy);                                        //  Pass through orderedBy
     }
 
     public boolean isFinalized() {
