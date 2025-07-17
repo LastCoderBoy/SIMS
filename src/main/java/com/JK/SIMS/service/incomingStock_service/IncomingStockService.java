@@ -110,13 +110,13 @@ public class IncomingStockService {
             return new ApiResponse(true, "Incoming stock order updated successfully.");
 
         } catch (NumberFormatException e) {
-            throw new ValidationException("IS (updateIncomingStockOrder): Invalid order ID format");
+            throw new ValidationException("IS (receiveIncomingStock): Invalid order ID format");
         } catch (ResourceNotFoundException e) {
-            throw new ResourceNotFoundException("IS (updateIncomingStockOrder): " + e.getMessage());
+            throw new ResourceNotFoundException("IS (receiveIncomingStock): " + e.getMessage());
         } catch (IllegalArgumentException | ValidationException | BadRequestException e) {
             throw e;
         } catch (Exception e) {
-            throw new ServiceException("IS (updateIncomingStockOrder): Unexpected error occurred: " + e.getMessage());
+            throw new ServiceException("IS (receiveIncomingStock): Unexpected error occurred: " + e.getMessage());
         }
     }
 
@@ -144,22 +144,44 @@ public class IncomingStockService {
 
     @Transactional
     public ApiResponse cancelIncomingStockInternal(Long id, String jwtToken) throws BadRequestException {
-        IncomingStock incomingStock = incomingStockRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Incoming Stock record not found with ID: " + id));
+        try {
+            validateOrderId(id); // validates and throws an exception
 
-        String user = validateAndExtractUser(jwtToken);
+            IncomingStock incomingStock = incomingStockRepository.findById(id)
+                    .orElseThrow(() -> new ResourceNotFoundException("IS (cancelIncomingStock): Incoming Stock record not found with ID: " + id));
 
-        // Cancellation only allowed if not already received or failed
-        if (incomingStock.isFinalized()) {
-            throw new BadRequestException("Cannot cancel an incoming stock record with status: " + incomingStock.getStatus());
+            String user = validateAndExtractUser(jwtToken);
+
+            // Cancellation only allowed if not already received or failed  
+            if (incomingStock.isFinalized()) {
+                throw new ValidationException("IS (cancelIncomingStock): Cannot cancel an incoming stock record with status: " + incomingStock.getStatus());
+            }
+
+            incomingStock.setStatus(IncomingStockStatus.CANCELLED);
+            incomingStock.setLastUpdated(GlobalServiceHelper.now(clock));
+            incomingStock.setUpdatedBy(user);
+
+            // Return back the Product Management section into the previous state
+            updateProductManagementStatus(incomingStock.getProduct());
+
+            // Return back the Inventory Control into the previous state
+            Optional<InventoryData> inventoryProductOpt =
+                    inventoryControlService.getInventoryProductByProductId(incomingStock.getProduct().getProductID());
+            handleActiveStatusUpdate(inventoryProductOpt);
+
+            incomingStockRepository.save(incomingStock);
+            logger.info("IS (cancelIncomingStock): Order cancelled successfully. PO Number: {}", incomingStock.getPONumber());
+            return new ApiResponse(true, "The order cancelled successfully.");
+        } catch (DataAccessException e) {
+            logger.error("IS (cancelIncomingStock): Database error while cancelling order", e);
+            throw new DatabaseException("IS (cancelIncomingStock): Failed to cancel order due to database error");
+        } catch (Exception e) {
+            if (e instanceof ResourceNotFoundException || e instanceof ValidationException || e instanceof BadRequestException) {
+                throw e;
+            }
+            logger.error("IS (cancelIncomingStock): Unexpected error while cancelling order", e);
+            throw new ServiceException("IS (cancelIncomingStock): Failed to cancel order: " + e.getMessage());
         }
-
-        incomingStock.setStatus(IncomingStockStatus.CANCELLED);
-        incomingStock.setLastUpdated(GlobalServiceHelper.now(clock));
-        incomingStock.setUpdatedBy(user);
-
-        incomingStockRepository.save(incomingStock);
-        return new ApiResponse(true, "The order cancelled successfully.");
     }
 
 
@@ -196,37 +218,28 @@ public class IncomingStockService {
 
     @Transactional
     public String confirmPurchaseOrder(String token) {
-        // Get the token and validated.
-        ConfirmationToken confirmationToken = confirmationTokenService.getConfirmationToken(token);
-        if (confirmationToken.getClickedAt() != null) {
-            return buildConfirmationPage("This order has already been confirmed.", "alert-danger");
-        }
-        if (confirmationToken.getExpiresAt().isBefore(LocalDateTime.now())) {
-            return buildConfirmationPage("Email link is already expired.", "alert-danger");
-        }
-        if (confirmationToken.getStatus() != ConfirmationTokenStatus.CONFIRMED) {
-            return buildConfirmationPage("Invalid token for confirmation.", "alert-danger");
+        ConfirmationToken confirmationToken = validateConfirmationToken(token);
+        if (confirmationToken == null) {
+            return buildConfirmationPage("Email link is invalid or expired.", "alert-danger");
         }
 
         IncomingStock order = confirmationToken.getOrder();
-        if(order.getStatus() == IncomingStockStatus.AWAITING_APPROVAL){
+        if (order.getStatus() == IncomingStockStatus.AWAITING_APPROVAL) {
             try {
                 order.setStatus(IncomingStockStatus.DELIVERY_IN_PROCESS);
                 order.setLastUpdated(GlobalServiceHelper.now(clock));
                 order.setUpdatedBy("Supplier via Email Link.");
                 incomingStockRepository.save(order);
 
-                confirmationToken.setClickedAt(GlobalServiceHelper.now(clock));
-                confirmationToken.setStatus(ConfirmationTokenStatus.CONFIRMED);
-                confirmationTokenService.saveConfirmationToken(confirmationToken);
+                updateConfirmationToken(confirmationToken, ConfirmationTokenStatus.CONFIRMED);
 
                 logger.info("IS (confirmOrder): Order confirmed by supplier. PO Number: {}", order.getPONumber());
                 return buildConfirmationPage("Order " + order.getPONumber() + " has been successfully confirmed!", "alert-success");
-            } catch (OptimisticLockingFailureException | OptimisticLockException e){
+            } catch (OptimisticLockingFailureException | OptimisticLockException e) {
                 logger.warn("Race condition detected when confirming order. Order ID: {}", order.getId());
                 return buildConfirmationPage("This order has already been processed by someone else.", "alert-danger");
             }
-        }else {
+        } else {
             logger.warn("IS (confirmOrder): Order ID {} is not in AWAITING_SUPPLIER_CONFIRMATION status. Current status: {}", order.getId(), order.getStatus());
             return buildConfirmationPage("Order already confirmed or cancelled.", "alert-danger");
         }
@@ -234,44 +247,49 @@ public class IncomingStockService {
 
     @Transactional
     public String cancelPurchaseOrder(String token) {
-        // Get the token and validated.
-        ConfirmationToken confirmationToken = confirmationTokenService.getConfirmationToken(token);
-        if (confirmationToken.getClickedAt() != null) {
-            return buildConfirmationPage("This order has already been cancelled.", "alert-danger");
-        }
-        if (confirmationToken.getExpiresAt().isBefore(LocalDateTime.now())) {
-            return buildConfirmationPage("Email link is already expired.", "alert-danger");
-        }
-        if (confirmationToken.getStatus() != ConfirmationTokenStatus.CANCELLED) {
-            return buildConfirmationPage("Invalid token for cancellation.", "alert-danger");
+        ConfirmationToken confirmationToken = validateConfirmationToken(token);
+        if (confirmationToken == null) {
+            return buildConfirmationPage("Email link is expired or already processed.", "alert-danger");
         }
 
-        // Update the Order obj.
         IncomingStock order = confirmationToken.getOrder();
-        if(order.getStatus() == IncomingStockStatus.AWAITING_APPROVAL){
+        if (order.getStatus() == IncomingStockStatus.AWAITING_APPROVAL) {
             try {
                 order.setStatus(IncomingStockStatus.FAILED);
                 order.setLastUpdated(GlobalServiceHelper.now(clock));
                 order.setUpdatedBy("Supplier via Email Link.");
                 incomingStockRepository.save(order);
 
-                confirmationToken.setClickedAt(GlobalServiceHelper.now(clock));
-                confirmationToken.setStatus(ConfirmationTokenStatus.CANCELLED);
-                confirmationTokenService.saveConfirmationToken(confirmationToken);
+                updateConfirmationToken(confirmationToken, ConfirmationTokenStatus.CANCELLED);
 
                 // Change the status from PLANNING -> ACTIVE
                 updateProductManagementStatus(order.getProduct());
 
                 logger.info("IS (cancelPurchaseOrder): Order cancelled by supplier. PO Number: {}", order.getPONumber());
                 return buildConfirmationPage("Order " + order.getPONumber() + " has been successfully cancelled!", "alert-success");
-            } catch (OptimisticLockingFailureException | OptimisticLockException e){
+            } catch (OptimisticLockingFailureException | OptimisticLockException e) {
                 logger.warn("Race condition detected when cancelling order. Order ID: {}", order.getId());
                 return buildConfirmationPage("This order has already been processed by someone else.", "alert-danger");
             }
-        }else {
+        } else {
             logger.warn("IS (cancelPurchaseOrder): Order ID {} is not in AWAITING_SUPPLIER_CONFIRMATION status. Current status: {}", order.getId(), order.getStatus());
             return buildConfirmationPage("Order already confirmed or cancelled.", "alert-danger");
         }
+    }
+
+    private ConfirmationToken validateConfirmationToken(String token) {
+        ConfirmationToken confirmationToken = confirmationTokenService.getConfirmationToken(token);
+        if (confirmationToken.getClickedAt() != null ||
+                confirmationToken.getExpiresAt().isBefore(LocalDateTime.now())) {
+            return null;
+        }
+        return confirmationToken;
+    }
+
+    private void updateConfirmationToken(ConfirmationToken token, ConfirmationTokenStatus status) {
+        token.setClickedAt(GlobalServiceHelper.now(clock));
+        token.setStatus(status);
+        confirmationTokenService.saveConfirmationToken(token);
     }
 
     // Private helper methods
@@ -351,7 +369,7 @@ public class IncomingStockService {
 
     private void validateOrderId(Long orderId) {
         if (orderId == null) {
-            throw new IllegalArgumentException("IS (receiveIncomingStock): Order ID cannot be null");
+            throw new IllegalArgumentException("IS (validateOrderId): Order ID cannot be null");
         }
     }
 

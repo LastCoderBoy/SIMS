@@ -30,6 +30,15 @@ public class IncomingStockController {
         this.incomingStockService = incomingStockService;
     }
 
+    @GetMapping
+    public ResponseEntity<?> getAllIncomingStockRecords(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size){
+        PaginatedResponse<IncomingStockResponse> paginatedStockResponse =
+                incomingStockService.getAllIncomingStockRecords(page, size);
+        return ResponseEntity.ok(paginatedStockResponse);
+    }
+
     @PostMapping
     public ResponseEntity<?> createPurchaseOrder(@Valid @RequestBody IncomingStockRequest stockRequest,
                                                  @RequestHeader("Authorization") String token) throws BadRequestException {
@@ -46,25 +55,16 @@ public class IncomingStockController {
     }
 
     @PutMapping("/{id}/receive")
-    public ResponseEntity<?> updateIncomingStockOrder(@Valid @RequestBody ReceiveStockRequest receiveRequest,
+    public ResponseEntity<?> receiveIncomingStockOrder(@Valid @RequestBody ReceiveStockRequest receiveRequest,
                                                       @PathVariable Long id,
                                                       @RequestHeader("Authorization") String token) throws BadRequestException {
-        logger.info("IS: updateIncomingStockOrder() calling...");
+        logger.info("IS: receiveIncomingStockOrder() calling...");
         if(token != null && !token.trim().isEmpty()) {
             String jwtToken = TokenUtils.extractToken(token);
             ApiResponse response =  incomingStockService.receiveIncomingStock(id, receiveRequest, jwtToken);
             return new ResponseEntity<>(response, HttpStatus.OK);
         }
-        throw new InvalidTokenException("IS: updateIncomingStockOrder() Invalid Token provided.");
-    }
-
-    @GetMapping
-    public ResponseEntity<?> getAllIncomingStockRecords(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size){
-        PaginatedResponse<IncomingStockResponse> paginatedStockResponse =
-                incomingStockService.getAllIncomingStockRecords(page, size);
-        return ResponseEntity.ok(paginatedStockResponse);
+        throw new InvalidTokenException("IS: receiveIncomingStockOrder() Invalid Token provided.");
     }
 
     @PutMapping("{id}/cancel-order")
