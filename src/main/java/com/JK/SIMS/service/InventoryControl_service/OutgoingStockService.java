@@ -1,4 +1,4 @@
-package com.JK.SIMS.service.IC_service;
+package com.JK.SIMS.service.InventoryControl_service;
 
 import com.JK.SIMS.exceptionHandler.DatabaseException;
 import com.JK.SIMS.exceptionHandler.ServiceException;

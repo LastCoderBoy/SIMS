@@ -1,4 +1,4 @@
-package com.JK.SIMS.service.IC_service;
+package com.JK.SIMS.service.incomingStock_service;
 
 import com.JK.SIMS.exceptionHandler.DatabaseException;
 import com.JK.SIMS.exceptionHandler.ResourceNotFoundException;
@@ -8,6 +8,8 @@ import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.InventoryData;
 import com.JK.SIMS.models.IC_models.InventoryDataStatus;
 import com.JK.SIMS.models.IC_models.incoming.*;
+import com.JK.SIMS.models.IC_models.incoming.token.ConfirmationToken;
+import com.JK.SIMS.models.IC_models.incoming.token.ConfirmationTokenStatus;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
@@ -15,18 +17,22 @@ import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.supplier.Supplier;
 import com.JK.SIMS.repository.IC_repo.IncomingStock_repository;
 import com.JK.SIMS.service.GlobalServiceHelper;
-import com.JK.SIMS.service.PM_service.ProductManagementService;
-import com.JK.SIMS.service.UM_service.JWTService;
+import com.JK.SIMS.service.InventoryControl_service.InventoryControlService;
+import com.JK.SIMS.service.productManagement_service.ProductManagementService;
+import com.JK.SIMS.service.userManagement_service.JWTService;
+import com.JK.SIMS.service.confirmTokenService.ConfirmationTokenService;
 import com.JK.SIMS.service.email_service.EmailService;
 import com.JK.SIMS.service.supplier_service.SupplierService;
+import jakarta.persistence.OptimisticLockException;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;
+import lombok.AllArgsConstructor;
 import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -37,35 +43,30 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.JK.SIMS.service.incomingStock_service.IncomingStockHelper.buildConfirmationPage;
+
 @Service
+@AllArgsConstructor
 public class IncomingStockService {
 
     private static final Logger logger = LoggerFactory.getLogger(IncomingStockService.class);
     private static final int MAX_PO_GENERATION_RETRIES = 5;
+    private final Clock clock;
+
+    private final IncomingStock_repository incomingStockRepository;
 
     private final SupplierService supplierService;
     private final EmailService emailService;
-    private final Clock clock;
     private final ProductManagementService pmService;
-    private final IncomingStock_repository incomingStockRepository;
     private final JWTService jWTService;
     private final InventoryControlService inventoryControlService;
-
-    @Autowired
-    public IncomingStockService(SupplierService supplierService, EmailService emailService, Clock clock, ProductManagementService pmService, IncomingStock_repository incomingStockRepository, JWTService jWTService, InventoryControlService inventoryControlService) {
-        this.supplierService = supplierService;
-        this.emailService = emailService;
-        this.clock = clock;
-        this.pmService = pmService;
-        this.incomingStockRepository = incomingStockRepository;
-        this.jWTService = jWTService;
-        this.inventoryControlService = inventoryControlService;
-    }
+    private final ConfirmationTokenService confirmationTokenService;
 
     @Transactional
     public void createPurchaseOrder(@Valid IncomingStockRequest stockRequest, String jwtToken) throws BadRequestException {
@@ -74,7 +75,7 @@ public class IncomingStockService {
             ProductsForPM orderedProduct = validateAndGetProduct(stockRequest.getProductId());
             handleInventoryStatusUpdates(orderedProduct);
             IncomingStock order = createOrderEntity(stockRequest, orderedProduct, orderedPerson);
-            saveOrder(order);
+            savePurchaseOrder(order);
 
             logger.info("IS (createPurchaseOrder): Product ordered successfully. PO Number: {}", order.getPONumber());
         } catch (DataIntegrityViolationException de) {
@@ -123,6 +124,154 @@ public class IncomingStockService {
     public IncomingStock getIncomingStockOrderById(Long orderId) {
         return incomingStockRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("IS (getIncomingStockOrderById): No incoming stock order found for ID: " + orderId));
+    }
+
+
+    @Transactional(readOnly = true)
+    public PaginatedResponse<IncomingStockResponse> getAllIncomingStockRecords(int page, int size) {
+        try {
+            Pageable pageable = PageRequest.of(page, size, Sort.by("product.name"));
+            Page<IncomingStock> entityResponse = incomingStockRepository.findAll(pageable);
+            PaginatedResponse<IncomingStockResponse> dtoResponse = transformToPaginatedDto(entityResponse);
+            logger.info("IS (getAllIncomingStock): Returning {} paginated data", dtoResponse.getContent().size());
+            return dtoResponse;
+        }catch (DataAccessException da){
+            throw new DatabaseException("IS (getAllIncomingStock): Database error", da);
+        }catch (Exception e){
+            throw new ServiceException("IS (getAllIncomingStock): Service error occurred", e);
+        }
+    }
+
+    @Transactional
+    public ApiResponse cancelIncomingStockInternal(Long id, String jwtToken) throws BadRequestException {
+        IncomingStock incomingStock = incomingStockRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Incoming Stock record not found with ID: " + id));
+
+        String user = validateAndExtractUser(jwtToken);
+
+        // Cancellation only allowed if not already received or failed
+        if (incomingStock.isFinalized()) {
+            throw new BadRequestException("Cannot cancel an incoming stock record with status: " + incomingStock.getStatus());
+        }
+
+        incomingStock.setStatus(IncomingStockStatus.CANCELLED);
+        incomingStock.setLastUpdated(GlobalServiceHelper.now(clock));
+        incomingStock.setUpdatedBy(user);
+
+        incomingStockRepository.save(incomingStock);
+        return new ApiResponse(true, "The order cancelled successfully.");
+    }
+
+
+    @Transactional(readOnly = true)
+    public PaginatedResponse<IncomingStockResponse> searchProduct(String text, int page, int size) {
+        if (text == null || text.isEmpty()) {
+            logger.warn("IS (searchProduct): Search text is null or empty");
+            throw new ValidationException("IS (searchProduct): Search text cannot be empty");
+        }
+        try {
+            Pageable pageable = PageRequest.of(page, size, Sort.by("product.name"));
+            Page<IncomingStock> searchEntityResponse = incomingStockRepository.searchProducts(text.trim().toLowerCase(), pageable);
+            return transformToPaginatedDto(searchEntityResponse);
+        } catch (DataAccessException dae) {
+            logger.error("IS (searchProduct): Database error while searching products", dae);
+            throw new DatabaseException("IS (searchProduct): Error occurred while searching products");
+        } catch (Exception e) {
+            logger.error("IS (searchProduct): Unexpected error while searching products", e);
+            throw new ServiceException("IS (searchProduct): Error occurred while searching products");
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public PaginatedResponse<IncomingStockResponse> filterIncomingStock(IncomingStockStatus status, ProductCategories category, int page, int size){
+        Pageable pageable = PageRequest.of(page, size, Sort.by("lastUpdated"));
+
+        Specification<IncomingStock> spec = Specification
+                .where(IncomingStockSpecification.hasStatus(status))
+                .and(IncomingStockSpecification.hasProductCategory(category));
+
+        Page<IncomingStock> filterResult = incomingStockRepository.findAll(spec, pageable);
+        return transformToPaginatedDto(filterResult);
+    }
+
+    @Transactional
+    public String confirmPurchaseOrder(String token) {
+        // Get the token and validated.
+        ConfirmationToken confirmationToken = confirmationTokenService.getConfirmationToken(token);
+        if (confirmationToken.getClickedAt() != null) {
+            return buildConfirmationPage("This order has already been confirmed.", "alert-danger");
+        }
+        if (confirmationToken.getExpiresAt().isBefore(LocalDateTime.now())) {
+            return buildConfirmationPage("Email link is already expired.", "alert-danger");
+        }
+        if (confirmationToken.getStatus() != ConfirmationTokenStatus.CONFIRMED) {
+            return buildConfirmationPage("Invalid token for confirmation.", "alert-danger");
+        }
+
+        IncomingStock order = confirmationToken.getOrder();
+        if(order.getStatus() == IncomingStockStatus.AWAITING_APPROVAL){
+            try {
+                order.setStatus(IncomingStockStatus.DELIVERY_IN_PROCESS);
+                order.setLastUpdated(GlobalServiceHelper.now(clock));
+                order.setUpdatedBy("Supplier via Email Link.");
+                incomingStockRepository.save(order);
+
+                confirmationToken.setClickedAt(GlobalServiceHelper.now(clock));
+                confirmationToken.setStatus(ConfirmationTokenStatus.CONFIRMED);
+                confirmationTokenService.saveConfirmationToken(confirmationToken);
+
+                logger.info("IS (confirmOrder): Order confirmed by supplier. PO Number: {}", order.getPONumber());
+                return buildConfirmationPage("Order " + order.getPONumber() + " has been successfully confirmed!", "alert-success");
+            } catch (OptimisticLockingFailureException | OptimisticLockException e){
+                logger.warn("Race condition detected when confirming order. Order ID: {}", order.getId());
+                return buildConfirmationPage("This order has already been processed by someone else.", "alert-danger");
+            }
+        }else {
+            logger.warn("IS (confirmOrder): Order ID {} is not in AWAITING_SUPPLIER_CONFIRMATION status. Current status: {}", order.getId(), order.getStatus());
+            return buildConfirmationPage("Order already confirmed or cancelled.", "alert-danger");
+        }
+    }
+
+    @Transactional
+    public String cancelPurchaseOrder(String token) {
+        // Get the token and validated.
+        ConfirmationToken confirmationToken = confirmationTokenService.getConfirmationToken(token);
+        if (confirmationToken.getClickedAt() != null) {
+            return buildConfirmationPage("This order has already been cancelled.", "alert-danger");
+        }
+        if (confirmationToken.getExpiresAt().isBefore(LocalDateTime.now())) {
+            return buildConfirmationPage("Email link is already expired.", "alert-danger");
+        }
+        if (confirmationToken.getStatus() != ConfirmationTokenStatus.CANCELLED) {
+            return buildConfirmationPage("Invalid token for cancellation.", "alert-danger");
+        }
+
+        // Update the Order obj.
+        IncomingStock order = confirmationToken.getOrder();
+        if(order.getStatus() == IncomingStockStatus.AWAITING_APPROVAL){
+            try {
+                order.setStatus(IncomingStockStatus.FAILED);
+                order.setLastUpdated(GlobalServiceHelper.now(clock));
+                order.setUpdatedBy("Supplier via Email Link.");
+                incomingStockRepository.save(order);
+
+                confirmationToken.setClickedAt(GlobalServiceHelper.now(clock));
+                confirmationToken.setStatus(ConfirmationTokenStatus.CANCELLED);
+                confirmationTokenService.saveConfirmationToken(confirmationToken);
+
+                // Change the status from PLANNING -> ACTIVE
+                updateProductManagementStatus(order.getProduct());
+
+                logger.info("IS (cancelPurchaseOrder): Order cancelled by supplier. PO Number: {}", order.getPONumber());
+                return buildConfirmationPage("Order " + order.getPONumber() + " has been successfully cancelled!", "alert-success");
+            } catch (OptimisticLockingFailureException | OptimisticLockException e){
+                logger.warn("Race condition detected when cancelling order. Order ID: {}", order.getId());
+                return buildConfirmationPage("This order has already been processed by someone else.", "alert-danger");
+            }
+        }else {
+            logger.warn("IS (cancelPurchaseOrder): Order ID {} is not in AWAITING_SUPPLIER_CONFIRMATION status. Current status: {}", order.getId(), order.getStatus());
+            return buildConfirmationPage("Order already confirmed or cancelled.", "alert-danger");
+        }
     }
 
     // Private helper methods
@@ -194,9 +343,10 @@ public class IncomingStockService {
         );
     }
 
-    private void saveOrder(IncomingStock order) {
+    private void savePurchaseOrder(IncomingStock order) {
         incomingStockRepository.save(order);
-        //emailService.sendOrderRequest(order.getSupplier().getEmail(), order);
+        ConfirmationToken confirmationToken = confirmationTokenService.createConfirmationToken(order);
+        emailService.sendOrderRequest(order.getSupplier().getEmail(), order, confirmationToken);
     }
 
     private void validateOrderId(Long orderId) {
@@ -291,41 +441,6 @@ public class IncomingStockService {
         throw new ServiceException("Failed to generate a unique PO Number after " + MAX_PO_GENERATION_RETRIES + " attempts.");
     }
 
-    @Transactional(readOnly = true)
-    public PaginatedResponse<IncomingStockResponse> getAllIncomingStockRecords(int page, int size) {
-        try {
-            Pageable pageable = PageRequest.of(page, size, Sort.by("product.name"));
-            Page<IncomingStock> entityResponse = incomingStockRepository.findAll(pageable);
-            PaginatedResponse<IncomingStockResponse> dtoResponse = transformToPaginatedDto(entityResponse);
-            logger.info("IS (getAllIncomingStock): Returning {} paginated data", dtoResponse.getContent().size());
-            return dtoResponse;
-        }catch (DataAccessException da){
-            throw new DatabaseException("IS (getAllIncomingStock): Database error", da);
-        }catch (Exception e){
-            throw new ServiceException("IS (getAllIncomingStock): Service error occurred", e);
-        }
-    }
-
-    @Transactional
-    public ApiResponse cancelIncomingStockInternal(Long id, String jwtToken) throws BadRequestException {
-        IncomingStock incomingStock = incomingStockRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Incoming Stock record not found with ID: " + id));
-
-        String user = validateAndExtractUser(jwtToken);
-
-        // Cancellation only allowed if not already received or failed
-        if (incomingStock.isFinalized()) {
-            throw new BadRequestException("Cannot cancel an incoming stock record with status: " + incomingStock.getStatus());
-        }
-
-        incomingStock.setStatus(IncomingStockStatus.CANCELLED);
-        incomingStock.setLastUpdated(GlobalServiceHelper.now(clock));
-        incomingStock.setUpdatedBy(user);
-
-        incomingStockRepository.save(incomingStock);
-        return new ApiResponse(true, "The order cancelled successfully.");
-    }
-
     private String validateAndExtractUser(String jwtToken) throws BadRequestException {
         String username = jWTService.extractUsername(jwtToken);
         if (username == null || username.isEmpty()) {
@@ -333,38 +448,6 @@ public class IncomingStockService {
         }
         return username;
     }
-
-    @Transactional(readOnly = true)
-    public PaginatedResponse<IncomingStockResponse> searchProduct(String text, int page, int size) {
-        if (text == null || text.isEmpty()) {
-            logger.warn("IS (searchProduct): Search text is null or empty");
-            throw new ValidationException("IS (searchProduct): Search text cannot be empty");
-        }
-        try {
-            Pageable pageable = PageRequest.of(page, size, Sort.by("product.name"));
-            Page<IncomingStock> searchEntityResponse = incomingStockRepository.searchProducts(text.trim().toLowerCase(), pageable);
-            return transformToPaginatedDto(searchEntityResponse);
-        } catch (DataAccessException dae) {
-            logger.error("IS (searchProduct): Database error while searching products", dae);
-            throw new DatabaseException("IS (searchProduct): Error occurred while searching products");
-        } catch (Exception e) {
-            logger.error("IS (searchProduct): Unexpected error while searching products", e);
-            throw new ServiceException("IS (searchProduct): Error occurred while searching products");
-        }
-    }
-
-    @Transactional(readOnly = true)
-    public PaginatedResponse<IncomingStockResponse> filterIncomingStock(IncomingStockStatus status, ProductCategories category, int page, int size){
-        Pageable pageable = PageRequest.of(page, size, Sort.by("lastUpdated"));
-
-        Specification<IncomingStock> spec = Specification
-                .where(IncomingStockSpecification.hasStatus(status))
-                .and(IncomingStockSpecification.hasProductCategory(category));
-
-        Page<IncomingStock> filterResult = incomingStockRepository.findAll(spec, pageable);
-        return transformToPaginatedDto(filterResult);
-    }
-
 
     private PaginatedResponse<IncomingStockResponse> transformToPaginatedDto(Page<IncomingStock> entityResponse){
         PaginatedResponse<IncomingStockResponse> response = new PaginatedResponse<>();
@@ -376,20 +459,6 @@ public class IncomingStockService {
     }
 
     private IncomingStockResponse convertToDTO(IncomingStock order){
-        return new IncomingStockResponse(
-                order.getId(),
-                order.getPONumber(),
-                order.getStatus(),
-                order.getOrderDate(),
-                order.getExpectedArrivalDate(),
-                order.getActualArrivalDate(),
-                order.getOrderedQuantity(),
-                order.getReceivedQuantity(),
-                order.getProduct() != null ? order.getProduct().getName() : "N/A",
-                order.getProduct() != null && order.getProduct().getCategory() != null ? order.getProduct().getCategory() : null,
-                order.getSupplier() != null ? order.getSupplier().getName() : "N/A",
-                order.getOrderedBy(),
-                order.getUpdatedBy()
-        );
+        return new IncomingStockResponse(order);
     }
 }

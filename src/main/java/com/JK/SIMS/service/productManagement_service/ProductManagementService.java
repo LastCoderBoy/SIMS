@@ -1,4 +1,4 @@
-package com.JK.SIMS.service.PM_service;
+package com.JK.SIMS.service.productManagement_service;
 
 import com.JK.SIMS.exceptionHandler.DatabaseException;
 import com.JK.SIMS.exceptionHandler.ResourceNotFoundException;
@@ -14,7 +14,7 @@ import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.IC_repo.IC_repository;
 import com.JK.SIMS.repository.PM_repo.PM_repository;
-import com.JK.SIMS.service.IC_service.InventoryControlService;
+import com.JK.SIMS.service.InventoryControl_service.InventoryControlService;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.coyote.BadRequestException;
@@ -35,12 +35,11 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
-import java.nio.file.AccessDeniedException;
 import java.util.List;
 import java.util.Optional;
 
 import static com.JK.SIMS.service.GlobalServiceHelper.amongInvalidStatus;
-import static com.JK.SIMS.service.PM_service.PMServiceHelper.*;
+import static com.JK.SIMS.service.productManagement_service.PMServiceHelper.*;
 
 @Service
 public class ProductManagementService {

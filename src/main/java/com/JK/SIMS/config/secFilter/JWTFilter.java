@@ -2,7 +2,7 @@ package com.JK.SIMS.config.secFilter;
 
 import com.JK.SIMS.exceptionHandler.JwtAuthenticationException;
 import com.JK.SIMS.service.TokenUtils;
-import com.JK.SIMS.service.UM_service.JWTService;
+import com.JK.SIMS.service.userManagement_service.JWTService;
 import com.JK.SIMS.service.UserDetailsServiceImpl;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;

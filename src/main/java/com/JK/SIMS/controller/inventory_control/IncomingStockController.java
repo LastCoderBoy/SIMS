@@ -8,7 +8,7 @@ import com.JK.SIMS.models.IC_models.incoming.IncomingStockStatus;
 import com.JK.SIMS.models.IC_models.incoming.ReceiveStockRequest;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
-import com.JK.SIMS.service.IC_service.IncomingStockService;
+import com.JK.SIMS.service.incomingStock_service.IncomingStockService;
 import com.JK.SIMS.service.TokenUtils;
 import jakarta.validation.Valid;
 import org.apache.coyote.BadRequestException;

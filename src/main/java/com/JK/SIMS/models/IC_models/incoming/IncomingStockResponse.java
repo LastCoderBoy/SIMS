@@ -34,9 +34,11 @@ public class IncomingStockResponse {
         this.actualArrivalDate = incomingStock.getActualArrivalDate();
         this.orderedQuantity = incomingStock.getOrderedQuantity();
         this.receivedQuantity = incomingStock.getReceivedQuantity();
-        this.productName = incomingStock.getProduct().getName();
-        this.productCategory = incomingStock.getProduct().getCategory();
-        this.supplierName = incomingStock.getSupplier().getName();
+        this.productName = incomingStock.getProduct() != null ? incomingStock.getProduct().getName() : "N/A";
+        this.productCategory = incomingStock.getProduct() != null && incomingStock.getProduct().getCategory() != null
+                ? incomingStock.getProduct().getCategory()
+                : null;
+        this.supplierName = incomingStock.getSupplier() != null ? incomingStock.getSupplier().getName() : "N/A";
         this.orderedBy = incomingStock.getOrderedBy();
         this.receivedBy = incomingStock.getUpdatedBy();
     }

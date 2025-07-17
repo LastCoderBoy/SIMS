@@ -47,6 +47,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/admin/**").hasAuthority("ROLE_ADMIN")  // Only admins
                         .requestMatchers("/api/v1/priority/**").hasAnyAuthority("ROLE_MANAGER", "ROLE_ADMIN") // Only Managers and Admins
                         .requestMatchers("/api/v1/user/login").permitAll() // Everyone can log in
+                        .requestMatchers("/api/v1/SIMS/**").permitAll() // Used for Confirmation in Email
                         .anyRequest().authenticated())
                 .exceptionHandling(exception -> exception.accessDeniedHandler(
                         (request, response, accessDeniedException) -> {

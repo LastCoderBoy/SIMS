@@ -1,16 +1,15 @@
-package com.JK.SIMS.service.IC_service;
+package com.JK.SIMS.service.InventoryControl_service;
 
 import com.JK.SIMS.exceptionHandler.DatabaseException;
 import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.InventoryData;
-import com.JK.SIMS.models.IC_models.InventoryDataDTO;
 import com.JK.SIMS.models.IC_models.damage_loss.*;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.IC_repo.DamageLoss_repository;
 import com.JK.SIMS.repository.IC_repo.IC_repository;
-import com.JK.SIMS.service.UM_service.JWTService;
+import com.JK.SIMS.service.userManagement_service.JWTService;
 import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -24,7 +24,7 @@ public class IncomingStock {
     private Long id;
 
     @Column(name = "po_number", unique = true, nullable = false)
-    private String PONumber; // PO Invoice Number, will be [PO-supplierName-ID]
+    private String PONumber; // PO Invoice Number will be [PO-supplierID-UUID]
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
@@ -36,7 +36,7 @@ public class IncomingStock {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private IncomingStockStatus status; // PENDING, RECEIVED, PARTIALLY_RECEIVED, CANCELLED, FAILED
+    private IncomingStockStatus status; // DELIVERY_IN_PROCESS, RECEIVED, PARTIALLY_RECEIVED, CANCELLED, FAILED
 
     @Column(nullable = false)
     private LocalDate orderDate;
@@ -58,6 +58,9 @@ public class IncomingStock {
 
     @Column
     private String updatedBy;
+
+    @Version
+    private Integer version; // Used to handle the Optimistic Locking
 
     // Business constructor for creating new purchase orders
     public IncomingStock(ProductsForPM product,
@@ -81,7 +84,7 @@ public class IncomingStock {
 
         // Set defaults
         this.receivedQuantity = 0;
-        this.status = IncomingStockStatus.PENDING;
+        this.status = IncomingStockStatus.AWAITING_APPROVAL;
         this.actualArrivalDate = null;
         this.updatedBy = null;
     }

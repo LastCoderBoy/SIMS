@@ -1,4 +1,4 @@
-package com.JK.SIMS.service.UM_service;
+package com.JK.SIMS.service.userManagement_service;
 
 import com.JK.SIMS.exceptionHandler.*;
 import com.JK.SIMS.models.UM_models.*;

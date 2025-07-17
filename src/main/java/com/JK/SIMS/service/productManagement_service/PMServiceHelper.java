@@ -1,19 +1,12 @@
-package com.JK.SIMS.service.PM_service;
+package com.JK.SIMS.service.productManagement_service;
 
-import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
-import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
-import com.JK.SIMS.service.IC_service.InventoryControlService;
-import com.JK.SIMS.service.IC_service.InventoryServiceHelper;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
-import java.util.*;
 import java.util.regex.Pattern;
 
 public class PMServiceHelper {

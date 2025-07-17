@@ -1,6 +1,7 @@
 package com.JK.SIMS.service.email_service;
 
 import com.JK.SIMS.models.IC_models.incoming.IncomingStock;
+import com.JK.SIMS.models.IC_models.incoming.token.ConfirmationToken;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
@@ -27,6 +28,9 @@ public class EmailService {
     @Value("${spring.mail.username}")
     private String sender;
 
+    @Value("${app.backend.base-url}")
+    private String backendBaseUrl;
+
     public EmailService(JavaMailSender mailSender) {
         this.mailSender = mailSender;
     }
@@ -48,7 +52,7 @@ public class EmailService {
     }
 
     @Async
-    public void sendOrderRequest(String supplierEmail, IncomingStock order) {
+    public void sendOrderRequest(String supplierEmail, IncomingStock order, ConfirmationToken confirmationToken) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8"); // true for multipart (HTML content)
@@ -56,7 +60,7 @@ public class EmailService {
             helper.setFrom(sender, "SIMS Inventory System");
             helper.setTo(supplierEmail);
             helper.setSubject("Purchase Order Request: " + order.getPONumber() + " - " + order.getProduct().getName());
-            helper.setText(buildOrderRequestHtml(order), true); // `true` indicates HTML content
+            helper.setText(buildOrderRequestHtml(order, confirmationToken), true); // `true` indicates HTML content
 
             mailSender.send(message);
             logger.info("Purchase order request email sent successfully to {} for PO Number: {}", supplierEmail, order.getPONumber());
@@ -71,7 +75,7 @@ public class EmailService {
      * @param order The IncomingStock entity containing order details.
      * @return HTML string for the email body.
      */
-    private String buildOrderRequestHtml(IncomingStock order) {
+    private String buildOrderRequestHtml(IncomingStock order, ConfirmationToken confirmationToken) {
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
         String productName = order.getProduct().getName();
@@ -82,6 +86,13 @@ public class EmailService {
         LocalDate expectedArrivalDate = order.getExpectedArrivalDate();
         String notes = order.getNotes() != null && !order.getNotes().isEmpty() ? order.getNotes() : "N/A";
         String supplierName = order.getSupplier() != null ? order.getSupplier().getName() : "Unknown Supplier";
+        String token = confirmationToken.getToken();
+
+        String confirmUrl = String.format("%s/api/v1/SIMS/confirm?token=%s",
+                backendBaseUrl, token);
+        String cancelUrl = String.format("%s/api/v1/SIMS/cancel?token=%s",
+                backendBaseUrl, token);
+
 
         return "<html>"
                 + "<head>"
@@ -93,8 +104,11 @@ public class EmailService {
                 + ".detail-table { width: 100%; border-collapse: collapse; margin-top: 15px; }"
                 + ".detail-table th, .detail-table td { border: 1px solid #eee; padding: 10px; text-align: left; }"
                 + ".detail-table th { background-color: #e9e9e9; }"
+                + ".button-container { text-align: center; margin-top: 25px; }"
+                + ".button { display: inline-block; padding: 10px 20px; margin: 0 10px; text-decoration: none; border-radius: 5px; font-weight: bold; }"
+                + ".button.confirm { background-color: #28a745; color: #ffffff; }"
+                + ".button.cancel { background-color: #dc3545; color: #ffffff; }"
                 + ".footer { margin-top: 30px; font-size: 0.9em; color: #777; text-align: center; }"
-                + ".button { display: inline-block; padding: 10px 20px; margin-top: 20px; background-color: #28a745; color: #ffffff; text-decoration: none; border-radius: 5px; }"
                 + "</style>"
                 + "</head>"
                 + "<body>"
@@ -114,7 +128,12 @@ public class EmailService {
                 + "<tr><th>Ordered Quantity:</th><td>" + orderedQuantity + "</td></tr>"
                 + "<tr><th>Notes:</th><td>" + notes + "</td></tr>"
                 + "</table>"
-                + "<p>Please process this order at your earliest convenience. Kindly confirm receipt of this order and provide any necessary updates regarding its fulfillment.</p>"
+                + "<p>Please review the details above and confirm or cancel the order using the buttons below:</p>"
+                + "<p>The button links will expire within a day.</p>"
+                + "<div class='button-container'>"
+                + "<a href=\"" + confirmUrl + "\" class=\"button confirm\">Confirm Order</a>"
+                + "<a href=\"" + cancelUrl + "\" class=\"button cancel\">Cancel Order</a>"
+                + "</div>"
                 + "<p>If you have any questions or require further information, please do not hesitate to contact us.</p>"
                 + "</div>"
                 + "<div class='footer'>"

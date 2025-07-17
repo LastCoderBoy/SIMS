@@ -1,12 +1,9 @@
-package com.JK.SIMS.service.IC_service;
+package com.JK.SIMS.service.InventoryControl_service;
 
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.IC_models.InventoryData;
 import com.JK.SIMS.models.IC_models.InventoryDataStatus;
-import com.JK.SIMS.models.IC_models.damage_loss.DamageLossDTO;
 import com.JK.SIMS.models.IC_models.damage_loss.DamageLossDTORequest;
-import com.JK.SIMS.models.IC_models.damage_loss.DamageLossMetrics;
-import com.JK.SIMS.repository.IC_repo.DamageLoss_repository;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -6,7 +6,7 @@ import com.JK.SIMS.models.IC_models.InventoryData;
 import com.JK.SIMS.models.IC_models.InventoryDataDTO;
 import com.JK.SIMS.models.IC_models.InventoryPageResponse;
 import com.JK.SIMS.models.PaginatedResponse;
-import com.JK.SIMS.service.IC_service.InventoryControlService;
+import com.JK.SIMS.service.InventoryControl_service.InventoryControlService;
 import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

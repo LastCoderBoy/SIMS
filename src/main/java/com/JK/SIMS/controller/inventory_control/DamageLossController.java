@@ -7,7 +7,7 @@ import com.JK.SIMS.models.IC_models.damage_loss.DamageLossDTO;
 import com.JK.SIMS.models.IC_models.damage_loss.DamageLossDTORequest;
 import com.JK.SIMS.models.IC_models.damage_loss.DamageLossPageResponse;
 import com.JK.SIMS.models.PaginatedResponse;
-import com.JK.SIMS.service.IC_service.DamageLossService;
+import com.JK.SIMS.service.InventoryControl_service.DamageLossService;
 import com.JK.SIMS.service.TokenUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.coyote.BadRequestException;

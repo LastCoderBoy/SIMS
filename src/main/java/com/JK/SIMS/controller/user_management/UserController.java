@@ -6,7 +6,7 @@ import com.JK.SIMS.models.UM_models.LoginRequest;
 import com.JK.SIMS.models.UM_models.LoginResponse;
 import com.JK.SIMS.models.UM_models.Users;
 import com.JK.SIMS.service.TokenUtils;
-import com.JK.SIMS.service.UM_service.UserService;
+import com.JK.SIMS.service.userManagement_service.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

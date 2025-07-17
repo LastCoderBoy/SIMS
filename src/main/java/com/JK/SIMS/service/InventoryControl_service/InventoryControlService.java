@@ -1,4 +1,4 @@
-package com.JK.SIMS.service.IC_service;
+package com.JK.SIMS.service.InventoryControl_service;
 
 import com.JK.SIMS.exceptionHandler.DatabaseException;
 import com.JK.SIMS.exceptionHandler.InventoryException;
@@ -32,7 +32,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 
 import static com.JK.SIMS.service.GlobalServiceHelper.amongInvalidStatus;
-import static com.JK.SIMS.service.IC_service.InventoryServiceHelper.validateUpdateRequest;
+import static com.JK.SIMS.service.InventoryControl_service.InventoryServiceHelper.validateUpdateRequest;
 
 @Service
 public class InventoryControlService {

@@ -1,6 +1,6 @@
 package com.JK.SIMS.controller.inventory_control;
 
-import com.JK.SIMS.service.IC_service.OutgoingStockService;
+import com.JK.SIMS.service.InventoryControl_service.OutgoingStockService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

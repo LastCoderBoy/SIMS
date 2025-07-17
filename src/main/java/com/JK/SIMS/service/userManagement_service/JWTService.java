@@ -1,7 +1,6 @@
-package com.JK.SIMS.service.UM_service;
+package com.JK.SIMS.service.userManagement_service;
 
 
-import com.JK.SIMS.controller.user_management.UserController;
 import com.JK.SIMS.repository.UM_repo.BlackListTokenRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
