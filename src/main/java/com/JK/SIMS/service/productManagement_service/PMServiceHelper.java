@@ -76,16 +76,4 @@ public class PMServiceHelper {
             throw new ValidationException("PM (updateProduct): Invalid location format.");
         }
     }
-
-    public static int extractIdNumber(String productID){
-        try{
-            if (productID == null){
-                return 0;
-            }
-            // productID => PRD123. PRD part will be removed and the number will be returned as an integer.
-            return Integer.parseInt(productID.replaceAll("\\D", ""));
-        }catch (NumberFormatException nfe){
-            return 0;
-        }
-    }
 }

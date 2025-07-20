@@ -2,7 +2,6 @@ package com.JK.SIMS.service.incomingStock_service;
 
 import com.JK.SIMS.models.IC_models.incoming.IncomingStock;
 import com.JK.SIMS.repository.IC_repo.IncomingStock_repository;
-import com.JK.SIMS.service.GlobalServiceHelper;
 import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

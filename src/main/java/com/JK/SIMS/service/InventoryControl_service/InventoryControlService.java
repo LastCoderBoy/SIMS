@@ -50,7 +50,7 @@ public class InventoryControlService {
         try {
             InventoryMetrics metrics = icRepository.getInventoryMetrics();
 
-            PaginatedResponse<InventoryDataDTO> inventoryDtoResponse = getInventoryDto(page, size);
+            PaginatedResponse<InventoryDataDto> inventoryDtoResponse = getInventoryDto(page, size);
 
             // Convert to Page Response DTO
             InventoryPageResponse inventoryPageResponse = new InventoryPageResponse();
@@ -98,7 +98,7 @@ public class InventoryControlService {
      * @throws DatabaseException if database access fails
      * @throws ServiceException if any other error occurs
      */
-    private PaginatedResponse<InventoryDataDTO> getInventoryDto(int page, int size) {
+    private PaginatedResponse<InventoryDataDto> getInventoryDto(int page, int size) {
         try{
             Pageable pageable = PageRequest.of(page, size, Sort.by("pmProduct.name").ascending());
             Page<InventoryData> inventoryPage = icRepository.findAll(pageable);
@@ -112,8 +112,8 @@ public class InventoryControlService {
     }
 
 
-    private PaginatedResponse<InventoryDataDTO> transformToPaginatedDTOResponse(Page<InventoryData> inventoryPage){
-        PaginatedResponse<InventoryDataDTO> dtoResponse = new PaginatedResponse<>();
+    private PaginatedResponse<InventoryDataDto> transformToPaginatedDTOResponse(Page<InventoryData> inventoryPage){
+        PaginatedResponse<InventoryDataDto> dtoResponse = new PaginatedResponse<>();
         dtoResponse.setContent(inventoryPage.getContent().stream().map(this::convertToDTO).toList());
         dtoResponse.setTotalPages(inventoryPage.getTotalPages());
         dtoResponse.setTotalElements(inventoryPage.getTotalElements());
@@ -122,8 +122,8 @@ public class InventoryControlService {
     }
 
 
-    private InventoryDataDTO convertToDTO(InventoryData currentProduct) {
-        InventoryDataDTO inventoryDataDTO = new InventoryDataDTO();
+    private InventoryDataDto convertToDTO(InventoryData currentProduct) {
+        InventoryDataDto inventoryDataDTO = new InventoryDataDto();
         inventoryDataDTO.setInventoryData(currentProduct);
         inventoryDataDTO.setProductName(currentProduct.getPmProduct().getName());
         inventoryDataDTO.setCategory(currentProduct.getPmProduct().getCategory());
@@ -140,7 +140,7 @@ public class InventoryControlService {
      * @throws DatabaseException if database operation fails
      * @throws ServiceException if any other error occurs during search
      */
-    public PaginatedResponse<InventoryDataDTO> searchProduct(String text, int page, int size) {
+    public PaginatedResponse<InventoryDataDto> searchProduct(String text, int page, int size) {
         try {
             Optional<String> inputText = Optional.ofNullable((text));
             if (inputText.isPresent() && !inputText.get().trim().isEmpty()) {
@@ -178,7 +178,7 @@ public class InventoryControlService {
      * @throws DatabaseException if database operation fails
      * @throws ServiceException if any other error occurs
      */
-    public PaginatedResponse<InventoryDataDTO> filterProducts(String filter, String sortBy, String sortDirection, int page, int size) {
+    public PaginatedResponse<InventoryDataDto> filterProducts(String filter, String sortBy, String sortDirection, int page, int size) {
         try {
             // Parse sort direction
             Sort.Direction direction = sortDirection.equalsIgnoreCase("desc") ?
@@ -351,6 +351,20 @@ public class InventoryControlService {
                         "IC (updateProduct): No product with SKU " + sku + " found"));
     }
 
+    // Helper method.
+    @Transactional(readOnly = true)
+    public InventoryData getInventoryProductByProductId(String productId) {
+        return icRepository.findByPmProduct_ProductID(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("IC (getInventoryProductByProductId): Inventory Data Not Found"));
+    }
+
+    @Transactional
+    public InventoryData getInventoryProductByProductIdWithLock(String productId) {
+        return icRepository.findByPmProduct_ProductIDWithPessimisticLock(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("IC (getInventoryProductByProductId): Inventory Data Not Found for product " + productId));
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
     public void updateStockLevels(InventoryData existingProduct, Optional<Integer> newStockLevel, Optional<Integer> newMinLevel ) {
         // Update current stock if provided
         newStockLevel.ifPresent(existingProduct::setCurrentStock);
@@ -413,12 +427,6 @@ public class InventoryControlService {
         }
     }
 
-    // Helper method.
-    @Transactional(readOnly = true)
-    public Optional<InventoryData> getInventoryProductByProductId(String productId) {
-        return Optional.ofNullable(icRepository.findByPmProduct_ProductID(productId)
-                .orElseThrow(() -> new ResourceNotFoundException("IC (getInventoryProductByProductId): Inventory Data Not Found")));
-    }
 
     // Helper method for internal use
     @Transactional(propagation = Propagation.MANDATORY)

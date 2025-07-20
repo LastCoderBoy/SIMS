@@ -2,14 +2,14 @@ package com.JK.SIMS.controller.inventory_control;
 
 import com.JK.SIMS.exceptionHandler.InvalidTokenException;
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.IC_models.incoming.IncomingStockRequest;
-import com.JK.SIMS.models.IC_models.incoming.IncomingStockResponse;
+import com.JK.SIMS.models.IC_models.incoming.IncomingStockRequestDto;
+import com.JK.SIMS.models.IC_models.incoming.IncomingStockResponseDto;
 import com.JK.SIMS.models.IC_models.incoming.IncomingStockStatus;
-import com.JK.SIMS.models.IC_models.incoming.ReceiveStockRequest;
+import com.JK.SIMS.models.IC_models.incoming.ReceiveStockRequestDto;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
-import com.JK.SIMS.service.incomingStock_service.IncomingStockService;
 import com.JK.SIMS.service.TokenUtils;
+import com.JK.SIMS.service.incomingStock_service.IncomingStockService;
 import jakarta.validation.Valid;
 import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
@@ -34,13 +34,13 @@ public class IncomingStockController {
     public ResponseEntity<?> getAllIncomingStockRecords(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size){
-        PaginatedResponse<IncomingStockResponse> paginatedStockResponse =
+        PaginatedResponse<IncomingStockResponseDto> paginatedStockResponse =
                 incomingStockService.getAllIncomingStockRecords(page, size);
         return ResponseEntity.ok(paginatedStockResponse);
     }
 
     @PostMapping
-    public ResponseEntity<?> createPurchaseOrder(@Valid @RequestBody IncomingStockRequest stockRequest,
+    public ResponseEntity<?> createPurchaseOrder(@Valid @RequestBody IncomingStockRequestDto stockRequest,
                                                  @RequestHeader("Authorization") String token) throws BadRequestException {
         logger.info("IS: createPurchaseOrder() calling...");
         if(token != null && !token.trim().isEmpty()) {
@@ -55,7 +55,7 @@ public class IncomingStockController {
     }
 
     @PutMapping("/{id}/receive")
-    public ResponseEntity<?> receiveIncomingStockOrder(@Valid @RequestBody ReceiveStockRequest receiveRequest,
+    public ResponseEntity<?> receiveIncomingStockOrder(@Valid @RequestBody ReceiveStockRequestDto receiveRequest,
                                                       @PathVariable Long id,
                                                       @RequestHeader("Authorization") String token) throws BadRequestException {
         logger.info("IS: receiveIncomingStockOrder() calling...");
@@ -84,7 +84,7 @@ public class IncomingStockController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size){
         logger.info("IS: searchProduct() calling with text: {}", text);
-        PaginatedResponse<IncomingStockResponse> dtoResponse = incomingStockService.searchProduct(text, page, size);
+        PaginatedResponse<IncomingStockResponseDto> dtoResponse = incomingStockService.searchProduct(text, page, size);
         return ResponseEntity.ok(dtoResponse);
     }
 
@@ -94,7 +94,7 @@ public class IncomingStockController {
             @RequestParam(required = false) ProductCategories category,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        PaginatedResponse<IncomingStockResponse> filterResponse = incomingStockService.filterIncomingStock(status, category, page, size);
+        PaginatedResponse<IncomingStockResponseDto> filterResponse = incomingStockService.filterIncomingStock(status, category, page, size);
         logger.info("IS filterStock(): Returning {} paginated data", filterResponse.getContent().size());
         return ResponseEntity.ok(filterResponse);
     }

@@ -26,11 +26,16 @@ public class OrderItem {
     @Column(nullable = false)
     private Integer quantity;
 
-    // It's good practice to capture the price at the time of order
     @Column(nullable = false)
     private BigDecimal orderPrice;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = false)
     private Order order;
+
+    public OrderItem(Integer quantity, ProductsForPM product, BigDecimal orderPrice){
+        this.quantity = quantity;
+        this.product = product;
+        this.orderPrice = orderPrice;
+    }
 }

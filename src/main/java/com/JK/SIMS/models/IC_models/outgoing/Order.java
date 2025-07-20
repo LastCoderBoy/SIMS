@@ -42,4 +42,26 @@ public class Order {
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> items = new ArrayList<>();
+
+    public Order(String orderReference, String destination, OrderStatus status, List<OrderItem> items){
+        this.orderReference = orderReference;
+        this.destination = destination;
+        this.status = status;
+        if (items != null) {
+            for (OrderItem item : items) {
+                this.addOrderItem(item);       // Add items using the helper method to set the bidirectional link
+            }
+        }
+    }
+
+    // Add this helper method:
+    public void addOrderItem(OrderItem item) {
+        items.add(item);
+        item.setOrder(this);
+    }
+
+    public void removeOrderItem(OrderItem item) {
+        items.remove(item);
+        item.setOrder(null);
+    }
 }

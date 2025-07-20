@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class InventoryDataDTO {
+public class InventoryDataDto {
 
     private InventoryData inventoryData;
 

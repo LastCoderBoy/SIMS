@@ -28,6 +28,7 @@ import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.apache.coyote.BadRequestException;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
@@ -44,7 +45,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -69,7 +69,7 @@ public class IncomingStockService {
     private final ConfirmationTokenService confirmationTokenService;
 
     @Transactional
-    public void createPurchaseOrder(@Valid IncomingStockRequest stockRequest, String jwtToken) throws BadRequestException {
+    public void createPurchaseOrder(@Valid IncomingStockRequestDto stockRequest, String jwtToken) throws BadRequestException {
         try {
             String orderedPerson = validateAndExtractUser(jwtToken);
             ProductsForPM orderedProduct = validateAndGetProduct(stockRequest.getProductId());
@@ -91,7 +91,7 @@ public class IncomingStockService {
     }
 
     @Transactional
-    public ApiResponse receiveIncomingStock(Long orderId, @Valid ReceiveStockRequest receiveRequest, String jwtToken) throws BadRequestException {
+    public ApiResponse receiveIncomingStock(Long orderId, @Valid ReceiveStockRequestDto receiveRequest, String jwtToken) throws BadRequestException {
         try {
             String updatedPerson = validateAndExtractUser(jwtToken);
             validateOrderId(orderId); // check against null, throws an exception
@@ -121,11 +121,11 @@ public class IncomingStockService {
     }
 
     @Transactional(readOnly = true)
-    public PaginatedResponse<IncomingStockResponse> getAllIncomingStockRecords(int page, int size) {
+    public PaginatedResponse<IncomingStockResponseDto> getAllIncomingStockRecords(int page, int size) {
         try {
             Pageable pageable = PageRequest.of(page, size, Sort.by("product.name"));
             Page<IncomingStock> entityResponse = incomingStockRepository.findAll(pageable);
-            PaginatedResponse<IncomingStockResponse> dtoResponse = transformToPaginatedDto(entityResponse);
+            PaginatedResponse<IncomingStockResponseDto> dtoResponse = transformToPaginatedDto(entityResponse);
             logger.info("IS (getAllIncomingStock): Returning {} paginated data", dtoResponse.getContent().size());
             return dtoResponse;
         }catch (DataAccessException da){
@@ -155,7 +155,7 @@ public class IncomingStockService {
             updateProductManagementStatus(incomingStock.getProduct());
 
             // Return back the Inventory Control into the previous state
-            Optional<InventoryData> inventoryProductOpt =
+            InventoryData inventoryProductOpt =
                     inventoryControlService.getInventoryProductByProductId(incomingStock.getProduct().getProductID());
             handleActiveStatusUpdate(inventoryProductOpt);
 
@@ -182,7 +182,7 @@ public class IncomingStockService {
 
 
     @Transactional(readOnly = true)
-    public PaginatedResponse<IncomingStockResponse> searchProduct(String text, int page, int size) {
+    public PaginatedResponse<IncomingStockResponseDto> searchProduct(String text, int page, int size) {
         if (text == null || text.isEmpty()) {
             logger.warn("IS (searchProduct): Search text is null or empty");
             throw new ValidationException("IS (searchProduct): Search text cannot be empty");
@@ -201,7 +201,7 @@ public class IncomingStockService {
     }
 
     @Transactional(readOnly = true)
-    public PaginatedResponse<IncomingStockResponse> filterIncomingStock(IncomingStockStatus status, ProductCategories category, int page, int size){
+    public PaginatedResponse<IncomingStockResponseDto> filterIncomingStock(IncomingStockStatus status, ProductCategories category, int page, int size){
         Pageable pageable = PageRequest.of(page, size, Sort.by("lastUpdated"));
 
         Specification<IncomingStock> spec = Specification
@@ -271,6 +271,7 @@ public class IncomingStockService {
         }
     }
 
+    @Nullable
     private ConfirmationToken validateConfirmationToken(String token) {
         ConfirmationToken confirmationToken = confirmationTokenService.getConfirmationToken(token);
         if (confirmationToken.getClickedAt() != null ||
@@ -299,11 +300,11 @@ public class IncomingStockService {
     }
 
     private void handleInventoryStatusUpdates(ProductsForPM orderedProduct) {
-        Optional<InventoryData> inventoryProductOpt =
+        InventoryData inventoryProductOpt =
                 inventoryControlService.getInventoryProductByProductId(orderedProduct.getProductID());
 
         if (orderedProduct.getStatus() == ProductStatus.PLANNING) {
-            handlePlanningStatusUpdate(orderedProduct, inventoryProductOpt);
+            handlePlanningStatusUpdate(orderedProduct, Optional.ofNullable(inventoryProductOpt));
         } else if (orderedProduct.getStatus() == ProductStatus.ACTIVE) {
             handleActiveStatusUpdate(inventoryProductOpt);
         }
@@ -327,18 +328,15 @@ public class IncomingStockService {
         }
     }
 
-    private void handleActiveStatusUpdate(Optional<InventoryData> inventoryProductOpt) {
-        if (inventoryProductOpt.isPresent()) {
-            InventoryData inventoryData = inventoryProductOpt.get();
-            if (inventoryData.getStatus() != InventoryDataStatus.INCOMING) {
-                inventoryData.setStatus(InventoryDataStatus.INCOMING);
-                inventoryControlService.saveInventoryProduct(inventoryData);
-            }
+    private void handleActiveStatusUpdate(InventoryData inventoryData) {
+        if (inventoryData.getStatus() != InventoryDataStatus.INCOMING) {
+            inventoryData.setStatus(InventoryDataStatus.INCOMING);
+            inventoryControlService.saveInventoryProduct(inventoryData);
         }
         // Active status products will always be present in the Inventory
     }
 
-    private IncomingStock createOrderEntity(IncomingStockRequest stockRequest, ProductsForPM orderedProduct, String orderedPerson) {
+    private IncomingStock createOrderEntity(IncomingStockRequestDto stockRequest, ProductsForPM orderedProduct, String orderedPerson) {
         Supplier supplier = supplierService.getSupplierEntityById(stockRequest.getSupplierId());
         String poNumber = generatePoNumber(supplier.getId());
 
@@ -366,7 +364,7 @@ public class IncomingStockService {
         }
     }
 
-    private void updateOrderWithReceivedStock(IncomingStock order, ReceiveStockRequest receiveRequest) {
+    private void updateOrderWithReceivedStock(IncomingStock order, ReceiveStockRequestDto receiveRequest) {
         // Set actual arrival date
         if (receiveRequest.getActualArrivalDate() != null) {
             if (receiveRequest.getActualArrivalDate().isAfter(LocalDate.now())) {
@@ -409,24 +407,17 @@ public class IncomingStockService {
             return; // No inventory update needed
         }
 
-        Optional<InventoryData> inventoryProduct =
-                inventoryControlService.getInventoryProductByProductId(order.getProduct().getProductID());
-        if (inventoryProduct.isPresent()) {
-            try {
-                int newStockLevel = inventoryProduct.get().getCurrentStock() + receivedQuantity;
+        try {
+            InventoryData inventoryProduct =
+                    inventoryControlService.getInventoryProductByProductId(order.getProduct().getProductID());
+            int newStockLevel = inventoryProduct.getCurrentStock() + receivedQuantity;
 
-                // The service method to update stock levels with proper error handling
-                inventoryControlService.updateStockLevels(inventoryProduct.get(),
-                        Optional.of(newStockLevel),
-                        Optional.empty());
-            } catch (Exception e) {
-                throw new ServiceException("IS (updateIncomingStockOrder): Failed to update inventory levels: " + e.getMessage());
-            }
-        }else {
-            // This should not happen in normal flow
-            logger.error("IS (updateIncomingStockOrder): Product {} (ID: {}) found in IncomingStock but not in InventoryData. Inventory levels not updated.",
-                    order.getProduct().getName(), order.getProduct().getProductID());
-            throw new ServiceException("Inventory data not found for product " + order.getProduct().getName() + ". Please check inventory consistency.");
+            // The service method to update stock levels with proper error handling
+            inventoryControlService.updateStockLevels(inventoryProduct,
+                    Optional.of(newStockLevel),
+                    Optional.empty());
+        } catch (Exception e) {
+            throw new ServiceException("IS (updateIncomingStockOrder): Failed to update inventory levels: " + e.getMessage());
         }
     }
 
@@ -459,9 +450,9 @@ public class IncomingStockService {
         return username;
     }
 
-    private PaginatedResponse<IncomingStockResponse> transformToPaginatedDto(Page<IncomingStock> entityResponse){
-        PaginatedResponse<IncomingStockResponse> response = new PaginatedResponse<>();
-        List<IncomingStockResponse> convertedContent =
+    private PaginatedResponse<IncomingStockResponseDto> transformToPaginatedDto(Page<IncomingStock> entityResponse){
+        PaginatedResponse<IncomingStockResponseDto> response = new PaginatedResponse<>();
+        List<IncomingStockResponseDto> convertedContent =
                 entityResponse.getContent().stream().map(this::convertToDTO).toList();
         response.setContent(convertedContent);
         response.setTotalPages(entityResponse.getTotalPages());
@@ -469,7 +460,7 @@ public class IncomingStockService {
         return response;
     }
 
-    private IncomingStockResponse convertToDTO(IncomingStock order){
-        return new IncomingStockResponse(order);
+    private IncomingStockResponseDto convertToDTO(IncomingStock order){
+        return new IncomingStockResponseDto(order);
     }
 }

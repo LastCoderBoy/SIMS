@@ -3,10 +3,12 @@ package com.JK.SIMS.repository.IC_repo;
 import com.JK.SIMS.models.IC_models.InventoryData;
 import com.JK.SIMS.models.IC_models.InventoryDataStatus;
 import com.JK.SIMS.models.IC_models.InventoryMetrics;
+import jakarta.persistence.LockModeType;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -67,4 +69,10 @@ public interface IC_repository extends JpaRepository<InventoryData, String> {
 
     @Query("SELECT i FROM InventoryData i WHERE i.status != 'INVALID' AND  i.currentStock <= i.minLevel")
     List<InventoryData> getLowStockItems();
+
+    // Method to find InventoryData by product ID with a pessimistic write lock
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT i FROM InventoryData i WHERE i.pmProduct.productID = :productId")
+    Optional<InventoryData> findByPmProduct_ProductIDWithPessimisticLock(@Param("productId") String productId);
+
 }

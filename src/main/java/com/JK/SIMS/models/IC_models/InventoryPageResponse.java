@@ -21,5 +21,5 @@ public class InventoryPageResponse {
 
     private Long damageLossSize;
 
-    private PaginatedResponse<InventoryDataDTO> inventoryDataDTOList;
+    private PaginatedResponse<InventoryDataDto> inventoryDataDTOList;
 }

@@ -3,7 +3,7 @@ package com.JK.SIMS.controller.inventory_control;
 
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.InventoryData;
-import com.JK.SIMS.models.IC_models.InventoryDataDTO;
+import com.JK.SIMS.models.IC_models.InventoryDataDto;
 import com.JK.SIMS.models.IC_models.InventoryPageResponse;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryControl_service.InventoryControlService;
@@ -52,7 +52,7 @@ public class InventoryController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size){
         logger.info("IC: searchProduct() calling...");
-        PaginatedResponse<InventoryDataDTO> inventoryDataDTOList = icService.searchProduct(text, page, size);
+        PaginatedResponse<InventoryDataDto> inventoryDataDTOList = icService.searchProduct(text, page, size);
         return ResponseEntity.ok(inventoryDataDTOList);
     }
 
@@ -73,7 +73,7 @@ public class InventoryController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         logger.info("IC: filterProducts() calling with page {} and size {}...", page, size);
-        PaginatedResponse<InventoryDataDTO> filteredDTOs = icService.filterProducts(filter, sortBy, sortDirection, page, size);
+        PaginatedResponse<InventoryDataDto> filteredDTOs = icService.filterProducts(filter, sortBy, sortDirection, page, size);
         return ResponseEntity.ok(filteredDTOs);
     }
 

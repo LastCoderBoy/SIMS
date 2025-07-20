@@ -20,7 +20,7 @@ public class InventoryData {
     private ProductsForPM pmProduct;
 
     @Column(name = "Location")
-    private String location;
+    private String location; // Location of the product in the factory
 
     @Column(name = "CurrentStock")
     private Integer currentStock;

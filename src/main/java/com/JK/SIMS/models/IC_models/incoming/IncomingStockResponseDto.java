@@ -10,7 +10,7 @@ import java.time.LocalDate;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class IncomingStockResponse {
+public class IncomingStockResponseDto {
     private Long id;
     private String poNumber;
     private IncomingStockStatus status;
@@ -25,7 +25,7 @@ public class IncomingStockResponse {
     private String orderedBy;
     private String updatedBy;
 
-    public IncomingStockResponse(IncomingStock incomingStock){
+    public IncomingStockResponseDto(IncomingStock incomingStock){
         this.id = incomingStock.getId();
         this.poNumber = incomingStock.getPONumber();
         this.status = incomingStock.getStatus();
