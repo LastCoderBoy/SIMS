@@ -23,7 +23,7 @@ public class IncomingStockResponse {
     private ProductCategories productCategory;
     private String supplierName;
     private String orderedBy;
-    private String receivedBy;
+    private String updatedBy;
 
     public IncomingStockResponse(IncomingStock incomingStock){
         this.id = incomingStock.getId();
@@ -40,6 +40,6 @@ public class IncomingStockResponse {
                 : null;
         this.supplierName = incomingStock.getSupplier() != null ? incomingStock.getSupplier().getName() : "N/A";
         this.orderedBy = incomingStock.getOrderedBy();
-        this.receivedBy = incomingStock.getUpdatedBy();
+        this.updatedBy = incomingStock.getUpdatedBy();
     }
 }

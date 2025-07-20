@@ -22,7 +22,6 @@ public class IncomingStockHelper {
 
     @Transactional(propagation = Propagation.MANDATORY)
     public void saveIncomingStock(IncomingStock order) {
-        order.setLastUpdated(GlobalServiceHelper.now(clock));
         incomingStockRepository.save(order);
         logger.info("IncomingStockHelper: Successfully saved/updated product with PO Number: {}",
                 order.getPONumber());

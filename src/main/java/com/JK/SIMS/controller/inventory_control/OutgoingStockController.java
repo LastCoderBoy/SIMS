@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/products/inventory/outgoing-stock")
+@RequestMapping("/api/v1/priority/inventory/outgoing-stock")
 public class OutgoingStockController {
 
     private static final Logger logger = LoggerFactory.getLogger(OutgoingStockController.class);

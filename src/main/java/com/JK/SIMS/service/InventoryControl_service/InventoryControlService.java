@@ -1,9 +1,6 @@
 package com.JK.SIMS.service.InventoryControl_service;
 
-import com.JK.SIMS.exceptionHandler.DatabaseException;
-import com.JK.SIMS.exceptionHandler.InventoryException;
-import com.JK.SIMS.exceptionHandler.ServiceException;
-import com.JK.SIMS.exceptionHandler.ValidationException;
+import com.JK.SIMS.exceptionHandler.*;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.*;
 import com.JK.SIMS.models.IC_models.damage_loss.DamageLossMetrics;
@@ -55,7 +52,7 @@ public class InventoryControlService {
 
             PaginatedResponse<InventoryDataDTO> inventoryDtoResponse = getInventoryDto(page, size);
 
-            // Convert to response DTO
+            // Convert to Page Response DTO
             InventoryPageResponse inventoryPageResponse = new InventoryPageResponse();
 
             inventoryPageResponse.setInventoryDataDTOList(inventoryDtoResponse);
@@ -419,7 +416,8 @@ public class InventoryControlService {
     // Helper method.
     @Transactional(readOnly = true)
     public Optional<InventoryData> getInventoryProductByProductId(String productId) {
-        return icRepository.findByPmProduct_ProductID(productId);
+        return Optional.ofNullable(icRepository.findByPmProduct_ProductID(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("IC (getInventoryProductByProductId): Inventory Data Not Found")));
     }
 
     // Helper method for internal use

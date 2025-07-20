@@ -7,6 +7,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Clock;
 import java.time.LocalDate;
@@ -50,6 +51,7 @@ public class IncomingStock {
     @JoinColumn(name = "supplier_id")
     private Supplier supplier; // The supplier from whom the stock is coming
 
+    @UpdateTimestamp
     @Column(nullable = false)
     private LocalDateTime lastUpdated;
 

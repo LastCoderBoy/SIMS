@@ -93,6 +93,7 @@ public class EmailService {
         String cancelUrl = String.format("%s/api/v1/SIMS/cancel?token=%s",
                 backendBaseUrl, token);
 
+        // TODO: create a separate HTML page and return it
 
         return "<html>"
                 + "<head>"

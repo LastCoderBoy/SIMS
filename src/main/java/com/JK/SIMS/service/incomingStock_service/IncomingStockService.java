@@ -94,7 +94,7 @@ public class IncomingStockService {
     public ApiResponse receiveIncomingStock(Long orderId, @Valid ReceiveStockRequest receiveRequest, String jwtToken) throws BadRequestException {
         try {
             String updatedPerson = validateAndExtractUser(jwtToken);
-            validateOrderId(orderId);
+            validateOrderId(orderId); // check against null, throws an exception
 
             IncomingStock order = getIncomingStockOrderById(orderId);
 
@@ -121,13 +121,6 @@ public class IncomingStockService {
     }
 
     @Transactional(readOnly = true)
-    public IncomingStock getIncomingStockOrderById(Long orderId) {
-        return incomingStockRepository.findById(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException("IS (getIncomingStockOrderById): No incoming stock order found for ID: " + orderId));
-    }
-
-
-    @Transactional(readOnly = true)
     public PaginatedResponse<IncomingStockResponse> getAllIncomingStockRecords(int page, int size) {
         try {
             Pageable pageable = PageRequest.of(page, size, Sort.by("product.name"));
@@ -143,14 +136,12 @@ public class IncomingStockService {
     }
 
     @Transactional
-    public ApiResponse cancelIncomingStockInternal(Long id, String jwtToken) throws BadRequestException {
+    public ApiResponse cancelIncomingStockInternal(Long orderId, String jwtToken) throws BadRequestException {
         try {
-            validateOrderId(id); // validates and throws an exception
-
-            IncomingStock incomingStock = incomingStockRepository.findById(id)
-                    .orElseThrow(() -> new ResourceNotFoundException("IS (cancelIncomingStock): Incoming Stock record not found with ID: " + id));
-
+            validateOrderId(orderId); // check against null, throws an exception
             String user = validateAndExtractUser(jwtToken);
+
+            IncomingStock incomingStock = getIncomingStockOrderById(orderId);
 
             // Cancellation only allowed if not already received or failed  
             if (incomingStock.isFinalized()) {
@@ -158,7 +149,6 @@ public class IncomingStockService {
             }
 
             incomingStock.setStatus(IncomingStockStatus.CANCELLED);
-            incomingStock.setLastUpdated(GlobalServiceHelper.now(clock));
             incomingStock.setUpdatedBy(user);
 
             // Return back the Product Management section into the previous state
@@ -182,6 +172,12 @@ public class IncomingStockService {
             logger.error("IS (cancelIncomingStock): Unexpected error while cancelling order", e);
             throw new ServiceException("IS (cancelIncomingStock): Failed to cancel order: " + e.getMessage());
         }
+    }
+
+    @Transactional(readOnly = true)
+    public IncomingStock getIncomingStockOrderById(Long orderId) {
+        return incomingStockRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("IS (getIncomingStockOrderById): No incoming stock order found for ID: " + orderId));
     }
 
 
@@ -220,14 +216,13 @@ public class IncomingStockService {
     public String confirmPurchaseOrder(String token) {
         ConfirmationToken confirmationToken = validateConfirmationToken(token);
         if (confirmationToken == null) {
-            return buildConfirmationPage("Email link is invalid or expired.", "alert-danger");
+            return buildConfirmationPage("Email link is expired or already processed.", "alert-danger");
         }
 
         IncomingStock order = confirmationToken.getOrder();
         if (order.getStatus() == IncomingStockStatus.AWAITING_APPROVAL) {
             try {
                 order.setStatus(IncomingStockStatus.DELIVERY_IN_PROCESS);
-                order.setLastUpdated(GlobalServiceHelper.now(clock));
                 order.setUpdatedBy("Supplier via Email Link.");
                 incomingStockRepository.save(order);
 
@@ -256,7 +251,6 @@ public class IncomingStockService {
         if (order.getStatus() == IncomingStockStatus.AWAITING_APPROVAL) {
             try {
                 order.setStatus(IncomingStockStatus.FAILED);
-                order.setLastUpdated(GlobalServiceHelper.now(clock));
                 order.setUpdatedBy("Supplier via Email Link.");
                 incomingStockRepository.save(order);
 
@@ -328,7 +322,6 @@ public class IncomingStockService {
             InventoryData inventoryData = inventoryProductOpt.get();
             if (inventoryData.getStatus() != InventoryDataStatus.INCOMING) {
                 inventoryData.setStatus(InventoryDataStatus.INCOMING);
-                inventoryData.setLastUpdate(GlobalServiceHelper.now(clock).truncatedTo(ChronoUnit.SECONDS));
                 inventoryControlService.saveInventoryProduct(inventoryData);
             }
         }
@@ -339,10 +332,10 @@ public class IncomingStockService {
             InventoryData inventoryData = inventoryProductOpt.get();
             if (inventoryData.getStatus() != InventoryDataStatus.INCOMING) {
                 inventoryData.setStatus(InventoryDataStatus.INCOMING);
-                inventoryData.setLastUpdate(GlobalServiceHelper.now(clock).truncatedTo(ChronoUnit.SECONDS));
                 inventoryControlService.saveInventoryProduct(inventoryData);
             }
         }
+        // Active status products will always be present in the Inventory
     }
 
     private IncomingStock createOrderEntity(IncomingStockRequest stockRequest, ProductsForPM orderedProduct, String orderedPerson) {
@@ -364,7 +357,7 @@ public class IncomingStockService {
     private void savePurchaseOrder(IncomingStock order) {
         incomingStockRepository.save(order);
         ConfirmationToken confirmationToken = confirmationTokenService.createConfirmationToken(order);
-        emailService.sendOrderRequest(order.getSupplier().getEmail(), order, confirmationToken);
+        // emailService.sendOrderRequest(order.getSupplier().getEmail(), order, confirmationToken);
     }
 
     private void validateOrderId(Long orderId) {
@@ -438,7 +431,6 @@ public class IncomingStockService {
     }
 
     private void finalizeOrderUpdate(IncomingStock order, String updatedPerson) {
-        order.setLastUpdated(GlobalServiceHelper.now(clock));
         order.setUpdatedBy(updatedPerson);
         incomingStockRepository.save(order);
     }
@@ -469,7 +461,8 @@ public class IncomingStockService {
 
     private PaginatedResponse<IncomingStockResponse> transformToPaginatedDto(Page<IncomingStock> entityResponse){
         PaginatedResponse<IncomingStockResponse> response = new PaginatedResponse<>();
-        List<IncomingStockResponse> convertedContent = entityResponse.getContent().stream().map(this::convertToDTO).toList();
+        List<IncomingStockResponse> convertedContent =
+                entityResponse.getContent().stream().map(this::convertToDTO).toList();
         response.setContent(convertedContent);
         response.setTotalPages(entityResponse.getTotalPages());
         response.setTotalElements(entityResponse.getTotalElements());

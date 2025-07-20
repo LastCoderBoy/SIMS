@@ -14,7 +14,10 @@ public class ConfirmationTokenScheduler {
     @Autowired
     private ConfirmationTokenService tokenService;
 
-    @Scheduled(cron = "0 0 0 * * *")
+
+//    @Scheduled(cron = "*/15 * * * * *")  //15 seconds
+
+    @Scheduled(cron = "0 0 */12 * * *")
     public void expireOldTokens() {
         logger.info("Check expired old Confirmation Tokens.");
         tokenService.expireTokens();
