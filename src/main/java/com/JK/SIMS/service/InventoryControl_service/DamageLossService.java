@@ -62,41 +62,6 @@ public class DamageLossService {
         }
     }
 
-    private PaginatedResponse<DamageLossDTO> getDamageLossData(int page, int size) {
-        try {
-            Pageable pageable = PageRequest.of(page, size, Sort.by("icProduct.pmProduct.name").ascending());
-            Page<DamageLoss> dbResponse = damageLoss_repository.findAll(pageable);
-
-            PaginatedResponse<DamageLossDTO> dtoResult = transformToPaginatedDTO(dbResponse);
-            logger.info("DL (getDamageLossData): Returning {} paginated data", dtoResult.getContent().size());
-            return dtoResult;
-        } catch (DataAccessException de) {
-            throw new DatabaseException("DL (getDamageLossData): Database error.", de);
-        } catch (Exception e) {
-            throw new ServiceException("DL (getDamageLossData): Internal Service error", e);
-        }
-    }
-
-    private PaginatedResponse<DamageLossDTO> transformToPaginatedDTO(Page<DamageLoss> dbResponse) {
-        PaginatedResponse<DamageLossDTO> result = new PaginatedResponse<>();
-        result.setContent(dbResponse.getContent().stream().map(this::convertToDTO).toList());
-        result.setTotalElements(dbResponse.getTotalElements());
-        result.setTotalPages(dbResponse.getTotalPages());
-        return result;
-    }
-
-    private DamageLossDTO convertToDTO(DamageLoss damageLoss) {
-        return new DamageLossDTO(
-                damageLoss.getId(),
-                damageLoss.getIcProduct().getPmProduct().getName(),
-                damageLoss.getIcProduct().getPmProduct().getCategory(),
-                damageLoss.getIcProduct().getSKU(),
-                damageLoss.getQuantityLost(),
-                damageLoss.getLossValue(),
-                damageLoss.getReason(),
-                damageLoss.getLossDate());
-    }
-
     @Transactional
     public void addDamageLoss(DamageLossDTORequest dtoRequest, String jwtToken) {
         try {
@@ -151,6 +116,60 @@ public class DamageLossService {
     private InventoryData getInventoryProduct(String sku){
         return ic_repository.findBySKU(sku)
                 .orElseThrow(() -> new IllegalArgumentException("DL (getInventoryProduct): Invalid SKU: " + sku));
+    }
+
+    @Transactional
+    public ApiResponse deleteDamageLossReport(Integer id) {
+        try {
+            DamageLoss report = damageLoss_repository.findById(id)
+                    .orElseThrow(() -> new BadRequestException("DL (delete): Report not found for ID: " + id));
+
+            restoreStockLevel(report.getIcProduct(), report.getQuantityLost());
+            damageLoss_repository.delete(report);
+
+            logger.info("DL (delete): Deleted damage/loss report and restored inventory for SKU {}", report.getIcProduct().getSKU());
+            return new ApiResponse(true, "Report deleted and stock restored for SKU: " + report.getIcProduct().getSKU());
+        } catch (Exception e) {
+            throw new ServiceException("DL (delete): Error while deleting report", e);
+        }
+    }
+
+    public PaginatedResponse<DamageLossDTO> searchProduct(String text, int page, int size) {
+        try {
+            Optional<String> inputText = Optional.ofNullable((text));
+            if (inputText.isPresent() && !inputText.get().trim().isEmpty()) {
+                Pageable pageable = PageRequest.of(page, size, Sort.by("icProduct.pmProduct.name").ascending());
+                Page<DamageLoss> damageLossReports = damageLoss_repository.searchProducts(inputText.get().trim().toLowerCase(), pageable);
+                logger.info("DL (searchProduct): {} products retrieved.", damageLossReports.getContent().size());
+                return transformToPaginatedDTO(damageLossReports);
+            }
+            logger.info("DL (searchProduct): No search text provided. Retrieving first page with default size.");
+            return getDamageLossData(page,size);
+        } catch (DataAccessException e) {
+            throw new DatabaseException("DL (searchProduct): Database error", e);
+        } catch (Exception e) {
+            throw new ServiceException("DL (searchProduct): Failed to retrieve products", e);
+        }
+    }
+
+    public PaginatedResponse<DamageLossDTO> filterProducts(String reason, String sortBy, String sortDirection, int page, int size) {
+        try {
+            // Parse sort direction
+            Sort.Direction direction = sortDirection.equalsIgnoreCase("desc") ?
+                    Sort.Direction.DESC : Sort.Direction.ASC;
+
+            // Create sort
+            Sort sort = Sort.by(direction, sortBy);
+            Pageable pageable = PageRequest.of(page, size, sort);
+
+            reason = reason.trim().toUpperCase();
+            LossReason lossReason = LossReason.valueOf(reason);
+            Page<DamageLoss> foundReports = damageLoss_repository.findByReason(lossReason, pageable);
+            logger.info("DL (filterProducts): {} products retrieved.", foundReports.getContent().size());
+            return transformToPaginatedDTO(foundReports);
+        } catch (IllegalArgumentException e) {
+            throw new ValidationException(e.getMessage());
+        }
     }
 
 
@@ -231,58 +250,38 @@ public class DamageLossService {
                 quantityToRestore, product.getSKU(), updatedStock);
     }
 
-
-    @Transactional
-    public ApiResponse deleteDamageLossReport(Integer id) {
+    private PaginatedResponse<DamageLossDTO> getDamageLossData(int page, int size) {
         try {
-            DamageLoss report = damageLoss_repository.findById(id)
-                    .orElseThrow(() -> new BadRequestException("DL (delete): Report not found for ID: " + id));
+            Pageable pageable = PageRequest.of(page, size, Sort.by("icProduct.pmProduct.name").ascending());
+            Page<DamageLoss> dbResponse = damageLoss_repository.findAll(pageable);
 
-            restoreStockLevel(report.getIcProduct(), report.getQuantityLost());
-            damageLoss_repository.delete(report);
-
-            logger.info("DL (delete): Deleted damage/loss report and restored inventory for SKU {}", report.getIcProduct().getSKU());
-            return new ApiResponse(true, "Report deleted and stock restored for SKU: " + report.getIcProduct().getSKU());
+            PaginatedResponse<DamageLossDTO> dtoResult = transformToPaginatedDTO(dbResponse);
+            logger.info("DL (getDamageLossData): Returning {} paginated data", dtoResult.getContent().size());
+            return dtoResult;
+        } catch (DataAccessException de) {
+            throw new DatabaseException("DL (getDamageLossData): Database error.", de);
         } catch (Exception e) {
-            throw new ServiceException("DL (delete): Error while deleting report", e);
+            throw new ServiceException("DL (getDamageLossData): Internal Service error", e);
         }
     }
 
-    public PaginatedResponse<DamageLossDTO> searchProduct(String text, int page, int size) {
-        try {
-            Optional<String> inputText = Optional.ofNullable((text));
-            if (inputText.isPresent() && !inputText.get().trim().isEmpty()) {
-                Pageable pageable = PageRequest.of(page, size, Sort.by("icProduct.pmProduct.name").ascending());
-                Page<DamageLoss> damageLossReports = damageLoss_repository.searchProducts(inputText.get().trim().toLowerCase(), pageable);
-                logger.info("DL (searchProduct): {} products retrieved.", damageLossReports.getContent().size());
-                return transformToPaginatedDTO(damageLossReports);
-            }
-            logger.info("DL (searchProduct): No search text provided. Retrieving first page with default size.");
-            return getDamageLossData(page,size);
-        } catch (DataAccessException e) {
-            throw new DatabaseException("DL (searchProduct): Database error", e);
-        } catch (Exception e) {
-            throw new ServiceException("DL (searchProduct): Failed to retrieve products", e);
-        }
+    private PaginatedResponse<DamageLossDTO> transformToPaginatedDTO(Page<DamageLoss> dbResponse) {
+        PaginatedResponse<DamageLossDTO> result = new PaginatedResponse<>();
+        result.setContent(dbResponse.getContent().stream().map(this::convertToDTO).toList());
+        result.setTotalElements(dbResponse.getTotalElements());
+        result.setTotalPages(dbResponse.getTotalPages());
+        return result;
     }
 
-    public PaginatedResponse<DamageLossDTO> filterProducts(String reason, String sortBy, String sortDirection, int page, int size) {
-        try {
-            // Parse sort direction
-            Sort.Direction direction = sortDirection.equalsIgnoreCase("desc") ?
-                    Sort.Direction.DESC : Sort.Direction.ASC;
-
-            // Create sort 
-            Sort sort = Sort.by(direction, sortBy);
-            Pageable pageable = PageRequest.of(page, size, sort);
-
-            reason = reason.trim().toUpperCase();
-            LossReason lossReason = LossReason.valueOf(reason);
-            Page<DamageLoss> foundReports = damageLoss_repository.findByReason(lossReason, pageable);
-            logger.info("DL (filterProducts): {} products retrieved.", foundReports.getContent().size());
-            return transformToPaginatedDTO(foundReports);
-        } catch (IllegalArgumentException e) {
-            throw new ValidationException(e.getMessage());
-        }
+    private DamageLossDTO convertToDTO(DamageLoss damageLoss) {
+        return new DamageLossDTO(
+                damageLoss.getId(),
+                damageLoss.getIcProduct().getPmProduct().getName(),
+                damageLoss.getIcProduct().getPmProduct().getCategory(),
+                damageLoss.getIcProduct().getSKU(),
+                damageLoss.getQuantityLost(),
+                damageLoss.getLossValue(),
+                damageLoss.getReason(),
+                damageLoss.getLossDate());
     }
 }

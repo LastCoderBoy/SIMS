@@ -6,6 +6,7 @@ import com.JK.SIMS.models.IC_models.InventoryData;
 import com.JK.SIMS.models.IC_models.outgoing.*;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
+import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.outgoingStockRepo.OrderItemRepository;
 import com.JK.SIMS.repository.outgoingStockRepo.OrderRepository;
 import com.JK.SIMS.service.InventoryControl_service.InventoryControlService;
@@ -17,17 +18,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @AllArgsConstructor
@@ -104,6 +111,25 @@ public class OutgoingStockService {
         }
     }
 
+    @Transactional(readOnly = true)
+    public PaginatedResponse<OrderResponseDto> getAllOrders(int page, int size, String sortBy, String sortDir) {
+        try {
+            validatePaginationParameters(page, size);
+            Sort sort = sortDir.equalsIgnoreCase("desc") ?
+                    Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
+            Pageable pageable = PageRequest.of(page, size, sort);
+
+            Page<Order> orders = orderRepository.findAll(pageable);
+
+            Page<OrderResponseDto> dtoResponse = orders.map(this::convertToOrderResponseDto);
+            return new PaginatedResponse<>(dtoResponse);
+
+        } catch (Exception e) {
+            logger.error("OS (getAllOrders): Error fetching orders - {}", e.getMessage());
+            throw new ServiceException("Failed to fetch orders", e);
+        }
+    }
+
     private void validateOrderRequest(OrderRequestDto orderRequestDto) {
         if (orderRequestDto == null) {
             throw new ValidationException("OS (validateOrderRequest): Order request cannot be null.");
@@ -143,6 +169,63 @@ public class OutgoingStockService {
         BigDecimal lineItemPrice = unitPriceAtOrder.multiply(BigDecimal.valueOf(orderedQuantity));
 
         return new OrderItem(orderedQuantity, product, lineItemPrice);
+    }
+
+    private OrderResponseDto convertToOrderResponseDto(Order order) {
+        try {
+            List<OrderItemResponseDto> itemDtos = order.getItems().stream()
+                    .map(this::convertToOrderItemResponseDto)
+                    .collect(Collectors.toList());
+
+            // Calculate total amount and total items
+            BigDecimal totalAmount = order.getItems().stream()
+                    .map(OrderItem::getOrderPrice)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            return new OrderResponseDto(
+                    order.getId(),
+                    order.getOrderReference(),
+                    order.getDestination(),
+                    order.getStatus(),
+                    order.getOrderDate(),
+                    order.getLastUpdate(),
+                    totalAmount,
+                    itemDtos
+            );
+        } catch (Exception e) {
+            logger.error("OS (convertToOrderResponseDto): Error converting order {} - {}",
+                    order.getId(), e.getMessage());
+            throw new ServiceException("Failed to convert order to response DTO", e);
+        }
+    }
+
+    private OrderItemResponseDto convertToOrderItemResponseDto(OrderItem item) {
+        try {
+            ProductsForPM product = item.getProduct();
+
+            return new OrderItemResponseDto(
+                    item.getId(),
+                    product.getProductID(),
+                    product.getName(),
+                    product.getCategory(),
+                    item.getQuantity(),
+                    item.getOrderPrice().divide(BigDecimal.valueOf(item.getQuantity()), 2, RoundingMode.HALF_UP), // Unit price
+                    item.getOrderPrice() // Total price for this line item
+            );
+        } catch (Exception e) {
+            logger.error("OS (convertToOrderItemResponseDto): Error converting order item {} - {}",
+                    item.getId(), e.getMessage());
+            throw new ServiceException("Failed to convert order item to response DTO", e);
+        }
+    }
+
+    private void validatePaginationParameters(int page, int size) {
+        if (page < 0) {
+            throw new IllegalArgumentException("Page number cannot be negative");
+        }
+        if (size <= 0 || size > 100) {
+            throw new IllegalArgumentException("Page size must be between 1 and 100");
+        }
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
