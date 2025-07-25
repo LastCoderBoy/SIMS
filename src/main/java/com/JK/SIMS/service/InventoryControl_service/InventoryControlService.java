@@ -4,17 +4,22 @@ import com.JK.SIMS.exceptionHandler.*;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.*;
 import com.JK.SIMS.models.IC_models.damage_loss.DamageLossMetrics;
+import com.JK.SIMS.models.IC_models.outgoing.OrderResponseDto;
+import com.JK.SIMS.models.IC_models.outgoing.OrderStatus;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
-import com.JK.SIMS.repository.IC_repo.DamageLoss_repository;
 import com.JK.SIMS.repository.IC_repo.IC_repository;
-import com.JK.SIMS.repository.PM_repo.PM_repository;
+import com.JK.SIMS.service.InventoryControl_service.outgoingStockService.OutgoingStockService;
+import com.JK.SIMS.service.productManagement_service.ProductManagementService;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -33,29 +38,32 @@ import static com.JK.SIMS.service.InventoryControl_service.InventoryServiceHelpe
 
 @Service
 public class InventoryControlService {
-    private static Logger logger = LoggerFactory.getLogger(InventoryControlService.class);
+    private static final Logger logger = LoggerFactory.getLogger(InventoryControlService.class);
 
-    private final PM_repository pmRepository;
     private final IC_repository icRepository;
-    private final DamageLoss_repository damageLoss_repository;
+    private final ProductManagementService pmService;
+    private final OutgoingStockService outgoingStockService;
+    private final DamageLossService damageLossService;
     @Autowired
-    public InventoryControlService(PM_repository pmRepository, IC_repository icRepository, DamageLoss_repository damageLoss_repository) {
-        this.pmRepository = pmRepository;
+    public InventoryControlService(IC_repository icRepository, @Lazy ProductManagementService pmService, @Lazy OutgoingStockService outgoingStockService, DamageLossService damageLossService) {
         this.icRepository = icRepository;
-        this.damageLoss_repository = damageLoss_repository;
+        this.pmService = pmService;
+        this.outgoingStockService = outgoingStockService;
+        this.damageLossService = damageLossService;
     }
 
-
+    // TODO: Fix the Metrics for each section, get the size from corresponding services
     public InventoryPageResponse getInventoryControlPageData(int page, int size) {
         try {
             InventoryMetrics metrics = icRepository.getInventoryMetrics();
 
-            PaginatedResponse<InventoryDataDto> inventoryDtoResponse = getInventoryDto(page, size);
+            PaginatedResponse<OrderResponseDto> allPendingOrderDtos =
+                    outgoingStockService.getAllOrdersSorted(page, size, "orderDate", "desc", Optional.of(OrderStatus.PENDING));
 
             // Convert to Page Response DTO
             InventoryPageResponse inventoryPageResponse = new InventoryPageResponse();
 
-            inventoryPageResponse.setInventoryDataDTOList(inventoryDtoResponse);
+            inventoryPageResponse.setAllPendingOrders(allPendingOrderDtos);
             inventoryPageResponse.setTotalInventorySize(metrics.getTotalCount().intValue());
 
             // Product is not part of the low stock when the status is on INVALID.
@@ -64,9 +72,9 @@ public class InventoryControlService {
             inventoryPageResponse.setIncomingStockSize(metrics.getIncomingCount().intValue());
             inventoryPageResponse.setOutgoingStockSize(metrics.getOutgoingCount().intValue());
 
-            DamageLossMetrics damageLossMetrics = getDamageLossMetrics();
+            DamageLossMetrics damageLossMetrics = damageLossService.getDamageLossMetrics();
             inventoryPageResponse.setDamageLossSize(damageLossMetrics.getTotalReport());
-            logger.info("IC (getInventoryControlPageData): Sending page {} with {} products.", page, inventoryDtoResponse.getContent().size());
+            logger.info("IC (getInventoryControlPageData): Sending page {} with {} products.", page, allPendingOrderDtos.getContent().size());
             return inventoryPageResponse;
         } catch (DataAccessException e) {
             logger.error("IC (getInventoryControlPageData): Database access error while retrieving inventory data.", e);
@@ -77,27 +85,6 @@ public class InventoryControlService {
         }
     }
 
-    private DamageLossMetrics getDamageLossMetrics() {
-        try {
-            return damageLoss_repository.getDamageLossMetrics();
-        } catch (DataAccessException de) {
-            throw new DatabaseException("IC (getDamageLossMetrics): Failed to retrieve damage/loss metrics", de);
-        } catch (Exception e) {
-            throw new ServiceException("IC (getDamageLossMetrics): Unexpected error retrieving damage/loss metrics", e);
-        }
-    }
-
-
-    /**
-     * Retrieves a paginated list of inventory items sorted by product name.
-     * Internal helper method used by other service methods to get paginated data.
-     *
-     * @param page Zero-based page number
-     * @param size Number of items per page
-     * @return PaginatedResponse of InventoryDataDTO
-     * @throws DatabaseException if database access fails
-     * @throws ServiceException if any other error occurs
-     */
     private PaginatedResponse<InventoryDataDto> getInventoryDto(int page, int size) {
         try{
             Pageable pageable = PageRequest.of(page, size, Sort.by("pmProduct.name").ascending());
@@ -121,7 +108,6 @@ public class InventoryControlService {
         return dtoResponse;
     }
 
-
     private InventoryDataDto convertToDTO(InventoryData currentProduct) {
         InventoryDataDto inventoryDataDTO = new InventoryDataDto();
         inventoryDataDTO.setInventoryData(currentProduct);
@@ -130,16 +116,7 @@ public class InventoryControlService {
         return inventoryDataDTO;
     }
 
-    /**
-     * Performs a comprehensive search across inventory items.
-     * Searches through multiple fields including SKU, Location, Status,
-     * Category, and Product Name. Returns default paginated data if no search text is provided.
-     *
-     * @param text Search query text (case-insensitive)
-     * @return PaginatedResponse containing the InventoryDataDTO search results
-     * @throws DatabaseException if database operation fails
-     * @throws ServiceException if any other error occurs during search
-     */
+
     public PaginatedResponse<InventoryDataDto> searchProduct(String text, int page, int size) {
         try {
             Optional<String> inputText = Optional.ofNullable((text));
@@ -159,25 +136,7 @@ public class InventoryControlService {
     }
 
 
-    /**
-     * Filters and sorts inventory products with advanced filtering options.
-     * Supports filtering by specific fields using the format "field:value"
-     * and general text search if no specific field is specified.
-     * Supported filter fields:
-     * - status: Matches InventoryDataStatus enum values
-     * - stock: Filters by stock level (numeric comparison)
-     * - location: Case-insensitive location search
-     *
-     * @param filter Filter string in "field:value" format or general search term
-     * @param sortBy Field name to sort by
-     * @param sortDirection Sort direction ("asc" or "desc")
-     * @param page Zero-based page number
-     * @param size Number of items per page
-     * @return PaginatedResponse of InventoryDataDTO containing filtered and sorted results
-     * @throws ValidationException if filter value is invalid
-     * @throws DatabaseException if database operation fails
-     * @throws ServiceException if any other error occurs
-     */
+
     public PaginatedResponse<InventoryDataDto> filterProducts(String filter, String sortBy, String sortDirection, int page, int size) {
         try {
             // Parse sort direction
@@ -227,19 +186,7 @@ public class InventoryControlService {
 
 
 
-    /**
-     * Adds a new product to the inventory control system.
-     * Initializes a new inventory entry with default values:
-     * - CurrentStock: 0
-     * - MinLevel: 0
-     * - Status: LOW_STOCK
-     * - LastUpdate: Current timestamp
-     *
-     * @param product ProductsForPM object containing product details
-     * @throws DatabaseException if database operation fails
-     * @throws InventoryException if product data is invalid or operation fails
-     * @throws ServiceException if any other error occurs during product addition
-     */
+
     public void addProduct(ProductsForPM product, boolean isUnderTransfer){
         try {
             InventoryData inventoryData = new InventoryData();
@@ -252,7 +199,6 @@ public class InventoryControlService {
             inventoryData.setPmProduct(product);
             inventoryData.setLocation(product.getLocation());
             inventoryData.setCurrentStock(0);
-            inventoryData.setLastUpdate(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
             inventoryData.setMinLevel(0);
 
             // Handle the status properly
@@ -278,16 +224,7 @@ public class InventoryControlService {
     }
 
 
-    /**
-     * Generates a SKU (Stock Keeping Unit) for a new product.
-     * Format: [First 3 letters of category]-[Last digits of product ID]
-     * Example: "EDU-001" for Education category and product ID "PRD001"
-     *
-     * @param productID Product ID string (must be at least 4 characters)
-     * @param category Product category enum value
-     * @return Generated SKU string
-     * @throws InventoryException if productID or category is invalid
-     */
+
     private String generateSKU(String productID, ProductCategories category){
         try {
             if (productID == null || productID.length() < 4) {
@@ -345,43 +282,6 @@ public class InventoryControlService {
         }
     }
 
-    private InventoryData getInventoryDataBySku(String sku) throws BadRequestException {
-        return icRepository.findBySKU(sku)
-                .orElseThrow(() -> new BadRequestException(
-                        "IC (updateProduct): No product with SKU " + sku + " found"));
-    }
-
-    // Helper method.
-    @Transactional(readOnly = true)
-    public InventoryData getInventoryProductByProductId(String productId) {
-        return icRepository.findByPmProduct_ProductID(productId)
-                .orElseThrow(() -> new ResourceNotFoundException("IC (getInventoryProductByProductId): Inventory Data Not Found"));
-    }
-
-    @Transactional
-    public InventoryData getInventoryProductByProductIdWithLock(String productId) {
-        return icRepository.findByPmProduct_ProductIDWithPessimisticLock(productId)
-                .orElseThrow(() -> new ResourceNotFoundException("IC (getInventoryProductByProductId): Inventory Data Not Found for product " + productId));
-    }
-
-    @Transactional(propagation = Propagation.MANDATORY)
-    public void updateStockLevels(InventoryData existingProduct, Optional<Integer> newStockLevel, Optional<Integer> newMinLevel ) {
-        // Update current stock if provided
-        newStockLevel.ifPresent(existingProduct::setCurrentStock);
-
-        // Update minimum level if provided
-        newMinLevel.ifPresent(existingProduct::setMinLevel);
-
-        //Update the status as well based on the latest update
-        InventoryServiceHelper.updateInventoryStatus(existingProduct);
-
-        // Update last update timestamp
-        existingProduct.setLastUpdate(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
-
-        icRepository.save(existingProduct);
-    }
-
-
     /**
      * Deletes a product from the inventory control system and archives it in the Product Management system.
      *
@@ -399,17 +299,13 @@ public class InventoryControlService {
                 InventoryData productToBeDeleted = product.get();
                 String id = productToBeDeleted.getPmProduct().getProductID();
 
-                Optional<ProductsForPM> productInPM = pmRepository.findById(id);
+                ProductsForPM productInPM = pmService.findProductById(id);
 
-                if(productInPM.isEmpty()){
-                    logger.warn("IC (deleteProduct): Product with SKU {} not found in PM, searched with {} ID", sku, id);
-                    throw new BadRequestException("IC (deleteProduct): Product with SKU " + sku + " not found in PM");
-                }
-                if(productInPM.get().getStatus().equals(ProductStatus.ACTIVE) ||
-                        productInPM.get().getStatus().equals(ProductStatus.PLANNING) ||
-                        productInPM.get().getStatus().equals(ProductStatus.ON_ORDER) ) {
-                    productInPM.get().setStatus(ProductStatus.ARCHIVED);
-                    pmRepository.save(productInPM.get());
+                if(productInPM.getStatus().equals(ProductStatus.ACTIVE) ||
+                        productInPM.getStatus().equals(ProductStatus.PLANNING) ||
+                        productInPM.getStatus().equals(ProductStatus.ON_ORDER) ) {
+                    productInPM.setStatus(ProductStatus.ARCHIVED);
+                    pmService.saveProduct(productInPM);
                 }
 
                 icRepository.deleteBySKU(sku);
@@ -427,6 +323,32 @@ public class InventoryControlService {
         }
     }
 
+    private InventoryData getInventoryDataBySku(String sku) throws BadRequestException {
+        return icRepository.findBySKU(sku)
+                .orElseThrow(() -> new BadRequestException(
+                        "IC (updateProduct): No product with SKU " + sku + " found"));
+    }
+
+    // Helper method.
+    @Transactional(readOnly = true)
+    public InventoryData getInventoryProductByProductId(String productId) {
+        return icRepository.findByPmProduct_ProductID(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("IC (getInventoryProductByProductId): Inventory Data Not Found"));
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void updateStockLevels(InventoryData existingProduct, Optional<Integer> newStockLevel, Optional<Integer> newMinLevel ) {
+        // Update current stock if provided
+        newStockLevel.ifPresent(existingProduct::setCurrentStock);
+
+        // Update minimum level if provided
+        newMinLevel.ifPresent(existingProduct::setMinLevel);
+
+        //Update the status as well based on the latest update
+        InventoryServiceHelper.updateInventoryStatus(existingProduct);
+
+        icRepository.save(existingProduct);
+    }
 
     // Helper method for internal use
     @Transactional(propagation = Propagation.MANDATORY)
@@ -444,5 +366,102 @@ public class InventoryControlService {
                     e.getMessage());
             throw new ServiceException("Failed to save inventory data", e);
         }
+    }
+
+    // Helper methods for internal use
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void deleteByProductId(String productId) {
+        try {
+            icRepository.deleteByProduct_ProductID(productId);
+            logger.info("IC (deleteByProductId): Successfully deleted inventory data for product ID {}", productId);
+        } catch (DataAccessException da) {
+            logger.error("IC (deleteByProductId): Database error while deleting inventory data: {}", da.getMessage());
+            throw new DatabaseException("Failed to delete inventory data", da);
+        } catch (Exception e) {
+            logger.error("IC (deleteByProductId): Unexpected error while deleting inventory data: {}", e.getMessage());
+            throw new ServiceException("Failed to delete inventory data", e);
+        }
+    }
+
+    // Reserve stock atomically - returns true if successful, false if insufficient stock
+    @Transactional
+    public boolean reserveStock(String productId, Integer quantity) {
+        try {
+            InventoryData inventory = icRepository.findByProductIdWithLock(productId);
+            if (inventory == null) {
+                throw new ResourceNotFoundException("Inventory not found for product: " + productId);
+            }
+
+            int availableStock = inventory.getCurrentStock() - inventory.getReservedStock();
+
+            if (availableStock >= quantity) {
+                inventory.setReservedStock(inventory.getReservedStock() + quantity);
+                icRepository.save(inventory);
+                logger.debug("IC (reserveStock): Reserved {} units for product {}", quantity, productId);
+                return true;
+            }
+
+            logger.warn("IC (reserveStock): Insufficient stock for product {}. Available: {}, Requested: {}",
+                    productId, availableStock, quantity);
+            return false;
+
+        } catch (DataAccessException e) {
+            logger.error("IC (reserveStock): Database error - {}", e.getMessage());
+            throw new DatabaseException("Failed to reserve stock", e);
+        }
+    }
+
+    @Transactional
+    public void fulfillReservation(String productId, int quantity) {
+        try {
+            InventoryData inventory = icRepository.findByProductIdWithLock(productId);
+            if (inventory == null) {
+                throw new ResourceNotFoundException("Inventory not found for product: " + productId);
+            }
+
+            // Deduct from both current stock and reserved stock
+            inventory.setCurrentStock(inventory.getCurrentStock() - quantity);
+            inventory.setReservedStock(inventory.getReservedStock() - quantity);
+
+            // Update status based on new stock level
+            InventoryServiceHelper.updateInventoryStatus(inventory);
+
+            icRepository.save(inventory);
+            logger.debug("IC (fulfillReservation): Fulfilled reservation of {} units for product {}", quantity, productId);
+
+        } catch (DataAccessException e) {
+            logger.error("IC (fulfillReservation): Database error - {}", e.getMessage());
+            throw new DatabaseException("Failed to fulfill reservation", e);
+        }
+    }
+
+    // Release reservation when order is cancelled
+    @Transactional
+    public void releaseReservation(String productId, int quantity) {
+        try {
+            InventoryData inventory = icRepository.findByProductIdWithLock(productId);
+            if (inventory == null) {
+                throw new ResourceNotFoundException("Inventory not found for product: " + productId);
+            }
+
+            inventory.setReservedStock(Math.max(0, inventory.getReservedStock() - quantity));
+            inventory.setLastUpdate(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
+
+            icRepository.save(inventory);
+            logger.debug("IC (releaseReservation): Released reservation of {} units for product {}", quantity, productId);
+
+        } catch (DataAccessException e) {
+            logger.error("IC (releaseReservation): Database error - {}", e.getMessage());
+            throw new DatabaseException("Failed to release reservation", e);
+        }
+    }
+
+    // Get available stock (current - reserved)
+    public int getAvailableStock(String productId) {
+        Optional<InventoryData> inventory = icRepository.findByPmProduct_ProductID(productId);
+        if (inventory.isEmpty()) {
+            return 0;
+        }
+        return inventory.get().getCurrentStock() - inventory.get().getReservedStock();
     }
 }

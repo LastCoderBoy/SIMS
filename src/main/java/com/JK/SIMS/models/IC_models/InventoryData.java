@@ -3,6 +3,7 @@ package com.JK.SIMS.models.IC_models;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
@@ -28,10 +29,14 @@ public class InventoryData {
     @Column(name = "MinLevel")
     private Integer minLevel;
 
+    @Column(name = "reserved_stock", nullable = false)
+    private int reservedStock = 0;  // Once the Customer orders a product
+
     @Enumerated(EnumType.STRING)
     @Column(name = "Status")
     private InventoryDataStatus status;
 
     @Column(name = "LastUpdate")
+    @UpdateTimestamp
     private LocalDateTime lastUpdate;
 }

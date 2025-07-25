@@ -5,7 +5,6 @@ import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.incoming.IncomingStockRequestDto;
 import com.JK.SIMS.models.IC_models.incoming.IncomingStockResponseDto;
 import com.JK.SIMS.models.IC_models.incoming.IncomingStockStatus;
-import com.JK.SIMS.models.IC_models.incoming.ReceiveStockRequestDto;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.TokenUtils;
@@ -52,19 +51,6 @@ public class IncomingStockController {
                     HttpStatus.CREATED);
         }
         throw new InvalidTokenException("IS: createPurchaseOrder() Invalid Token provided.");
-    }
-
-    @PutMapping("/{id}/receive")
-    public ResponseEntity<?> receiveIncomingStockOrder(@Valid @RequestBody ReceiveStockRequestDto receiveRequest,
-                                                      @PathVariable Long id,
-                                                      @RequestHeader("Authorization") String token) throws BadRequestException {
-        logger.info("IS: receiveIncomingStockOrder() calling...");
-        if(token != null && !token.trim().isEmpty()) {
-            String jwtToken = TokenUtils.extractToken(token);
-            ApiResponse response =  incomingStockService.receiveIncomingStock(id, receiveRequest, jwtToken);
-            return new ResponseEntity<>(response, HttpStatus.OK);
-        }
-        throw new InvalidTokenException("IS: receiveIncomingStockOrder() Invalid Token provided.");
     }
 
     @PutMapping("{id}/cancel-order")

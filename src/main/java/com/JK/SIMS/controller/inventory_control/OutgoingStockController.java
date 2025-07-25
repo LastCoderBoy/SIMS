@@ -16,6 +16,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Optional;
+
 @RestController
 @RequestMapping("/api/v1/priority/inventory/outgoing-stock")
 public class OutgoingStockController {
@@ -44,7 +46,7 @@ public class OutgoingStockController {
         logger.info("OS Controller: Fetching orders - page: {}, size: {}, sortBy: {}, sortDir: {}",
                 page, size, sortBy, sortDir);
 
-        PaginatedResponse<OrderResponseDto> orders = outgoingStockService.getAllOrders(page, size, sortBy, sortDir);
+        PaginatedResponse<OrderResponseDto> orders = outgoingStockService.getAllOrdersSorted(page, size, sortBy, sortDir, Optional.empty());
 
         return ResponseEntity.ok(orders);
     }

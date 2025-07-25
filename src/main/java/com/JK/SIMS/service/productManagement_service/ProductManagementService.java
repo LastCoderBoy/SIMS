@@ -12,7 +12,6 @@ import com.JK.SIMS.models.PM_models.ProductManagementDTO;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
-import com.JK.SIMS.repository.IC_repo.IC_repository;
 import com.JK.SIMS.repository.PM_repo.PM_repository;
 import com.JK.SIMS.service.InventoryControl_service.InventoryControlService;
 import jakarta.servlet.ServletOutputStream;
@@ -24,6 +23,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -48,13 +48,11 @@ public class ProductManagementService {
 
     private final PM_repository pmRepository;
     private final InventoryControlService icService;
-    private final IC_repository icRepository;
 
     @Autowired
-    public ProductManagementService(PM_repository pmRepository, InventoryControlService icService, IC_repository icRepository) {
+    public ProductManagementService(PM_repository pmRepository, @Lazy InventoryControlService icService) {
         this.pmRepository = pmRepository;
         this.icService = icService;
-        this.icRepository = icRepository;
     }
 
     /**
@@ -143,7 +141,7 @@ public class ProductManagementService {
         try {
             Optional<ProductsForPM> productNeedsToBeDeleted = pmRepository.findById(id);
             if (productNeedsToBeDeleted.isPresent()) {
-                icRepository.deleteByProduct_ProductID(id);
+                icService.deleteByProductId(id);
                 pmRepository.delete(productNeedsToBeDeleted.get());
                 logger.info("PM (deleteProduct): Product with ID {} is deleted", id);
                 return ResponseEntity.ok("Product with ID " + id + " is deleted successfully!");
@@ -172,7 +170,8 @@ public class ProductManagementService {
      */
     public ApiResponse updateProduct(String productId, ProductsForPM newProduct) {
         try {
-            ProductsForPM currentProduct = findProductById(productId);
+            ProductsForPM currentProduct = pmRepository.findById(productId)
+                    .orElseThrow(() -> new ResourceNotFoundException("PM (updateProduct): Product with ID " + productId + " not found"));
 
             if(isAllFieldsNull(newProduct)){
                 logger.info("PM (updateProduct): No fields to update. Product with ID {} not updated.", productId);
@@ -180,7 +179,7 @@ public class ProductManagementService {
             }
 
             updateProductFields(currentProduct, newProduct);
-            updateProductStatus(currentProduct, newProduct, productId);
+            updateInventoryProductStatus(currentProduct, newProduct, productId);
             updateProductLocation(currentProduct, newProduct);
 
             pmRepository.save(currentProduct);
@@ -208,25 +207,23 @@ public class ProductManagementService {
         }
     }
 
-    private void updateProductStatus(ProductsForPM currentProduct, ProductsForPM newProduct, String productId) {
+    private void updateInventoryProductStatus(ProductsForPM currentProduct, ProductsForPM newProduct, String productId) {
         if (newProduct.getStatus() != null) {
-            Optional<InventoryData> productInIC = icRepository.findByPmProduct_ProductID(productId);
+            InventoryData productInIC = icService.getInventoryProductByProductId(productId);
             ProductStatus previousStatus = currentProduct.getStatus();
 
             if (validateStatusBeforeAdding(currentProduct, newProduct)) {
                 currentProduct.setStatus(newProduct.getStatus());
-                handleStatusChange(currentProduct, newProduct, previousStatus, productInIC);
+                handleStatusChange(currentProduct, newProduct, previousStatus, Optional.ofNullable(productInIC));
             } else {
                 currentProduct.setStatus(newProduct.getStatus());
                 if (amongInvalidStatus(newProduct.getStatus())) {
                     updateInventoryDataStatus(productInIC, InventoryDataStatus.INVALID);
                 }else{
-                    if(productInIC.isPresent()){
-                        if(productInIC.get().getCurrentStock() <= productInIC.get().getMinLevel()){
-                            updateInventoryDataStatus(productInIC, InventoryDataStatus.LOW_STOCK);
-                        }else {
-                            updateInventoryDataStatus(productInIC, InventoryDataStatus.IN_STOCK);
-                        }
+                    if(productInIC.getCurrentStock() <= productInIC.getMinLevel()){
+                        updateInventoryDataStatus(productInIC, InventoryDataStatus.LOW_STOCK);
+                    }else {
+                        updateInventoryDataStatus(productInIC, InventoryDataStatus.IN_STOCK);
                     }
                 }
             }
@@ -244,15 +241,20 @@ public class ProductManagementService {
             }
         } else {
             // No need to add to IC, because the product is already present in the IC and we have to change to INVALID status
-            updateInventoryDataStatus(productInIC, InventoryDataStatus.INVALID);
+            updateInventoryDataStatus(productInIC.get(), InventoryDataStatus.INVALID);
         }
     }
 
-    private void updateInventoryDataStatus(Optional<InventoryData> productInIC, InventoryDataStatus status) {
-        productInIC.ifPresent(icData -> {
-            icData.setStatus(status);
-            icRepository.save(icData);
-        });
+    private void updateInventoryDataStatus(InventoryData productInIC, InventoryDataStatus status) {
+        if (productInIC != null) {
+            productInIC.setStatus(status);
+            try {
+                icService.saveInventoryProduct(productInIC);
+            } catch (Exception e) {
+                logger.error("Failed to update inventory data status: {}", e.getMessage());
+                throw new ServiceException("Error updating inventory status", e);
+            }
+        }
     }
 
     private void updateProductLocation(ProductsForPM currentProduct, ProductsForPM newProduct) {

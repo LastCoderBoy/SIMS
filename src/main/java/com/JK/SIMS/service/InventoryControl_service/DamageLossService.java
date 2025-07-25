@@ -87,6 +87,18 @@ public class DamageLossService {
         }
     }
 
+    // Helper method for internal use in services
+    @Transactional(readOnly = true)
+    public DamageLossMetrics getDamageLossMetrics() {
+        try {
+            return damageLoss_repository.getDamageLossMetrics();
+        } catch (DataAccessException de) {
+            throw new DatabaseException("DL (getDamageLossMetrics): Failed to retrieve damage/loss metrics", de);
+        } catch (Exception e) {
+            throw new ServiceException("DL (getDamageLossMetrics): Unexpected error retrieving damage/loss metrics", e);
+        }
+    }
+
     private void validateStockInput(InventoryData inventoryProduct, Integer lostQuantity){
         if(inventoryProduct.getCurrentStock() < lostQuantity){
             if(lostQuantity <= 0){

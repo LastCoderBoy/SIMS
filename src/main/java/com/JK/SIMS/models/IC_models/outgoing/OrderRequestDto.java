@@ -13,6 +13,9 @@ public class OrderRequestDto {
     @NotBlank(message = "Destination is required")
     private String destination;
 
+    @NotBlank(message = "Customer name is required")
+    private String customerName;
+
     @NotEmpty
     private List<OrderItemDto> items;
 }

@@ -9,13 +9,15 @@ import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.outgoingStockRepo.OrderItemRepository;
 import com.JK.SIMS.repository.outgoingStockRepo.OrderRepository;
+import com.JK.SIMS.service.GlobalServiceHelper;
 import com.JK.SIMS.service.InventoryControl_service.InventoryControlService;
 import com.JK.SIMS.service.productManagement_service.ProductManagementService;
 import jakarta.validation.ConstraintViolationException;
-import jakarta.validation.constraints.NotEmpty;
-import lombok.AllArgsConstructor;
+import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -37,7 +39,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
-@AllArgsConstructor
 public class OutgoingStockService {
     private static final Logger logger = LoggerFactory.getLogger(OutgoingStockService.class);
 
@@ -45,6 +46,13 @@ public class OutgoingStockService {
     private final OrderItemRepository orderItemRepository;
     private final ProductManagementService pmService;
     private final InventoryControlService icService;
+    @Autowired
+    public OutgoingStockService(OrderRepository orderRepository, OrderItemRepository orderItemRepository, ProductManagementService pmService, @Lazy InventoryControlService icService) {
+        this.orderRepository = orderRepository;
+        this.orderItemRepository = orderItemRepository;
+        this.pmService = pmService;
+        this.icService = icService;
+    }
 
     @Transactional
     public ApiResponse createOrder(OrderRequestDto orderRequestDto) {
@@ -54,54 +62,38 @@ public class OutgoingStockService {
             String orderReference = generateOrderReference(LocalDate.now());
             Order order = createOrderEntity(orderRequestDto, orderReference);
 
-
-            // Process each item: Validate, Decrement Stock, Add to Order
+            // Process each item with stock reservation
             for (OrderItemDto itemDto : orderRequestDto.getItems()) {
-                ProductsForPM product = pmService.findProductById(itemDto.getProductId()); // Throws ResourceNotFound if not found
+                ProductsForPM product = pmService.findProductById(itemDto.getProductId());
 
                 // Validate Product Status
-                if (product.getStatus() != ProductStatus.ACTIVE) {
+                if (product.getStatus() != ProductStatus.ACTIVE && product.getStatus() != ProductStatus.ON_ORDER) {
                     throw new ValidationException("Product '" + product.getName() + "' (ID: " + product.getProductID() + ") is not active and cannot be ordered.");
                 }
 
-                // Get Inventory Data with Pessimistic Lock
-                InventoryData inventory = icService.getInventoryProductByProductIdWithLock(product.getProductID());
-
-
-                if (inventory.getCurrentStock() < itemDto.getQuantity()) {
-                    throw new InsufficientStockException("Not enough stock for product '" + product.getName() + "' (ID: " + product.getProductID() + "). Available: " + inventory.getCurrentStock() + ", Ordered: " + itemDto.getQuantity());
+                // Reserve stock atomically
+                boolean stockReserved = icService.reserveStock(product.getProductID(), itemDto.getQuantity());
+                if (!stockReserved) {
+                    throw new InsufficientStockException("Not enough stock for product '" + product.getName() + "' (ID: " + product.getProductID() + "). Requested: " + itemDto.getQuantity());
                 }
-
-                // Decrement Stock level
-                int updatedStockLevel = inventory.getCurrentStock() - itemDto.getQuantity();
-                icService.updateStockLevels( // will save the inventory changes
-                        inventory,
-                        Optional.of(updatedStockLevel),
-                        Optional.empty());
 
                 // Create and Add OrderItem to Order
                 OrderItem orderItem = createOrderItem(product, itemDto.getQuantity());
-                order.addOrderItem(orderItem); // Sets the bidirectional link
+                order.addOrderItem(orderItem);
             }
 
             orderRepository.save(order);
             logger.info("OS (createOrder): Order created successfully with reference ID: {}", orderReference);
             return new ApiResponse(true, "Order created successfully and it is under PROCESSING status");
-        }catch (DataIntegrityViolationException e) {
+
+        } catch (DataIntegrityViolationException e) {
             if (e.getCause() instanceof ConstraintViolationException) {
                 logger.warn("Order reference collision detected, retrying...");
             }
             throw e;
-        }
-        catch (ValidationException ve) {
-            logger.error("OS (createOrder): Validation error - {}", ve.getMessage());
-            throw ve; // global exception will handle it
-        } catch (InsufficientStockException ie){
-            logger.error("OS (createOrder): Insufficient exception, requesting more than available");
-            throw ie;
-        } catch (ResourceNotFoundException rnfe) {
-            logger.error("OS (createOrder): Product not found - {}", rnfe.getMessage());
-            throw rnfe; // global exception will handle it
+        } catch (ValidationException | InsufficientStockException | ResourceNotFoundException e) {
+            logger.error("OS (createOrder): Error - {}", e.getMessage());
+            throw e;
         } catch (DataAccessException dae) {
             logger.error("OS (createOrder): Database error - {}", dae.getMessage());
             throw new DatabaseException("OS (createOrder): Failed to save the order to the database.", dae);
@@ -111,24 +103,113 @@ public class OutgoingStockService {
         }
     }
 
+    // STOCK OUT button
+    @Transactional
+    public ApiResponse processOrderedProduct(Long orderId, String jwtToken) throws BadRequestException {
+        try {
+            String confirmedPerson = GlobalServiceHelper.validateAndExtractUser(jwtToken);
+            Order order = orderRepository.findById(orderId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+
+            if (order.getStatus() != OrderStatus.PENDING) {
+                throw new ValidationException("Order is not in PENDING status. Cannot process ordered products.");
+            }
+
+            order.setStatus(OrderStatus.PROCESSING);
+            order.setConfirmedBy(confirmedPerson);
+
+            // Convert reservations to actual stock deductions
+            for (OrderItem item : order.getItems()) {
+                icService.fulfillReservation(item.getProduct().getProductID(), item.getQuantity());
+            }
+
+            orderRepository.save(order);
+            logger.info("OS (processOrderedProduct): Order {} processed successfully", orderId);
+            return new ApiResponse(true, "Order processed successfully");
+
+        } catch (Exception e) {
+            logger.error("OS (processOrderedProduct): Error processing order - {}", e.getMessage());
+            throw new ServiceException("Failed to process order", e);
+        }
+    }
+
+    @Transactional
+    public ApiResponse cancelOutgoingStockOrder(Long orderId, String jwtToken) {
+        try {
+            String cancelledBy = GlobalServiceHelper.validateAndExtractUser(jwtToken);
+            Order order = orderRepository.findById(orderId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+
+            if (order.getStatus() != OrderStatus.PENDING) {
+                throw new ValidationException("Only PENDING orders can be cancelled.");
+            }
+
+            // Release all reservations
+            for (OrderItem item : order.getItems()) {
+                icService.releaseReservation(item.getProduct().getProductID(), item.getQuantity());
+            }
+
+            order.setStatus(OrderStatus.CANCELLED);
+            order.setConfirmedBy(cancelledBy);
+            orderRepository.save(order);
+
+            logger.info("OS (cancelOrder): Order {} cancelled successfully", orderId);
+            return new ApiResponse(true, "Order cancelled successfully");
+
+        } catch (Exception e) {
+            logger.error("OS (cancelOrder): Error cancelling order - {}", e.getMessage());
+            throw new ServiceException("Failed to cancel order", e);
+        }
+    }
+
+    // Will be used in the SORT logic and the normal GET all logic
     @Transactional(readOnly = true)
-    public PaginatedResponse<OrderResponseDto> getAllOrders(int page, int size, String sortBy, String sortDir) {
+    public PaginatedResponse<OrderResponseDto> getAllOrdersSorted(int page, int size, String sortBy, String sortDir, Optional<OrderStatus> status) {
         try {
             validatePaginationParameters(page, size);
+
             Sort sort = sortDir.equalsIgnoreCase("desc") ?
                     Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
             Pageable pageable = PageRequest.of(page, size, sort);
 
-            Page<Order> orders = orderRepository.findAll(pageable);
+            // If status is provided, filter by status; otherwise get all orders
+            Page<Order> orders = (status.isPresent()) ?
+                    orderRepository.findByStatus(status.get(), pageable) :
+                    orderRepository.findAll(pageable);
 
             Page<OrderResponseDto> dtoResponse = orders.map(this::convertToOrderResponseDto);
             return new PaginatedResponse<>(dtoResponse);
 
         } catch (Exception e) {
-            logger.error("OS (getAllOrders): Error fetching orders - {}", e.getMessage());
+            logger.error("OS (getAllOrdersSorted): Error fetching orders - {}", e.getMessage());
             throw new ServiceException("Failed to fetch orders", e);
         }
     }
+
+    @Transactional(readOnly = true)
+    public PaginatedResponse<OrderResponseDto> searchOutgoingStock(String text, int page, int size, Optional<OrderStatus> status) {
+        try {
+            Optional<String> inputText = Optional.ofNullable(text);
+            if (inputText.isPresent() && !inputText.get().trim().isEmpty()) {
+                Pageable pageable = PageRequest.of(page, size, Sort.by("orderDate").ascending());
+                Page<Order> outgoingStockData = orderRepository.searchOutgoingStock(
+                        inputText.get().trim().toLowerCase(),
+                        status.orElse(null),
+                        pageable
+                );
+
+                logger.info("OS (searchOutgoingStock): {} orders retrieved.", outgoingStockData.getContent().size());
+                Page<OrderResponseDto> dtoResponse = outgoingStockData.map(this::convertToOrderResponseDto);
+                return new PaginatedResponse<>(dtoResponse);
+            }
+            logger.info("OS (searchOutgoingStock): No search text provided. Retrieving first page with default size.");
+            return getAllOrdersSorted(page, size, "orderDate", "asc", Optional.of(OrderStatus.PENDING));
+        } catch (Exception e) {
+            logger.error("OS (searchOutgoingStock): Failed to retrieve outgoing stock data - {}", e.getMessage());
+            throw new ServiceException("Failed to retrieve outgoing stock data", e);
+        }
+    }
+
 
     private void validateOrderRequest(OrderRequestDto orderRequestDto) {
         if (orderRequestDto == null) {
@@ -141,6 +222,10 @@ public class OutgoingStockService {
 
         if (orderRequestDto.getDestination() == null || orderRequestDto.getDestination().trim().isEmpty()) {
             throw new ValidationException("OS (validateOrderRequest): Destination cannot be empty.");
+        }
+
+        if (orderRequestDto.getCustomerName() == null || orderRequestDto.getCustomerName().trim().isEmpty()) {
+            throw new ValidationException("OS (validateOrderRequest): Customer name cannot be empty.");
         }
 
         // Check for duplicate products in the same order
@@ -158,7 +243,8 @@ public class OutgoingStockService {
         Order order = new Order();
         order.setOrderReference(orderReference);
         order.setDestination(orderRequestDto.getDestination().trim());
-        order.setStatus(OrderStatus.PROCESSING);
+        order.setStatus(OrderStatus.PENDING);
+        order.setCustomerName(orderRequestDto.getCustomerName().trim());
 
         logger.debug("OS (createOrderEntity): Created order entity with reference {}", orderReference);
         return order;
@@ -186,6 +272,7 @@ public class OutgoingStockService {
                     order.getId(),
                     order.getOrderReference(),
                     order.getDestination(),
+                    order.getCustomerName(),
                     order.getStatus(),
                     order.getOrderDate(),
                     order.getLastUpdate(),

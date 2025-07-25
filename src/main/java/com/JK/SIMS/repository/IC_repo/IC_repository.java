@@ -73,6 +73,6 @@ public interface IC_repository extends JpaRepository<InventoryData, String> {
     // Method to find InventoryData by product ID with a pessimistic write lock
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT i FROM InventoryData i WHERE i.pmProduct.productID = :productId")
-    Optional<InventoryData> findByPmProduct_ProductIDWithPessimisticLock(@Param("productId") String productId);
+    InventoryData findByProductIdWithLock(@Param("productId") String productId);
 
 }

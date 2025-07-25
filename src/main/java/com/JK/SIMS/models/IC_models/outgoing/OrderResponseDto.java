@@ -15,6 +15,7 @@ public class OrderResponseDto {
     private Long id;
     private String orderReference;
     private String destination;
+    private String customerName;
     private OrderStatus status;
     private LocalDateTime orderDate;
     private LocalDateTime lastUpdate;

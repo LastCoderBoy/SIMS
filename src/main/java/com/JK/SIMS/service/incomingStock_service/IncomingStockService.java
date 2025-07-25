@@ -18,10 +18,9 @@ import com.JK.SIMS.models.supplier.Supplier;
 import com.JK.SIMS.repository.IC_repo.IncomingStock_repository;
 import com.JK.SIMS.service.GlobalServiceHelper;
 import com.JK.SIMS.service.InventoryControl_service.InventoryControlService;
-import com.JK.SIMS.service.productManagement_service.ProductManagementService;
-import com.JK.SIMS.service.userManagement_service.JWTService;
 import com.JK.SIMS.service.confirmTokenService.ConfirmationTokenService;
 import com.JK.SIMS.service.email_service.EmailService;
+import com.JK.SIMS.service.productManagement_service.ProductManagementService;
 import com.JK.SIMS.service.supplier_service.SupplierService;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.validation.ConstraintViolationException;
@@ -31,6 +30,7 @@ import org.apache.coyote.BadRequestException;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -52,7 +52,6 @@ import java.util.UUID;
 import static com.JK.SIMS.service.incomingStock_service.IncomingStockHelper.buildConfirmationPage;
 
 @Service
-@AllArgsConstructor
 public class IncomingStockService {
 
     private static final Logger logger = LoggerFactory.getLogger(IncomingStockService.class);
@@ -64,14 +63,23 @@ public class IncomingStockService {
     private final SupplierService supplierService;
     private final EmailService emailService;
     private final ProductManagementService pmService;
-    private final JWTService jWTService;
     private final InventoryControlService inventoryControlService;
     private final ConfirmationTokenService confirmationTokenService;
+    @Autowired
+    public IncomingStockService(Clock clock, IncomingStock_repository incomingStockRepository, SupplierService supplierService, EmailService emailService, ProductManagementService pmService, InventoryControlService inventoryControlService, ConfirmationTokenService confirmationTokenService) {
+        this.clock = clock;
+        this.incomingStockRepository = incomingStockRepository;
+        this.supplierService = supplierService;
+        this.emailService = emailService;
+        this.pmService = pmService;
+        this.inventoryControlService = inventoryControlService;
+        this.confirmationTokenService = confirmationTokenService;
+    }
 
     @Transactional
     public void createPurchaseOrder(@Valid IncomingStockRequestDto stockRequest, String jwtToken) throws BadRequestException {
         try {
-            String orderedPerson = validateAndExtractUser(jwtToken);
+            String orderedPerson = GlobalServiceHelper.validateAndExtractUser(jwtToken);
             ProductsForPM orderedProduct = validateAndGetProduct(stockRequest.getProductId());
             handleInventoryStatusUpdates(orderedProduct);
             IncomingStock order = createOrderEntity(stockRequest, orderedProduct, orderedPerson);
@@ -90,10 +98,11 @@ public class IncomingStockService {
         }
     }
 
+    // STOCK IN button logic.
     @Transactional
     public ApiResponse receiveIncomingStock(Long orderId, @Valid ReceiveStockRequestDto receiveRequest, String jwtToken) throws BadRequestException {
         try {
-            String updatedPerson = validateAndExtractUser(jwtToken);
+            String updatedPerson = GlobalServiceHelper.validateAndExtractUser(jwtToken);
             validateOrderId(orderId); // check against null, throws an exception
 
             IncomingStock order = getIncomingStockOrderById(orderId);
@@ -139,7 +148,7 @@ public class IncomingStockService {
     public ApiResponse cancelIncomingStockInternal(Long orderId, String jwtToken) throws BadRequestException {
         try {
             validateOrderId(orderId); // check against null, throws an exception
-            String user = validateAndExtractUser(jwtToken);
+            String user = GlobalServiceHelper.validateAndExtractUser(jwtToken);
 
             IncomingStock incomingStock = getIncomingStockOrderById(orderId);
 
@@ -212,6 +221,7 @@ public class IncomingStockService {
         return transformToPaginatedDto(filterResult);
     }
 
+    // Method for the Email Confirmation
     @Transactional
     public String confirmPurchaseOrder(String token) {
         ConfirmationToken confirmationToken = validateConfirmationToken(token);
@@ -240,6 +250,7 @@ public class IncomingStockService {
         }
     }
 
+    // Method for the Email Cancellation
     @Transactional
     public String cancelPurchaseOrder(String token) {
         ConfirmationToken confirmationToken = validateConfirmationToken(token);
@@ -440,14 +451,6 @@ public class IncomingStockService {
         }
 
         throw new ServiceException("Failed to generate a unique PO Number after " + MAX_PO_GENERATION_RETRIES + " attempts.");
-    }
-
-    private String validateAndExtractUser(String jwtToken) throws BadRequestException {
-        String username = jWTService.extractUsername(jwtToken);
-        if (username == null || username.isEmpty()) {
-            throw new BadRequestException("Invalid JWT token: Cannot determine user.");
-        }
-        return username;
     }
 
     private PaginatedResponse<IncomingStockResponseDto> transformToPaginatedDto(Page<IncomingStock> entityResponse){

@@ -29,9 +29,15 @@ public class Order {
     @Column(nullable = false)
     private String destination; // To companies, third parties
 
+    @Column(nullable = false)
+    private String customerName;
+
+    @Column
+    private String confirmedBy; // Person who is confirming the Order in the IC.
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private OrderStatus status; // PROCESSING, SHIPPED, COMPLETED, CANCELLED
+    private OrderStatus status; // PENDING, PROCESSING, SHIPPED, COMPLETED, CANCELLED
 
     @CreationTimestamp
     @Column(updatable = false)
