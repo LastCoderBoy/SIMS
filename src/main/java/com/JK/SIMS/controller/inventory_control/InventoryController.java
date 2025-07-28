@@ -1,6 +1,7 @@
 package com.JK.SIMS.controller.inventory_control;
 
 
+import com.JK.SIMS.config.SecurityUtils;
 import com.JK.SIMS.exceptionHandler.InvalidTokenException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.InventoryData;
@@ -39,12 +40,7 @@ public class InventoryController {
         this.outgoingStockService = outgoingStockService;
     }
 
-    /**
-     * Load inventory control data with pagination.
-     * @param page requested page number (zero-based)
-     * @param size number of items per page
-     * @return ResponseEntity with InventoryPageResponse
-     */
+
     @GetMapping
     public ResponseEntity<?> getInventoryControlPageData(
             @RequestParam(defaultValue = "0") int page,
@@ -54,44 +50,55 @@ public class InventoryController {
         return ResponseEntity.ok(inventoryPageResponse);
     }
 
-    // STOCK IN button logic.
-    @PutMapping("/{id}/receive")
+
+    // STOCK IN button
+    @PutMapping("/{orderId}/receive")
     public ResponseEntity<?> receiveIncomingStockOrder(@Valid @RequestBody ReceiveStockRequestDto receiveRequest,
-                                                       @PathVariable Long id,
+                                                       @PathVariable Long orderId,
                                                        @RequestHeader("Authorization") String token) throws BadRequestException {
         logger.info("IC: receiveIncomingStockOrder() calling...");
-        if(token != null && !token.trim().isEmpty()) {
-            String jwtToken = TokenUtils.extractToken(token);
-            ApiResponse response =  incomingStockService.receiveIncomingStock(id, receiveRequest, jwtToken);
-            return new ResponseEntity<>(response, HttpStatus.OK);
+        if(SecurityUtils.hasAccess()) {
+            if(token != null && !token.trim().isEmpty()) {
+                String jwtToken = TokenUtils.extractToken(token);
+                ApiResponse response =  incomingStockService.receiveIncomingStock(orderId, receiveRequest, jwtToken);
+                return new ResponseEntity<>(response, HttpStatus.OK);
+            }
+            throw new InvalidTokenException("IC: receiveIncomingStockOrder() Invalid Token provided.");
         }
-        throw new InvalidTokenException("IC: receiveIncomingStockOrder() Invalid Token provided.");
+        throw new BadRequestException("IC: receiveIncomingStockOrder() You cannot perform the following operation.");
     }
 
 
     // STOCK OUT button
     @PutMapping("/{orderId}/process-order")
-    public ResponseEntity<?> processOrderedProduct(@PathVariable Long orderId,
+    public ResponseEntity<?> processOrderRequest(@PathVariable Long orderId,
                                                    @RequestHeader("Authorization") String token) throws BadRequestException {
         logger.info("IC: processOrderedProduct() calling...");
-        if(token != null && !token.trim().isEmpty()) {
-            String jwtToken = TokenUtils.extractToken(token);
-            ApiResponse response = outgoingStockService.processOrderedProduct(orderId, jwtToken);
-            return new ResponseEntity<>(response, HttpStatus.OK);
+        if(SecurityUtils.hasAccess()) {
+            if(token != null && !token.trim().isEmpty()) {
+                String jwtToken = TokenUtils.extractToken(token);
+                ApiResponse response = outgoingStockService.processOrderRequest(orderId, jwtToken);
+                return new ResponseEntity<>(response, HttpStatus.OK);
+            }
+            throw new InvalidTokenException("IC: processOrderedProduct() Invalid Token provided.");
         }
-        throw new InvalidTokenException("IC: processOrderedProduct() Invalid Token provided.");
+        throw new BadRequestException("IC: processOrderedProduct() You cannot perform the following operation.");
     }
 
+    // CANCEL ORDER button
     @PutMapping("/{orderId}/cancel-order")
     public ResponseEntity<?> cancelOutgoingStockOrder(@PathVariable Long orderId,
                                                       @RequestHeader("Authorization") String token) throws BadRequestException {
         logger.info("IC: cancelOutgoingStockOrder() calling...");
-        if(token != null && !token.trim().isEmpty()) {
-            String jwtToken = TokenUtils.extractToken(token);
-            ApiResponse response = outgoingStockService.cancelOutgoingStockOrder(orderId, jwtToken);
-            return new ResponseEntity<>(response, HttpStatus.OK);
+        if(SecurityUtils.hasAccess()) {
+            if(token != null && !token.trim().isEmpty()) {
+                String jwtToken = TokenUtils.extractToken(token);
+                ApiResponse response = outgoingStockService.cancelOutgoingStockOrder(orderId, jwtToken);
+                return new ResponseEntity<>(response, HttpStatus.OK);
+            }
+            throw new InvalidTokenException("IC: cancelOutgoingStockOrder() Invalid Token provided.");
         }
-        throw new InvalidTokenException("IC: cancelOutgoingStockOrder() Invalid Token provided.");
+        throw new BadRequestException("IC: cancelOutgoingStockOrder() You cannot perform the following operation.");
     }
 
     // Used to update the IC levels.
@@ -127,10 +134,8 @@ public class InventoryController {
      * @param size number of items per page
      * @return ResponseEntity with a filtered product list
      */
-
-    // TODO: STOCK OUT button.
     @GetMapping("/filter")
-    public ResponseEntity<?> sortProductBy(
+    public ResponseEntity<?> sortOutgoingProductBy(
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "asc") String sortDirection,
             @RequestParam(defaultValue = "0") int page,
@@ -142,13 +147,16 @@ public class InventoryController {
 
     @DeleteMapping("/{sku}")
     public ResponseEntity<?> deleteProduct(@PathVariable String sku) throws BadRequestException {
-        if(sku == null || sku.trim().isEmpty()){
-            throw new BadRequestException("IC: deleteProduct() SKU cannot be empty");
-        }
-        logger.info("IC: deleteProduct() calling...");
+        if(SecurityUtils.hasAccess()) {
+            if(sku == null || sku.trim().isEmpty()){
+                throw new BadRequestException("IC: deleteProduct() SKU cannot be empty");
+            }
+            logger.info("IC: deleteProduct() calling...");
 
-        ApiResponse response = icService.deleteProduct(sku);
-        return ResponseEntity.ok(response);
+            ApiResponse response = icService.deleteProduct(sku);
+            return ResponseEntity.ok(response);
+        }
+        throw new BadRequestException("IC: deleteProduct() You cannot perform the following operation.");
     }
 
 }

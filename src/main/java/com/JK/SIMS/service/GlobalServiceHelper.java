@@ -4,14 +4,21 @@ import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.service.userManagement_service.JWTService;
 import lombok.AllArgsConstructor;
 import org.apache.coyote.BadRequestException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 
+@Component
 public class GlobalServiceHelper {
 
-    public static JWTService jwtService;
+    public final JWTService jwtService;
+    @Autowired
+    public GlobalServiceHelper(JWTService jwtService) {
+        this.jwtService = jwtService;
+    }
 
     public static boolean amongInvalidStatus(ProductStatus status) {
         return status.equals(ProductStatus.RESTRICTED) ||
@@ -23,7 +30,7 @@ public class GlobalServiceHelper {
         return LocalDateTime.now(clock).truncatedTo(ChronoUnit.SECONDS);
     }
 
-    public static String validateAndExtractUser(String jwtToken) throws BadRequestException {
+    public String validateAndExtractUser(String jwtToken) throws BadRequestException {
         String username = jwtService.extractUsername(jwtToken);
         if (username == null || username.isEmpty()) {
             throw new BadRequestException("Invalid JWT token: Cannot determine user.");

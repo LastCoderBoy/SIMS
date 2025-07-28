@@ -445,7 +445,6 @@ public class InventoryControlService {
             }
 
             inventory.setReservedStock(Math.max(0, inventory.getReservedStock() - quantity));
-            inventory.setLastUpdate(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
 
             icRepository.save(inventory);
             logger.debug("IC (releaseReservation): Released reservation of {} units for product {}", quantity, productId);

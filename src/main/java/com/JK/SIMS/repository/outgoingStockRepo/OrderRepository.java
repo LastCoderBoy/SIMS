@@ -24,12 +24,6 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     Page<Order> findByStatus(OrderStatus status, Pageable pageable);
 
     @Query("""
-    SELECT o FROM Order o
-    JOIN o.items i
-    WHERE o.status = :status AND i.product.productID = :productId""")
-    List<Order> findAllByStatusByProductId(OrderStatus status, String productId);
-
-    @Query("""
     SELECT DISTINCT o FROM Order o
     JOIN o.items i
     JOIN i.product p

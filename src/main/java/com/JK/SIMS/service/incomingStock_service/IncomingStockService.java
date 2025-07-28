@@ -60,15 +60,17 @@ public class IncomingStockService {
 
     private final IncomingStock_repository incomingStockRepository;
 
+    private final GlobalServiceHelper globalServiceHelper;
     private final SupplierService supplierService;
     private final EmailService emailService;
     private final ProductManagementService pmService;
     private final InventoryControlService inventoryControlService;
     private final ConfirmationTokenService confirmationTokenService;
     @Autowired
-    public IncomingStockService(Clock clock, IncomingStock_repository incomingStockRepository, SupplierService supplierService, EmailService emailService, ProductManagementService pmService, InventoryControlService inventoryControlService, ConfirmationTokenService confirmationTokenService) {
+    public IncomingStockService(Clock clock, IncomingStock_repository incomingStockRepository, GlobalServiceHelper globalServiceHelper, SupplierService supplierService, EmailService emailService, ProductManagementService pmService, InventoryControlService inventoryControlService, ConfirmationTokenService confirmationTokenService) {
         this.clock = clock;
         this.incomingStockRepository = incomingStockRepository;
+        this.globalServiceHelper = globalServiceHelper;
         this.supplierService = supplierService;
         this.emailService = emailService;
         this.pmService = pmService;
@@ -79,7 +81,7 @@ public class IncomingStockService {
     @Transactional
     public void createPurchaseOrder(@Valid IncomingStockRequestDto stockRequest, String jwtToken) throws BadRequestException {
         try {
-            String orderedPerson = GlobalServiceHelper.validateAndExtractUser(jwtToken);
+            String orderedPerson = globalServiceHelper.validateAndExtractUser(jwtToken);
             ProductsForPM orderedProduct = validateAndGetProduct(stockRequest.getProductId());
             handleInventoryStatusUpdates(orderedProduct);
             IncomingStock order = createOrderEntity(stockRequest, orderedProduct, orderedPerson);
@@ -102,7 +104,7 @@ public class IncomingStockService {
     @Transactional
     public ApiResponse receiveIncomingStock(Long orderId, @Valid ReceiveStockRequestDto receiveRequest, String jwtToken) throws BadRequestException {
         try {
-            String updatedPerson = GlobalServiceHelper.validateAndExtractUser(jwtToken);
+            String updatedPerson = globalServiceHelper.validateAndExtractUser(jwtToken);
             validateOrderId(orderId); // check against null, throws an exception
 
             IncomingStock order = getIncomingStockOrderById(orderId);
@@ -148,7 +150,7 @@ public class IncomingStockService {
     public ApiResponse cancelIncomingStockInternal(Long orderId, String jwtToken) throws BadRequestException {
         try {
             validateOrderId(orderId); // check against null, throws an exception
-            String user = GlobalServiceHelper.validateAndExtractUser(jwtToken);
+            String user = globalServiceHelper.validateAndExtractUser(jwtToken);
 
             IncomingStock incomingStock = getIncomingStockOrderById(orderId);
 

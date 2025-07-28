@@ -42,12 +42,14 @@ import java.util.stream.Collectors;
 public class OutgoingStockService {
     private static final Logger logger = LoggerFactory.getLogger(OutgoingStockService.class);
 
+    private final GlobalServiceHelper globalServiceHelper;
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final ProductManagementService pmService;
     private final InventoryControlService icService;
     @Autowired
-    public OutgoingStockService(OrderRepository orderRepository, OrderItemRepository orderItemRepository, ProductManagementService pmService, @Lazy InventoryControlService icService) {
+    public OutgoingStockService(GlobalServiceHelper globalServiceHelper, OrderRepository orderRepository, OrderItemRepository orderItemRepository, ProductManagementService pmService, @Lazy InventoryControlService icService) {
+        this.globalServiceHelper = globalServiceHelper;
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.pmService = pmService;
@@ -105,9 +107,9 @@ public class OutgoingStockService {
 
     // STOCK OUT button
     @Transactional
-    public ApiResponse processOrderedProduct(Long orderId, String jwtToken) throws BadRequestException {
+    public ApiResponse processOrderRequest(Long orderId, String jwtToken){
         try {
-            String confirmedPerson = GlobalServiceHelper.validateAndExtractUser(jwtToken);
+            String confirmedPerson = globalServiceHelper.validateAndExtractUser(jwtToken);
             Order order = orderRepository.findById(orderId)
                     .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
 
@@ -136,7 +138,7 @@ public class OutgoingStockService {
     @Transactional
     public ApiResponse cancelOutgoingStockOrder(Long orderId, String jwtToken) {
         try {
-            String cancelledBy = GlobalServiceHelper.validateAndExtractUser(jwtToken);
+            String cancelledBy = globalServiceHelper.validateAndExtractUser(jwtToken);
             Order order = orderRepository.findById(orderId)
                     .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
 
