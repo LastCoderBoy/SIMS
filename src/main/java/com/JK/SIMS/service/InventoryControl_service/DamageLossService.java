@@ -47,7 +47,7 @@ public class DamageLossService {
     @Transactional(readOnly = true)
     public DamageLossPageResponse getDamageLossDashboardData(int page, int size) {
         try {
-            DamageLossMetrics damageLossMetrics = damageLoss_repository.getDamageLossMetrics();
+            DamageLossMetrics damageLossMetrics = getDamageLossMetrics();
 
             return new DamageLossPageResponse(
                     damageLossMetrics.getTotalReport(),

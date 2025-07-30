@@ -21,4 +21,8 @@ public interface IncomingStock_repository extends JpaRepository<IncomingStock, L
             "LOWER(isr.updatedBy) LIKE CONCAT('%', :text, '%') OR " +
             "LOWER(isr.PONumber) LIKE CONCAT('%', :text, '%')")
     Page<IncomingStock> searchProducts(String text, Pageable pageable);
+
+    @Query(value = "SELECT COUNT(*) FROM incoming_stock WHERE status IN ('DELIVERY_IN_PROCESS', 'PARTIALLY_RECEIVED') ", nativeQuery = true)
+    Long getTotalValidIncomingStockSize();
+
 }

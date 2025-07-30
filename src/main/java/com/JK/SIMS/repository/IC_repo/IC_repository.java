@@ -28,9 +28,7 @@ public interface IC_repository extends JpaRepository<InventoryData, String> {
     @Query("""
         SELECT new com.JK.SIMS.models.IC_models.InventoryMetrics(
             COUNT(*),
-            COUNT(CASE WHEN i.currentStock <= i.minLevel AND i.status != 'INVALID' THEN 1 ELSE NULL END),
-            COUNT(CASE WHEN i.status = 'INCOMING' THEN 1 ELSE NULL END),
-            COUNT(CASE WHEN i.status = 'OUTGOING' THEN 1 ELSE NULL  END)
+            COUNT(CASE WHEN i.currentStock <= i.minLevel AND i.status != 'INVALID' THEN 1 ELSE NULL END)
         )
         FROM InventoryData i
     """)
@@ -40,7 +38,7 @@ public interface IC_repository extends JpaRepository<InventoryData, String> {
     @Query("SELECT ic FROM InventoryData ic WHERE " +
             "LOWER(ic.SKU) LIKE CONCAT('%', :text, '%') OR " +
             "LOWER(ic.location) LIKE CONCAT('%', :text, '%') OR " +
-            "LOWER(ic.status) LIKE CONCAT('%', :text, '%') OR " +
+            "LOWER(ic.pmProduct.productID) LIKE CONCAT('%', :text, '%') OR " +
             "LOWER(ic.pmProduct.name) LIKE CONCAT('%', :text, '%') OR " +
             "LOWER(ic.pmProduct.category) LIKE CONCAT('%', :text, '%')"
     )
@@ -49,23 +47,21 @@ public interface IC_repository extends JpaRepository<InventoryData, String> {
 
     Page<InventoryData> findByStatus(InventoryDataStatus status, Pageable pageable);
 
-    Page<InventoryData> findByLocationContainingIgnoreCase(String location, Pageable pageable);
-
     @Query("SELECT i FROM InventoryData i WHERE i.currentStock <= :level")
     Page<InventoryData> findByStockLevel(@Param("level") Integer level, Pageable pageable);
 
+
     @Query("SELECT i FROM InventoryData i WHERE " +
-            "LOWER(i.SKU) LIKE %:term% OR " +
-            "LOWER(i.location) LIKE %:term% OR " +
-            "LOWER(i.status) LIKE %:term% OR " +
-            "LOWER(i.pmProduct.name) LIKE %:term%")
-    Page<InventoryData> findByGeneralSearch(@Param("term") String searchTerm, Pageable pageable);
+            "LOWER(i.status) LIKE LOWER(CONCAT('%', :term, '%')) OR " +
+            "LOWER(i.pmProduct.category) LIKE LOWER(CONCAT('%', :term, '%'))")
+    Page<InventoryData> findByGeneralFilter(@Param("term") String filterBy, Pageable pageable);
+
 
     Optional<InventoryData> findBySKU(String sku);
 
-    void deleteBySKU(String sku);
-
     Optional<InventoryData> findByPmProduct_ProductID(String productId);
+
+    void deleteBySKU(String sku);
 
     @Query("SELECT i FROM InventoryData i WHERE i.status != 'INVALID' AND  i.currentStock <= i.minLevel")
     List<InventoryData> getLowStockItems();

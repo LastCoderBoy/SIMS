@@ -1,5 +1,6 @@
 package com.JK.SIMS.controller.inventory_control;
 
+import com.JK.SIMS.config.SecurityUtils;
 import com.JK.SIMS.exceptionHandler.InvalidTokenException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.incoming.IncomingStockRequestDto;
@@ -17,6 +18,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.nio.file.AccessDeniedException;
 
 @RestController
 @RequestMapping("/api/v1/priority/inventory/incoming-stock")
@@ -40,27 +43,33 @@ public class IncomingStockController {
 
     @PostMapping
     public ResponseEntity<?> createPurchaseOrder(@Valid @RequestBody IncomingStockRequestDto stockRequest,
-                                                 @RequestHeader("Authorization") String token) throws BadRequestException {
+                                                 @RequestHeader("Authorization") String token) throws BadRequestException, AccessDeniedException {
         logger.info("IS: createPurchaseOrder() calling...");
-        if(token != null && !token.trim().isEmpty()) {
-            String jwtToken = TokenUtils.extractToken(token);
-            incomingStockService.createPurchaseOrder(stockRequest, jwtToken);
+        if(SecurityUtils.hasAccess()) {
+            if(token != null && !token.trim().isEmpty()) {
+                String jwtToken = TokenUtils.extractToken(token);
+                incomingStockService.createPurchaseOrder(stockRequest, jwtToken);
 
-            return new ResponseEntity<>(
-                    new ApiResponse(true, stockRequest.getProductId() + "is ordered successfully"),
-                    HttpStatus.CREATED);
+                return new ResponseEntity<>(
+                        new ApiResponse(true, stockRequest.getProductId() + "is ordered successfully"),
+                        HttpStatus.CREATED);
+            }
+            throw new InvalidTokenException("IS: createPurchaseOrder() Invalid Token provided.");
         }
-        throw new InvalidTokenException("IS: createPurchaseOrder() Invalid Token provided.");
+        throw new AccessDeniedException("IS createPurchaseOrder(): You cannot perform the following operation.");
     }
 
     @PutMapping("{id}/cancel-order")
-    public ResponseEntity<?> cancelIncomingStockInternal(@PathVariable Long id, @RequestHeader("Authorization") String token) throws BadRequestException {
-        if(token != null && !token.trim().isEmpty()) {
-            String jwtToken = TokenUtils.extractToken(token);
-            ApiResponse response = incomingStockService.cancelIncomingStockInternal(id, jwtToken);
-            return ResponseEntity.ok(response);
+    public ResponseEntity<?> cancelIncomingStockInternal(@PathVariable Long id, @RequestHeader("Authorization") String token) throws BadRequestException, AccessDeniedException {
+        if(SecurityUtils.hasAccess()) {
+            if(token != null && !token.trim().isEmpty()) {
+                String jwtToken = TokenUtils.extractToken(token);
+                ApiResponse response = incomingStockService.cancelIncomingStockInternal(id, jwtToken);
+                return ResponseEntity.ok(response);
+            }
+            throw new InvalidTokenException("IS: cancelIncomingStockInternal() Invalid Token provided.");
         }
-        throw new InvalidTokenException("IS: cancelIncomingStockInternal() Invalid Token provided.");
+        throw new AccessDeniedException("IS: cancelIncomingStockInternal() You cannot perform the following operation.");
     }
 
 

@@ -10,6 +10,4 @@ import lombok.NoArgsConstructor;
 public class InventoryMetrics {
     private Long totalCount;
     private Long lowStockCount;
-    private Long incomingCount;
-    private Long outgoingCount;
 }

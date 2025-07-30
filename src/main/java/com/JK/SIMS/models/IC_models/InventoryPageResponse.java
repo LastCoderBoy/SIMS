@@ -12,13 +12,13 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class InventoryPageResponse {
-    private Integer totalInventorySize;
+    private Long totalInventorySize;
     
-    private Integer lowStockSize;
+    private Long lowStockSize;
     
-    private Integer incomingStockSize;
+    private Long incomingStockSize;
 
-    private Integer outgoingStockSize;
+    private Long outgoingStockSize;
 
     private Long damageLossSize;
 

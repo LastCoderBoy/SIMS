@@ -2,8 +2,10 @@ package com.JK.SIMS.service.InventoryControl_service;
 
 import com.JK.SIMS.exceptionHandler.*;
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.IC_models.*;
-import com.JK.SIMS.models.IC_models.damage_loss.DamageLossMetrics;
+import com.JK.SIMS.models.IC_models.InventoryData;
+import com.JK.SIMS.models.IC_models.InventoryDataStatus;
+import com.JK.SIMS.models.IC_models.InventoryMetrics;
+import com.JK.SIMS.models.IC_models.InventoryPageResponse;
 import com.JK.SIMS.models.IC_models.outgoing.OrderResponseDto;
 import com.JK.SIMS.models.IC_models.outgoing.OrderStatus;
 import com.JK.SIMS.models.PM_models.ProductCategories;
@@ -12,25 +14,18 @@ import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.IC_repo.IC_repository;
 import com.JK.SIMS.service.InventoryControl_service.outgoingStockService.OutgoingStockService;
+import com.JK.SIMS.service.incomingStock_service.IncomingStockService;
 import com.JK.SIMS.service.productManagement_service.ProductManagementService;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotNull;
 import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataAccessException;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 
 import static com.JK.SIMS.service.GlobalServiceHelper.amongInvalidStatus;
@@ -44,36 +39,35 @@ public class InventoryControlService {
     private final ProductManagementService pmService;
     private final OutgoingStockService outgoingStockService;
     private final DamageLossService damageLossService;
+    private final IncomingStockService incomingStockService;
     @Autowired
-    public InventoryControlService(IC_repository icRepository, @Lazy ProductManagementService pmService, @Lazy OutgoingStockService outgoingStockService, DamageLossService damageLossService) {
+    public InventoryControlService(IC_repository icRepository, @Lazy ProductManagementService pmService, @Lazy OutgoingStockService outgoingStockService,
+                                   DamageLossService damageLossService, @Lazy IncomingStockService incomingStockService) {
         this.icRepository = icRepository;
         this.pmService = pmService;
         this.outgoingStockService = outgoingStockService;
         this.damageLossService = damageLossService;
+        this.incomingStockService = incomingStockService;
     }
 
-    // TODO: Fix the Metrics for each section, get the size from corresponding services
+    @Transactional(readOnly = true)
     public InventoryPageResponse getInventoryControlPageData(int page, int size) {
         try {
             InventoryMetrics metrics = icRepository.getInventoryMetrics();
 
+            // Used to represent at the end of the page
             PaginatedResponse<OrderResponseDto> allPendingOrderDtos =
                     outgoingStockService.getAllOrdersSorted(page, size, "orderDate", "desc", Optional.of(OrderStatus.PENDING));
 
-            // Convert to Page Response DTO
-            InventoryPageResponse inventoryPageResponse = new InventoryPageResponse();
-
-            inventoryPageResponse.setAllPendingOrders(allPendingOrderDtos);
-            inventoryPageResponse.setTotalInventorySize(metrics.getTotalCount().intValue());
-
-            // Product is not part of the low stock when the status is on INVALID.
-            inventoryPageResponse.setLowStockSize(metrics.getLowStockCount().intValue());
-
-            inventoryPageResponse.setIncomingStockSize(metrics.getIncomingCount().intValue());
-            inventoryPageResponse.setOutgoingStockSize(metrics.getOutgoingCount().intValue());
-
-            DamageLossMetrics damageLossMetrics = damageLossService.getDamageLossMetrics();
-            inventoryPageResponse.setDamageLossSize(damageLossMetrics.getTotalReport());
+            // Create the response object
+            InventoryPageResponse inventoryPageResponse = new InventoryPageResponse(
+                    metrics.getTotalCount(),
+                    metrics.getLowStockCount(),
+                    incomingStockService.getTotalValidIncomingStockSize(),
+                    outgoingStockService.getTotalValidOutgoingStockSize(),
+                    damageLossService.getDamageLossMetrics().getTotalReport(),
+                    allPendingOrderDtos
+            );
             logger.info("IC (getInventoryControlPageData): Sending page {} with {} products.", page, allPendingOrderDtos.getContent().size());
             return inventoryPageResponse;
         } catch (DataAccessException e) {
@@ -85,108 +79,7 @@ public class InventoryControlService {
         }
     }
 
-    private PaginatedResponse<InventoryDataDto> getInventoryDto(int page, int size) {
-        try{
-            Pageable pageable = PageRequest.of(page, size, Sort.by("pmProduct.name").ascending());
-            Page<InventoryData> inventoryPage = icRepository.findAll(pageable);
-            return transformToPaginatedDTOResponse(inventoryPage);
-
-        } catch (DataAccessException da){
-            throw new DatabaseException("IC (getInventoryDataDTOList): Failed to retrieve products due to database error", da);
-        } catch (Exception e){
-            throw new ServiceException("IC (getInventoryDataDTOList): Failed to retrieve products", e);
-        }
-    }
-
-
-    private PaginatedResponse<InventoryDataDto> transformToPaginatedDTOResponse(Page<InventoryData> inventoryPage){
-        PaginatedResponse<InventoryDataDto> dtoResponse = new PaginatedResponse<>();
-        dtoResponse.setContent(inventoryPage.getContent().stream().map(this::convertToDTO).toList());
-        dtoResponse.setTotalPages(inventoryPage.getTotalPages());
-        dtoResponse.setTotalElements(inventoryPage.getTotalElements());
-
-        return dtoResponse;
-    }
-
-    private InventoryDataDto convertToDTO(InventoryData currentProduct) {
-        InventoryDataDto inventoryDataDTO = new InventoryDataDto();
-        inventoryDataDTO.setInventoryData(currentProduct);
-        inventoryDataDTO.setProductName(currentProduct.getPmProduct().getName());
-        inventoryDataDTO.setCategory(currentProduct.getPmProduct().getCategory());
-        return inventoryDataDTO;
-    }
-
-
-    public PaginatedResponse<InventoryDataDto> searchProduct(String text, int page, int size) {
-        try {
-            Optional<String> inputText = Optional.ofNullable((text));
-            if (inputText.isPresent() && !inputText.get().trim().isEmpty()) {
-                Pageable pageable = PageRequest.of(page, size, Sort.by("pmProduct.name").ascending());
-                Page<InventoryData> inventoryData = icRepository.searchProducts(inputText.get().trim().toLowerCase(), pageable);
-                logger.info("IC (searchProduct): {} products retrieved.", inventoryData.getContent().size());
-                return transformToPaginatedDTOResponse(inventoryData) ;
-            }
-            logger.info("IC (searchProduct): No search text provided. Retrieving first page with default size.");
-            return getInventoryDto(page,size);
-        } catch (DataAccessException e) {
-            throw new DatabaseException("IC (searchProduct): Database error", e);
-        } catch (Exception e) {
-            throw new ServiceException("IC (searchProduct): Failed to retrieve products", e);
-        }
-    }
-
-
-
-    public PaginatedResponse<InventoryDataDto> filterProducts(String filter, String sortBy, String sortDirection, int page, int size) {
-        try {
-            // Parse sort direction
-            Sort.Direction direction = sortDirection.equalsIgnoreCase("desc") ?
-                    Sort.Direction.DESC : Sort.Direction.ASC;
-
-            // Create sort
-            Sort sort = Sort.by(direction, sortBy);
-            Pageable pageable = PageRequest.of(page, size, sort);
-
-            // Handle filtering
-            Page<InventoryData> resultPage;
-            if (filter != null && !filter.trim().isEmpty()) {
-                String[] filterParts = filter.trim().split(":");
-                if (filterParts.length == 2) {
-                    String field = filterParts[0].toLowerCase();
-                    String value = filterParts[1];
-
-                    resultPage = switch (field) {
-                        case "status" -> {
-                            InventoryDataStatus status = InventoryDataStatus.valueOf(value.toUpperCase());
-                            yield icRepository.findByStatus(status, pageable);
-                        }
-                        case "stock" -> icRepository.findByStockLevel(Integer.parseInt(value), pageable);
-                        case "location" -> icRepository.findByLocationContainingIgnoreCase(value, pageable);
-                        default -> icRepository.findAll(pageable);
-                    };
-                } else {
-                    // Use as a general search term
-                    resultPage = icRepository.findByGeneralSearch(filter.trim().toLowerCase(), pageable);
-                }
-            } else {
-                resultPage = icRepository.findAll(pageable);
-            }
-
-            logger.info("IC (filterProducts): {} products retrieved.", resultPage.getContent().size());
-            return transformToPaginatedDTOResponse(resultPage);
-        } catch (IllegalArgumentException iae) {
-            throw new ValidationException("IC (filterProducts): Invalid filter value: " + iae.getMessage());
-        } catch (DataAccessException da) {
-            throw new DatabaseException("IC (filterProducts): Database error", da);
-        } catch (Exception e) {
-            throw new ServiceException("IC (filterProducts): Internal error", e);
-        }
-    }
-
-
-
-
-
+    @Transactional
     public void addProduct(ProductsForPM product, boolean isUnderTransfer){
         try {
             InventoryData inventoryData = new InventoryData();

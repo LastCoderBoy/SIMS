@@ -31,6 +31,7 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -67,7 +68,9 @@ public class IncomingStockService {
     private final InventoryControlService inventoryControlService;
     private final ConfirmationTokenService confirmationTokenService;
     @Autowired
-    public IncomingStockService(Clock clock, IncomingStock_repository incomingStockRepository, GlobalServiceHelper globalServiceHelper, SupplierService supplierService, EmailService emailService, ProductManagementService pmService, InventoryControlService inventoryControlService, ConfirmationTokenService confirmationTokenService) {
+    public IncomingStockService(Clock clock, IncomingStock_repository incomingStockRepository, GlobalServiceHelper globalServiceHelper,
+                                SupplierService supplierService, EmailService emailService, ProductManagementService pmService,
+                                @Lazy InventoryControlService inventoryControlService, ConfirmationTokenService confirmationTokenService) {
         this.clock = clock;
         this.incomingStockRepository = incomingStockRepository;
         this.globalServiceHelper = globalServiceHelper;
@@ -282,6 +285,11 @@ public class IncomingStockService {
             logger.warn("IS (cancelPurchaseOrder): Order ID {} is not in AWAITING_SUPPLIER_CONFIRMATION status. Current status: {}", order.getId(), order.getStatus());
             return buildConfirmationPage("Order already confirmed or cancelled.", "alert-danger");
         }
+    }
+
+    @Transactional(readOnly = true)
+    public Long getTotalValidIncomingStockSize(){
+        return incomingStockRepository.getTotalValidIncomingStockSize();
     }
 
     @Nullable

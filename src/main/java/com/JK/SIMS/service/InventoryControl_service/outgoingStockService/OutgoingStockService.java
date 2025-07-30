@@ -168,7 +168,7 @@ public class OutgoingStockService {
     @Transactional(readOnly = true)
     public PaginatedResponse<OrderResponseDto> getAllOrdersSorted(int page, int size, String sortBy, String sortDir, Optional<OrderStatus> status) {
         try {
-            validatePaginationParameters(page, size);
+            globalServiceHelper.validatePaginationParameters(page, size);
 
             Sort sort = sortDir.equalsIgnoreCase("desc") ?
                     Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
@@ -211,7 +211,6 @@ public class OutgoingStockService {
             throw new ServiceException("Failed to retrieve outgoing stock data", e);
         }
     }
-
 
     private void validateOrderRequest(OrderRequestDto orderRequestDto) {
         if (orderRequestDto == null) {
@@ -308,12 +307,14 @@ public class OutgoingStockService {
         }
     }
 
-    private void validatePaginationParameters(int page, int size) {
-        if (page < 0) {
-            throw new IllegalArgumentException("Page number cannot be negative");
-        }
-        if (size <= 0 || size > 100) {
-            throw new IllegalArgumentException("Page size must be between 1 and 100");
+    // internal Helper methods
+    @Transactional(readOnly = true)
+    public Long getTotalValidOutgoingStockSize() {
+        try {
+            return orderRepository.getOutgoingValidStockSize();
+        } catch (Exception e) {
+            logger.error("OS (totalOutgoingStockSize): Error getting outgoing stock size - {}", e.getMessage());
+            throw new ServiceException("Failed to get total outgoing stock size", e);
         }
     }
 

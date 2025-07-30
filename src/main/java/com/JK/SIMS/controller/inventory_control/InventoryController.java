@@ -23,6 +23,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.file.AccessDeniedException;
 import java.util.Optional;
 
 @RestController
@@ -55,7 +56,7 @@ public class InventoryController {
     @PutMapping("/{orderId}/receive")
     public ResponseEntity<?> receiveIncomingStockOrder(@Valid @RequestBody ReceiveStockRequestDto receiveRequest,
                                                        @PathVariable Long orderId,
-                                                       @RequestHeader("Authorization") String token) throws BadRequestException {
+                                                       @RequestHeader("Authorization") String token) throws BadRequestException, AccessDeniedException {
         logger.info("IC: receiveIncomingStockOrder() calling...");
         if(SecurityUtils.hasAccess()) {
             if(token != null && !token.trim().isEmpty()) {
@@ -65,14 +66,14 @@ public class InventoryController {
             }
             throw new InvalidTokenException("IC: receiveIncomingStockOrder() Invalid Token provided.");
         }
-        throw new BadRequestException("IC: receiveIncomingStockOrder() You cannot perform the following operation.");
+        throw new AccessDeniedException("IC: receiveIncomingStockOrder() You cannot perform the following operation.");
     }
 
 
     // STOCK OUT button
     @PutMapping("/{orderId}/process-order")
     public ResponseEntity<?> processOrderRequest(@PathVariable Long orderId,
-                                                   @RequestHeader("Authorization") String token) throws BadRequestException {
+                                                   @RequestHeader("Authorization") String token) throws AccessDeniedException {
         logger.info("IC: processOrderedProduct() calling...");
         if(SecurityUtils.hasAccess()) {
             if(token != null && !token.trim().isEmpty()) {
@@ -82,13 +83,13 @@ public class InventoryController {
             }
             throw new InvalidTokenException("IC: processOrderedProduct() Invalid Token provided.");
         }
-        throw new BadRequestException("IC: processOrderedProduct() You cannot perform the following operation.");
+        throw new AccessDeniedException("IC: processOrderedProduct() You cannot perform the following operation.");
     }
 
     // CANCEL ORDER button
     @PutMapping("/{orderId}/cancel-order")
     public ResponseEntity<?> cancelOutgoingStockOrder(@PathVariable Long orderId,
-                                                      @RequestHeader("Authorization") String token) throws BadRequestException {
+                                                      @RequestHeader("Authorization") String token) throws AccessDeniedException {
         logger.info("IC: cancelOutgoingStockOrder() calling...");
         if(SecurityUtils.hasAccess()) {
             if(token != null && !token.trim().isEmpty()) {
@@ -98,7 +99,7 @@ public class InventoryController {
             }
             throw new InvalidTokenException("IC: cancelOutgoingStockOrder() Invalid Token provided.");
         }
-        throw new BadRequestException("IC: cancelOutgoingStockOrder() You cannot perform the following operation.");
+        throw new AccessDeniedException("IC: cancelOutgoingStockOrder() You cannot perform the following operation.");
     }
 
     // Used to update the IC levels.
@@ -122,7 +123,8 @@ public class InventoryController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size){
         logger.info("IC: searchOutgoingStock() calling...");
-        PaginatedResponse<OrderResponseDto> outgoingStockDTOList = outgoingStockService.searchOutgoingStock(text, page, size, Optional.of(OrderStatus.PENDING));
+        PaginatedResponse<OrderResponseDto> outgoingStockDTOList =
+                outgoingStockService.searchOutgoingStock(text, page, size, Optional.of(OrderStatus.PENDING));
         return ResponseEntity.ok(outgoingStockDTOList);
     }
 
@@ -141,12 +143,13 @@ public class InventoryController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         logger.info("IC: sortProductBy() calling with page {} and size {}...", page, size);
-        PaginatedResponse<OrderResponseDto> sortedDTOs = outgoingStockService.getAllOrdersSorted(page, size, sortBy, sortDirection, Optional.of(OrderStatus.PENDING));
+        PaginatedResponse<OrderResponseDto> sortedDTOs =
+                outgoingStockService.getAllOrdersSorted(page, size, sortBy, sortDirection, Optional.of(OrderStatus.PENDING));
         return ResponseEntity.ok(sortedDTOs);
     }
 
     @DeleteMapping("/{sku}")
-    public ResponseEntity<?> deleteProduct(@PathVariable String sku) throws BadRequestException {
+    public ResponseEntity<?> deleteProduct(@PathVariable String sku) throws BadRequestException, AccessDeniedException {
         if(SecurityUtils.hasAccess()) {
             if(sku == null || sku.trim().isEmpty()){
                 throw new BadRequestException("IC: deleteProduct() SKU cannot be empty");
@@ -156,7 +159,7 @@ public class InventoryController {
             ApiResponse response = icService.deleteProduct(sku);
             return ResponseEntity.ok(response);
         }
-        throw new BadRequestException("IC: deleteProduct() You cannot perform the following operation.");
+        throw new AccessDeniedException("IC: deleteProduct() You cannot perform the following operation.");
     }
 
 }

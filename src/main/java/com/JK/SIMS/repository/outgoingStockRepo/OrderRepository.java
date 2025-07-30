@@ -34,4 +34,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
        OR LOWER(o.orderReference) LIKE LOWER(CONCAT('%', :text, '%')))
 """)
     Page<Order> searchOutgoingStock(@Param("text") String text, @Param("status") OrderStatus status, Pageable pageable);
+
+    @Query(value = "SELECT COUNT(*) FROM orders WHERE status IN ('PROCESSING', 'SHIPPED')", nativeQuery = true)
+    Long getOutgoingValidStockSize();
+
 }
