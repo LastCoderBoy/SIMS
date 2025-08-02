@@ -7,6 +7,7 @@ import com.JK.SIMS.service.InventoryControl_service.totalItemsService.TotalItems
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,15 +20,13 @@ public class TotalItemsController {
     private static final Logger logger = LoggerFactory.getLogger(TotalItemsController.class);
 
     private final TotalItemsService totalItemsService;
-    private final InventoryControlService inventoryControlService;
-
-    public TotalItemsController(TotalItemsService totalItemsService, InventoryControlService inventoryControlService) {
+    @Autowired
+    public TotalItemsController(TotalItemsService totalItemsService) {
         this.totalItemsService = totalItemsService;
-        this.inventoryControlService = inventoryControlService;
     }
 
     @GetMapping
-    public ResponseEntity<?> getAllProducts(@RequestParam(defaultValue = "icProduct.pmProduct.name") String sortBy,
+    public ResponseEntity<?> getAllProducts(@RequestParam(defaultValue = "pmProduct.name") String sortBy,
                                             @RequestParam(defaultValue = "asc") String sortDirection,
                                             @RequestParam(defaultValue = "0") int page,
                                             @RequestParam(defaultValue = "10") int size){

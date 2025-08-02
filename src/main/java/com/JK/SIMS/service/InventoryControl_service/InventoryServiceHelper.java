@@ -32,7 +32,7 @@ public class InventoryServiceHelper {
         }
     }
 
-    protected static void nullCheckValidation(DamageLossDTORequest dto){
+    protected static void validateDamageLossDto(DamageLossDTORequest dto){
         List<String> errors = new ArrayList<>();
         if(dto != null){
             if(dto.sku() == null){

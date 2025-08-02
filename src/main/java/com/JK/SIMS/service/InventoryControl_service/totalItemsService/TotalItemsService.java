@@ -57,8 +57,10 @@ public class TotalItemsService {
             Page<InventoryData> inventoryPage = icRepository.findAll(pageable);
             return transformToPaginatedDTOResponse(inventoryPage);
         } catch (DataAccessException da){
+            logger.error("TotalItems (getInventoryDataDTOList): Failed to retrieve products due to database error: {}", da.getMessage(), da);
             throw new DatabaseException("TotalItems (getInventoryDataDTOList): Failed to retrieve products due to database error", da);
         } catch (Exception e){
+            logger.error("TotalItems (getInventoryDataDTOList): Failed to retrieve products: {}", e.getMessage(), e);
             throw new ServiceException("TotalItems (getInventoryDataDTOList): Failed to retrieve products", e);
         }
     }

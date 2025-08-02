@@ -216,13 +216,14 @@ public class InventoryControlService {
         }
     }
 
-    private InventoryData getInventoryDataBySku(String sku) throws BadRequestException {
+    // Helper methods.
+    @Transactional(readOnly = true)
+    public InventoryData getInventoryDataBySku(String sku) throws BadRequestException {
         return icRepository.findBySKU(sku)
                 .orElseThrow(() -> new BadRequestException(
                         "IC (updateProduct): No product with SKU " + sku + " found"));
     }
 
-    // Helper method.
     @Transactional(readOnly = true)
     public InventoryData getInventoryProductByProductId(String productId) {
         return icRepository.findByPmProduct_ProductID(productId)

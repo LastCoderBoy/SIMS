@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -44,5 +45,6 @@ public class DamageLoss {
     private LocalDateTime createdAt;
 
     @Column
-    private LocalDateTime updatedAt; //Only Admins can update
+    @UpdateTimestamp
+    private LocalDateTime updatedAt;
 }
