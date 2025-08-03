@@ -2,7 +2,7 @@ package com.JK.SIMS.models.IC_models.incoming;
 
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.supplier.Supplier;
-import com.JK.SIMS.service.GlobalServiceHelper;
+import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;

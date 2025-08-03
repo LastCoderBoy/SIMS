@@ -2,10 +2,10 @@ package com.JK.SIMS.service.InventoryControl_service;
 
 import com.JK.SIMS.exceptionHandler.*;
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.IC_models.InventoryData;
-import com.JK.SIMS.models.IC_models.InventoryDataStatus;
-import com.JK.SIMS.models.IC_models.InventoryMetrics;
-import com.JK.SIMS.models.IC_models.InventoryPageResponse;
+import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
+import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataStatus;
+import com.JK.SIMS.models.IC_models.inventoryData.InventoryMetrics;
+import com.JK.SIMS.models.IC_models.inventoryData.InventoryPageResponse;
 import com.JK.SIMS.models.IC_models.outgoing.OrderResponseDto;
 import com.JK.SIMS.models.IC_models.outgoing.OrderStatus;
 import com.JK.SIMS.models.PM_models.ProductCategories;
@@ -13,7 +13,6 @@ import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.IC_repo.IC_repository;
-import com.JK.SIMS.service.InventoryControl_service.outgoingStockService.OutgoingStockService;
 import com.JK.SIMS.service.incomingStock_service.IncomingStockService;
 import com.JK.SIMS.service.productManagement_service.ProductManagementService;
 import org.apache.coyote.BadRequestException;
@@ -28,7 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
-import static com.JK.SIMS.service.GlobalServiceHelper.amongInvalidStatus;
+import static com.JK.SIMS.service.utilities.GlobalServiceHelper.amongInvalidStatus;
 import static com.JK.SIMS.service.InventoryControl_service.InventoryServiceHelper.validateUpdateRequest;
 
 @Service
@@ -62,7 +61,7 @@ public class InventoryControlService {
             // Create the response object
             InventoryPageResponse inventoryPageResponse = new InventoryPageResponse(
                     metrics.getTotalCount(),
-                    metrics.getLowStockCount(),
+                    metrics.getLowStockCount(), // Checks against the VALID products only
                     incomingStockService.getTotalValidIncomingStockSize(),
                     outgoingStockService.getTotalValidOutgoingStockSize(),
                     damageLossService.getDamageLossMetrics().getTotalReport(),
@@ -156,8 +155,8 @@ public class InventoryControlService {
 
             // Update stock levels
             updateStockLevels(existingProduct,
-                    Optional.of(newInventoryData.getCurrentStock()),
-                    Optional.of(newInventoryData.getMinLevel()));
+                    Optional.ofNullable(newInventoryData.getCurrentStock()),
+                    Optional.ofNullable(newInventoryData.getMinLevel()));
 
             logger.info("IC (updateProduct): Product with SKU {} updated successfully", sku);
             return new ApiResponse(true, sku + " is updated successfully");
@@ -170,7 +169,7 @@ public class InventoryControlService {
             throw e;
         } catch (Exception ex) {
             logger.error("IC (updateProduct): Unexpected error while updating SKU {}: {}",
-                    sku, ex.getMessage());
+                    sku, ex.getMessage(), ex);
             throw new ServiceException("IC (updateProduct): Internal Service error", ex);
         }
     }

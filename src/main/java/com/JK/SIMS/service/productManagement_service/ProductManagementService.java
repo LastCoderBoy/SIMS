@@ -5,8 +5,8 @@ import com.JK.SIMS.exceptionHandler.ResourceNotFoundException;
 import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.IC_models.InventoryData;
-import com.JK.SIMS.models.IC_models.InventoryDataStatus;
+import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
+import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataStatus;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductManagementDTO;
 import com.JK.SIMS.models.PM_models.ProductStatus;
@@ -14,7 +14,7 @@ import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.PM_repo.PM_repository;
 import com.JK.SIMS.service.InventoryControl_service.InventoryControlService;
-import jakarta.servlet.ServletOutputStream;
+import com.JK.SIMS.service.utilities.ExcelReporterHelper;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.coyote.BadRequestException;
 import org.apache.poi.xssf.usermodel.XSSFRow;
@@ -34,11 +34,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
-import static com.JK.SIMS.service.GlobalServiceHelper.amongInvalidStatus;
+import static com.JK.SIMS.service.utilities.GlobalServiceHelper.amongInvalidStatus;
 import static com.JK.SIMS.service.productManagement_service.PMServiceHelper.*;
 
 @Service
@@ -393,14 +392,15 @@ public class ProductManagementService {
      * location, price, and status.
      *
      * @param response HttpServletResponse to write the Excel file to
-     * @param allProducts List of products to include in the report
      */
-    public void generatePMReport(HttpServletResponse response, List<ProductManagementDTO> allProducts) {
+    public void generatePMReport(HttpServletResponse response) {
         XSSFWorkbook workbook = new XSSFWorkbook();
         XSSFSheet sheet = workbook.createSheet("Product Management");
+        List<ProductManagementDTO> allProducts = getAllProducts();
         createHeaderRow(sheet);
         populateDataRows(sheet, allProducts);
-        writeWorkbookToResponse(response, workbook);
+        logger.info("PM (GeneratePmReport): Retrieved {} products from database for report generation.)", allProducts.size());
+        ExcelReporterHelper.writeWorkbookToResponse(response, workbook);
     }
 
     private void createHeaderRow(XSSFSheet sheet) {
@@ -424,16 +424,6 @@ public class ProductManagementService {
             rowForData.createCell(4).setCellValue(pm.getPrice().doubleValue());
             rowForData.createCell(5).setCellValue(pm.getStatus().toString());
             dataRowIndex++;
-        }
-    }
-
-    private void writeWorkbookToResponse(HttpServletResponse response, XSSFWorkbook workbook) {
-        try (ServletOutputStream outputStream = response.getOutputStream()) {
-            workbook.write(outputStream);
-            logger.info("PM (generatePMReport): Product Management report is downloaded with {} data size", workbook.getNumberOfSheets());
-            workbook.close();
-        } catch (IOException e) {
-            logger.error("PM (generatePMReport): Error writing Excel file", e);
         }
     }
 

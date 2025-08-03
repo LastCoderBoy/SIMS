@@ -1,18 +1,18 @@
-package com.JK.SIMS.service.InventoryControl_service.totalItemsService;
+package com.JK.SIMS.service.InventoryControl_service;
 
 import com.JK.SIMS.exceptionHandler.DatabaseException;
 import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
-import com.JK.SIMS.models.IC_models.InventoryData;
-import com.JK.SIMS.models.IC_models.InventoryDataDto;
-import com.JK.SIMS.models.IC_models.InventoryDataStatus;
-import com.JK.SIMS.models.PM_models.ProductManagementDTO;
+import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
+import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataDto;
+import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataStatus;
+import com.JK.SIMS.models.IC_models.inventoryData.inventorySpecification.InventorySpecification;
+import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.IC_repo.IC_repository;
-import com.JK.SIMS.service.GlobalServiceHelper;
-import jakarta.servlet.ServletOutputStream;
+import com.JK.SIMS.service.utilities.ExcelReporterHelper;
+import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import jakarta.servlet.http.HttpServletResponse;
-import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
@@ -23,13 +23,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+
+import static com.JK.SIMS.service.utilities.ExcelReporterHelper.*;
 
 @Service
 public class TotalItemsService {
@@ -38,15 +39,18 @@ public class TotalItemsService {
     private static final String DEFAULT_SORT_DIRECTION = "asc";
 
     private final GlobalServiceHelper globalServiceHelper;
-    private final IC_repository icRepository;
+    private final InventoryServiceHelper inventoryServiceHelper;
+    private final IC_repository icRepository; // We are working with the Inventory Products so that's why we need this repository
     @Autowired
-    public TotalItemsService(GlobalServiceHelper globalServiceHelper, IC_repository icRepository) {
+    public TotalItemsService(GlobalServiceHelper globalServiceHelper, InventoryServiceHelper inventoryServiceHelper, IC_repository icRepository) {
         this.globalServiceHelper = globalServiceHelper;
+        this.inventoryServiceHelper = inventoryServiceHelper;
         this.icRepository = icRepository;
     }
 
     public PaginatedResponse<InventoryDataDto> getPaginatedInventoryDto(String sortBy, String sortDirection, int page, int size) {
         try{
+            globalServiceHelper.validatePaginationParameters(page, size);
             // Parse sort direction
             Sort.Direction direction = sortDirection.equalsIgnoreCase("desc") ?
                     Sort.Direction.DESC : Sort.Direction.ASC;
@@ -55,7 +59,7 @@ public class TotalItemsService {
             Sort sort = Sort.by(direction, sortBy);
             Pageable pageable = PageRequest.of(page, size, sort);
             Page<InventoryData> inventoryPage = icRepository.findAll(pageable);
-            return transformToPaginatedDTOResponse(inventoryPage);
+            return inventoryServiceHelper.transformToPaginatedDTOResponse(inventoryPage);
         } catch (DataAccessException da){
             logger.error("TotalItems (getInventoryDataDTOList): Failed to retrieve products due to database error: {}", da.getMessage(), da);
             throw new DatabaseException("TotalItems (getInventoryDataDTOList): Failed to retrieve products due to database error", da);
@@ -70,10 +74,10 @@ public class TotalItemsService {
         try {
             Optional<String> inputText = Optional.ofNullable((text));
             if (inputText.isPresent() && !inputText.get().trim().isEmpty()) {
-                Pageable pageable = PageRequest.of(page, size, Sort.by("pmProduct.name").ascending());
+                Pageable pageable = PageRequest.of(page, size, Sort.by(DEFAULT_SORT_BY).ascending());
                 Page<InventoryData> inventoryData = icRepository.searchProducts(inputText.get().trim().toLowerCase(), pageable);
                 logger.info("TotalItems (searchProduct): {} products retrieved.", inventoryData.getContent().size());
-                return transformToPaginatedDTOResponse(inventoryData) ;
+                return inventoryServiceHelper.transformToPaginatedDTOResponse(inventoryData) ;
             }
             logger.info("TotalItems (searchProduct): No search text provided. Retrieving first page with default size.");
             return getPaginatedInventoryDto(DEFAULT_SORT_BY, DEFAULT_SORT_DIRECTION, page,size);
@@ -115,15 +119,25 @@ public class TotalItemsService {
                         default -> icRepository.findAll(pageable);
                     };
                 } else {
-                    // Use as a general search term
-                    resultPage = icRepository.findByGeneralFilter(filterBy.trim().toLowerCase(), pageable);
+                    boolean isStatusType = GlobalServiceHelper.isInEnum(filterBy.trim().toUpperCase(), InventoryDataStatus.class);
+                    Specification<InventoryData> specification;
+                    if(isStatusType){
+                        specification =
+                                Specification.where(InventorySpecification.hasStatus(
+                                        InventoryDataStatus.valueOf(filterBy.trim().toUpperCase())));
+                    }else {
+                        specification =
+                                Specification.where(InventorySpecification.hasProductCategory(
+                                        ProductCategories.valueOf(filterBy.trim().toUpperCase())));
+                    }
+                    resultPage = icRepository.findAll(specification, pageable);
                 }
             } else {
                 resultPage = icRepository.findAll(pageable);
             }
 
             logger.info("TotalItems (filterProducts): {} products retrieved.", resultPage.getContent().size());
-            return transformToPaginatedDTOResponse(resultPage);
+            return inventoryServiceHelper.transformToPaginatedDTOResponse(resultPage);
         } catch (IllegalArgumentException iae) {
             throw new ValidationException("TotalItems (filterProducts): Invalid filterBy value: " + iae.getMessage());
         } catch (DataAccessException da) {
@@ -136,25 +150,17 @@ public class TotalItemsService {
         }
     }
 
+    public void generateReport(HttpServletResponse response, String sortBy, String sortDirection) {
+        XSSFWorkbook workbook = new XSSFWorkbook();
+        XSSFSheet sheet = workbook.createSheet("All Inventory Products");
+        List<InventoryDataDto> allProducts = getAllInventoryProducts(sortBy, sortDirection);
+        createHeaderRowForInventoryDto(sheet);
+        populateDataRowsForInventoryDto(sheet, allProducts);
+        logger.info("TotalItems (generateReport): {} products retrieved.", allProducts.size());
+        writeWorkbookToResponse(response, workbook);
+    }
+
     // Helper methods
-
-    private PaginatedResponse<InventoryDataDto> transformToPaginatedDTOResponse(Page<InventoryData> inventoryPage){
-        PaginatedResponse<InventoryDataDto> dtoResponse = new PaginatedResponse<>();
-        dtoResponse.setContent(inventoryPage.getContent().stream().map(this::convertToDTO).toList());
-        dtoResponse.setTotalPages(inventoryPage.getTotalPages());
-        dtoResponse.setTotalElements(inventoryPage.getTotalElements());
-        logger.info("TotalItems (getInventoryDataDTOList): {} products retrieved.", inventoryPage.getContent().size());
-        return dtoResponse;
-    }
-
-    private InventoryDataDto convertToDTO(InventoryData currentProduct) {
-        InventoryDataDto inventoryDataDTO = new InventoryDataDto();
-        inventoryDataDTO.setInventoryData(currentProduct);
-        inventoryDataDTO.setProductName(currentProduct.getPmProduct().getName());
-        inventoryDataDTO.setCategory(currentProduct.getPmProduct().getCategory());
-        return inventoryDataDTO;
-    }
-
     public List<InventoryDataDto> getAllInventoryProducts(String sortBy, String sortDirection) {
         try {
             // Parse sort direction
@@ -166,63 +172,13 @@ public class TotalItemsService {
             List<InventoryData> inventoryList = icRepository.findAll(sort);
 
             // Convert to DTOs
-            return inventoryList.stream().map(this::convertToDTO).toList();
+            return inventoryList.stream().map(inventoryServiceHelper::convertToDTO).toList();
         } catch (DataAccessException da) {
+            logger.error("TotalItems (getAllInventoryData): Failed to retrieve products due to database error: {}", da.getMessage(), da);
             throw new DatabaseException("TotalItems (getAllInventoryData): Failed to retrieve products due to database error", da);
         } catch (Exception e) {
+            logger.error("TotalItems (getAllInventoryData): Failed to retrieve products: {}", e.getMessage(), e);
             throw new ServiceException("TotalItems (getAllInventoryData): Failed to retrieve products", e);
         }
     }
-
-    public void generateReport(HttpServletResponse response, String sortBy, String sortDirection) {
-        XSSFWorkbook workbook = new XSSFWorkbook();
-        XSSFSheet sheet = workbook.createSheet("All Inventory Products");
-        List<InventoryDataDto> allProducts = getAllInventoryProducts(sortBy, sortDirection);
-        createHeaderRow(sheet);
-        populateDataRows(sheet, allProducts);
-        writeWorkbookToResponse(response, workbook);
-    }
-
-    private void createHeaderRow(XSSFSheet sheet) {
-        XSSFRow row = sheet.createRow(0);
-        row.createCell(0).setCellValue("SKU");
-        row.createCell(1).setCellValue("Product ID");
-        row.createCell(2).setCellValue("Name");
-        row.createCell(3).setCellValue("Category");
-        row.createCell(4).setCellValue("Location");
-        row.createCell(5).setCellValue("Price");
-        row.createCell(6).setCellValue("Product Status");
-        row.createCell(7).setCellValue("Current Stock");
-        row.createCell(8).setCellValue("Minimum Stock");
-        row.createCell(9).setCellValue("Inventory Status");
-    }
-
-    private void populateDataRows(XSSFSheet sheet, List<InventoryDataDto> allProducts) {
-        int dataRowIndex = 1;
-        for (InventoryDataDto ic : allProducts) {
-            XSSFRow rowForData = sheet.createRow(dataRowIndex);
-            rowForData.createCell(0).setCellValue(ic.getInventoryData().getSKU());
-            rowForData.createCell(1).setCellValue(ic.getInventoryData().getPmProduct().getProductID());
-            rowForData.createCell(2).setCellValue(ic.getProductName());
-            rowForData.createCell(3).setCellValue(ic.getCategory().toString());
-            rowForData.createCell(4).setCellValue(ic.getInventoryData().getLocation() != null ? ic.getInventoryData().getLocation() : "");
-            rowForData.createCell(5).setCellValue(ic.getInventoryData().getPmProduct().getPrice().doubleValue());
-            rowForData.createCell(6).setCellValue(ic.getInventoryData().getPmProduct().getStatus().toString());
-            rowForData.createCell(7).setCellValue(ic.getInventoryData().getCurrentStock());
-            rowForData.createCell(8).setCellValue(ic.getInventoryData().getMinLevel());
-            rowForData.createCell(9).setCellValue(ic.getInventoryData().getStatus().toString());
-            dataRowIndex++;
-        }
-    }
-
-    private void writeWorkbookToResponse(HttpServletResponse response, XSSFWorkbook workbook) {
-        try (ServletOutputStream outputStream = response.getOutputStream()) {
-            workbook.write(outputStream);
-            logger.info("TotalItems (generateReport): Total Items report is downloaded with {} data size", workbook.getNumberOfSheets());
-            workbook.close();
-        } catch (IOException e) {
-            logger.error("PM (generateReport): Error writing Excel file", e);
-        }
-    }
-
 }

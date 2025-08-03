@@ -1,6 +1,6 @@
 package com.JK.SIMS.service.email_service;
 
-import com.JK.SIMS.models.IC_models.InventoryData;
+import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
 import com.JK.SIMS.repository.IC_repo.IC_repository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -19,7 +19,8 @@ public class LowStockScheduler {
         this.emailService = emailService;
     }
 
-    //@Scheduled(cron = "*/30 * * * * ?")
+
+//    @Scheduled(cron = "*/30 * * * * ?")
     @Scheduled(cron = "0 0 8 * * ?")
     public void sendDailyLowStockAlert() {
         List<InventoryData> lowStockProducts = icRepository.getLowStockItems();

@@ -8,7 +8,7 @@ import com.JK.SIMS.models.IC_models.incoming.IncomingStockResponseDto;
 import com.JK.SIMS.models.IC_models.incoming.IncomingStockStatus;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
-import com.JK.SIMS.service.TokenUtils;
+import com.JK.SIMS.service.utilities.TokenUtils;
 import com.JK.SIMS.service.incomingStock_service.IncomingStockService;
 import jakarta.validation.Valid;
 import org.apache.coyote.BadRequestException;
@@ -84,12 +84,14 @@ public class IncomingStockController {
     }
 
     @GetMapping("/filter")
-    public ResponseEntity<?> filterStock(
-            @RequestParam(required = false) IncomingStockStatus status,
-            @RequestParam(required = false) ProductCategories category,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        PaginatedResponse<IncomingStockResponseDto> filterResponse = incomingStockService.filterIncomingStock(status, category, page, size);
+    public ResponseEntity<?> filterStock(@RequestParam(required = false) IncomingStockStatus status,
+                                         @RequestParam(required = false) ProductCategories category,
+                                         @RequestParam(defaultValue = "product.name") String sortBy,
+                                         @RequestParam(defaultValue = "asc") String sortDirection,
+                                         @RequestParam(defaultValue = "0") int page,
+                                         @RequestParam(defaultValue = "10") int size) {
+        PaginatedResponse<IncomingStockResponseDto> filterResponse =
+                incomingStockService.filterIncomingStock(status, category, sortBy, sortDirection, page, size);
         logger.info("IS filterStock(): Returning {} paginated data", filterResponse.getContent().size());
         return ResponseEntity.ok(filterResponse);
     }

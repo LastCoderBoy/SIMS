@@ -5,9 +5,10 @@ import com.JK.SIMS.exceptionHandler.ResourceNotFoundException;
 import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.IC_models.InventoryData;
-import com.JK.SIMS.models.IC_models.InventoryDataStatus;
+import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
+import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataStatus;
 import com.JK.SIMS.models.IC_models.incoming.*;
+import com.JK.SIMS.models.IC_models.incoming.incomingSpecification.IncomingStockSpecification;
 import com.JK.SIMS.models.IC_models.incoming.token.ConfirmationToken;
 import com.JK.SIMS.models.IC_models.incoming.token.ConfirmationTokenStatus;
 import com.JK.SIMS.models.PM_models.ProductCategories;
@@ -16,7 +17,7 @@ import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.supplier.Supplier;
 import com.JK.SIMS.repository.IC_repo.IncomingStock_repository;
-import com.JK.SIMS.service.GlobalServiceHelper;
+import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import com.JK.SIMS.service.InventoryControl_service.InventoryControlService;
 import com.JK.SIMS.service.confirmTokenService.ConfirmationTokenService;
 import com.JK.SIMS.service.email_service.EmailService;
@@ -25,7 +26,6 @@ import com.JK.SIMS.service.supplier_service.SupplierService;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;
-import lombok.AllArgsConstructor;
 import org.apache.coyote.BadRequestException;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -215,8 +215,15 @@ public class IncomingStockService {
     }
 
     @Transactional(readOnly = true)
-    public PaginatedResponse<IncomingStockResponseDto> filterIncomingStock(IncomingStockStatus status, ProductCategories category, int page, int size){
-        Pageable pageable = PageRequest.of(page, size, Sort.by("lastUpdated"));
+    public PaginatedResponse<IncomingStockResponseDto> filterIncomingStock(IncomingStockStatus status, ProductCategories category,
+                                                                           String sortBy, String sortDirection, int page, int size){
+        // Parse sort direction
+        Sort.Direction direction = sortDirection.equalsIgnoreCase("desc") ?
+                Sort.Direction.DESC : Sort.Direction.ASC;
+
+        // Create sort
+        Sort sort = Sort.by(direction, sortBy);
+        Pageable pageable = PageRequest.of(page, size, sort);
 
         Specification<IncomingStock> spec = Specification
                 .where(IncomingStockSpecification.hasStatus(status))

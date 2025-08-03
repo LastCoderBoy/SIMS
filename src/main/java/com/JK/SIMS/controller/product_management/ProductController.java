@@ -115,9 +115,7 @@ public class ProductController {
         String headerValue = "attachment; filename=product.xlsx";
         response.setHeader(headerKey, headerValue);
         logger.info("PM: generatePMReport() calling...");
-
-        List<ProductManagementDTO> allProducts = pmService.getAllProducts();
-        pmService.generatePMReport(response, allProducts);
+        pmService.generatePMReport(response);
     }
 
 }

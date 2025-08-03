@@ -1,19 +1,16 @@
-package com.JK.SIMS.service.InventoryControl_service.outgoingStockService;
+package com.JK.SIMS.service.InventoryControl_service;
 
 import com.JK.SIMS.exceptionHandler.*;
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.IC_models.InventoryData;
 import com.JK.SIMS.models.IC_models.outgoing.*;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.outgoingStockRepo.OrderItemRepository;
 import com.JK.SIMS.repository.outgoingStockRepo.OrderRepository;
-import com.JK.SIMS.service.GlobalServiceHelper;
-import com.JK.SIMS.service.InventoryControl_service.InventoryControlService;
+import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import com.JK.SIMS.service.productManagement_service.ProductManagementService;
 import jakarta.validation.ConstraintViolationException;
-import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

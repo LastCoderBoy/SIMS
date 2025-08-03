@@ -5,7 +5,7 @@ import com.JK.SIMS.models.IC_models.incoming.IncomingStockStatus;
 import com.JK.SIMS.models.IC_models.incoming.token.ConfirmationToken;
 import com.JK.SIMS.models.IC_models.incoming.token.ConfirmationTokenStatus;
 import com.JK.SIMS.repository.confirmationTokenRepo.ConfirmationTokenRepository;
-import com.JK.SIMS.service.GlobalServiceHelper;
+import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import com.JK.SIMS.service.incomingStock_service.IncomingStockHelper;
 import lombok.AllArgsConstructor;
 import org.slf4j.Logger;

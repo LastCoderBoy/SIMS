@@ -2,7 +2,7 @@ package com.JK.SIMS.config;
 
 import com.JK.SIMS.config.secFilter.JWTFilter;
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.service.UserDetailsServiceImpl;
+import com.JK.SIMS.service.userManagement_service.UserDetailsServiceImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;

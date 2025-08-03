@@ -1,4 +1,4 @@
-package com.JK.SIMS.models.IC_models;
+package com.JK.SIMS.models.IC_models.inventoryData;
 
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import jakarta.persistence.*;

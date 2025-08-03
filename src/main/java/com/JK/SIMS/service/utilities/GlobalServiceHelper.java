@@ -1,8 +1,7 @@
-package com.JK.SIMS.service;
+package com.JK.SIMS.service.utilities;
 
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.service.userManagement_service.JWTService;
-import lombok.AllArgsConstructor;
 import org.apache.coyote.BadRequestException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -44,6 +43,15 @@ public class GlobalServiceHelper {
         }
         if (size <= 0 || size > 100) {
             throw new IllegalArgumentException("Page size must be between 1 and 100");
+        }
+    }
+
+    public static <T extends Enum<T>> boolean isInEnum(String value, Class<T> enumClass) {
+        try {
+            Enum.valueOf(enumClass, value);
+            return true;
+        } catch (IllegalArgumentException ex) {
+            return false;
         }
     }
 }

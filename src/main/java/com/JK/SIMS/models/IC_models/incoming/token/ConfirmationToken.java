@@ -1,6 +1,5 @@
 package com.JK.SIMS.models.IC_models.incoming.token;
 
-import com.JK.SIMS.models.IC_models.InventoryDataStatus;
 import com.JK.SIMS.models.IC_models.incoming.IncomingStock;
 import jakarta.persistence.*;
 import lombok.Data;

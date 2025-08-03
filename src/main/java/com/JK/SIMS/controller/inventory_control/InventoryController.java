@@ -4,15 +4,15 @@ package com.JK.SIMS.controller.inventory_control;
 import com.JK.SIMS.config.SecurityUtils;
 import com.JK.SIMS.exceptionHandler.InvalidTokenException;
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.IC_models.InventoryData;
-import com.JK.SIMS.models.IC_models.InventoryPageResponse;
+import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
+import com.JK.SIMS.models.IC_models.inventoryData.InventoryPageResponse;
 import com.JK.SIMS.models.IC_models.incoming.ReceiveStockRequestDto;
 import com.JK.SIMS.models.IC_models.outgoing.OrderResponseDto;
 import com.JK.SIMS.models.IC_models.outgoing.OrderStatus;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryControl_service.InventoryControlService;
-import com.JK.SIMS.service.InventoryControl_service.outgoingStockService.OutgoingStockService;
-import com.JK.SIMS.service.TokenUtils;
+import com.JK.SIMS.service.InventoryControl_service.OutgoingStockService;
+import com.JK.SIMS.service.utilities.TokenUtils;
 import com.JK.SIMS.service.incomingStock_service.IncomingStockService;
 import jakarta.validation.Valid;
 import org.apache.coyote.BadRequestException;
@@ -129,7 +129,7 @@ public class InventoryController {
     }
 
     /**
-     * Filter products based on current stock, location, and status.
+     * Sort products based on current stock, location, and status.
      * @param sortBy Field to sort by
      * @param sortDirection Sort direction (asc/desc)
      * @param page requested page number (zero-based)

@@ -1,6 +1,5 @@
 package com.JK.SIMS.repository.outgoingStockRepo;
 
-import com.JK.SIMS.models.IC_models.InventoryData;
 import com.JK.SIMS.models.IC_models.outgoing.Order;
 import com.JK.SIMS.models.IC_models.outgoing.OrderStatus;
 import org.springframework.data.domain.Page;
@@ -9,7 +8,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.List;
 import java.util.Optional;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {

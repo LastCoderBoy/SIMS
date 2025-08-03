@@ -1,5 +1,7 @@
-package com.JK.SIMS.models.IC_models.incoming;
+package com.JK.SIMS.models.IC_models.incoming.incomingSpecification;
 
+import com.JK.SIMS.models.IC_models.incoming.IncomingStock;
+import com.JK.SIMS.models.IC_models.incoming.IncomingStockStatus;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import jakarta.persistence.criteria.Join;

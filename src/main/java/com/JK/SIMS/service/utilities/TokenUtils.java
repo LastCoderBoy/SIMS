@@ -1,4 +1,4 @@
-package com.JK.SIMS.service;
+package com.JK.SIMS.service.utilities;
 
 import com.JK.SIMS.exceptionHandler.InvalidTokenException;
 

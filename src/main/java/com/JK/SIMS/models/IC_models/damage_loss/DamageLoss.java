@@ -1,7 +1,6 @@
 package com.JK.SIMS.models.IC_models.damage_loss;
 
-import com.JK.SIMS.models.IC_models.InventoryData;
-import com.JK.SIMS.models.PM_models.ProductsForPM;
+import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;

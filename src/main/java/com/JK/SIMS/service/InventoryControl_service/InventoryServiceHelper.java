@@ -1,14 +1,22 @@
 package com.JK.SIMS.service.InventoryControl_service;
 
 import com.JK.SIMS.exceptionHandler.ValidationException;
-import com.JK.SIMS.models.IC_models.InventoryData;
-import com.JK.SIMS.models.IC_models.InventoryDataStatus;
-import com.JK.SIMS.models.IC_models.damage_loss.DamageLossDTORequest;
+import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
+import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataDto;
+import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataStatus;
+import com.JK.SIMS.models.PaginatedResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
 
+@Component
 public class InventoryServiceHelper {
+
+    private static final Logger logger = LoggerFactory.getLogger(InventoryServiceHelper.class);
 
     protected static void validateUpdateRequest(InventoryData newInventoryData) {
         List<String> errors = new ArrayList<>();
@@ -32,33 +40,28 @@ public class InventoryServiceHelper {
         }
     }
 
-    protected static void validateDamageLossDto(DamageLossDTORequest dto){
-        List<String> errors = new ArrayList<>();
-        if(dto != null){
-            if(dto.sku() == null){
-                errors.add("SKU cannot be null.");
-            }
-            if(dto.quantityLost() == null){
-                errors.add("Lost quantity cannot be null.");
-            }
-            if(dto.reason() == null){
-                errors.add("Reason cannot be null.");
-            }
-        }
-        if(dto == null){
-            throw new ValidationException("DL (addDamageLoss): DTO cannot be null.");
-        }
-
-        if(!errors.isEmpty()){
-            throw new ValidationException(errors);
-        }
-    }
-
     protected static void updateInventoryStatus(InventoryData product) {
         if (product.getCurrentStock() <= product.getMinLevel()) {
             product.setStatus(InventoryDataStatus.LOW_STOCK);
         } else {
             product.setStatus(InventoryDataStatus.IN_STOCK);
         }
+    }
+
+    public PaginatedResponse<InventoryDataDto> transformToPaginatedDTOResponse(Page<InventoryData> inventoryPage){
+        PaginatedResponse<InventoryDataDto> dtoResponse = new PaginatedResponse<>();
+        dtoResponse.setContent(inventoryPage.getContent().stream().map(this::convertToDTO).toList());
+        dtoResponse.setTotalPages(inventoryPage.getTotalPages());
+        dtoResponse.setTotalElements(inventoryPage.getTotalElements());
+        logger.info("TotalItems (getInventoryDataDTOList): {} products retrieved.", inventoryPage.getContent().size());
+        return dtoResponse;
+    }
+
+    public InventoryDataDto convertToDTO(InventoryData currentProduct) {
+        InventoryDataDto inventoryDataDTO = new InventoryDataDto();
+        inventoryDataDTO.setInventoryData(currentProduct);
+        inventoryDataDTO.setProductName(currentProduct.getPmProduct().getName());
+        inventoryDataDTO.setCategory(currentProduct.getPmProduct().getCategory());
+        return inventoryDataDTO;
     }
 }

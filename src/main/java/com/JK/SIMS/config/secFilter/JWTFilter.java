@@ -1,8 +1,8 @@
 package com.JK.SIMS.config.secFilter;
 
 import com.JK.SIMS.exceptionHandler.JwtAuthenticationException;
-import com.JK.SIMS.service.TokenUtils;
-import com.JK.SIMS.service.UserDetailsServiceImpl;
+import com.JK.SIMS.service.utilities.TokenUtils;
+import com.JK.SIMS.service.userManagement_service.UserDetailsServiceImpl;
 import com.JK.SIMS.service.userManagement_service.JWTService;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -10,6 +10,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;

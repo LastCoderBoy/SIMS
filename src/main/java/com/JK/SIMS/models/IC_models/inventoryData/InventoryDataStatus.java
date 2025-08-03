@@ -1,4 +1,4 @@
-package com.JK.SIMS.models.IC_models;
+package com.JK.SIMS.models.IC_models.inventoryData;
 
 public enum InventoryDataStatus {
     INCOMING,

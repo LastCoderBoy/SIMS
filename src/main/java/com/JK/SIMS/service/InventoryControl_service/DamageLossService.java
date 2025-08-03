@@ -4,7 +4,7 @@ import com.JK.SIMS.exceptionHandler.DatabaseException;
 import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.IC_models.InventoryData;
+import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
 import com.JK.SIMS.models.IC_models.damage_loss.*;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.IC_repo.DamageLoss_repository;
@@ -25,6 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -67,7 +69,7 @@ public class DamageLossService {
     @Transactional
     public void addDamageLoss(DamageLossDTORequest dtoRequest, String jwtToken) {
         try {
-            InventoryServiceHelper.validateDamageLossDto(dtoRequest);
+            validateDamageLossDto(dtoRequest);
 
             InventoryData inventoryProduct =
                     inventoryControlService.getInventoryDataBySku(dtoRequest.sku());
@@ -220,6 +222,28 @@ public class DamageLossService {
     public DamageLoss getDamageLossById(Integer id) throws BadRequestException {
         return damageLoss_repository.findById(id)
                 .orElseThrow(() -> new BadRequestException("DL (getDamageLossById): Report not found for ID: " + id));
+    }
+
+    private void validateDamageLossDto(DamageLossDTORequest dto){
+        List<String> errors = new ArrayList<>();
+        if(dto != null){
+            if(dto.sku() == null){
+                errors.add("SKU cannot be null.");
+            }
+            if(dto.quantityLost() == null){
+                errors.add("Lost quantity cannot be null.");
+            }
+            if(dto.reason() == null){
+                errors.add("Reason cannot be null.");
+            }
+        }
+        if(dto == null){
+            throw new ValidationException("DL (addDamageLoss): DTO cannot be null.");
+        }
+
+        if(!errors.isEmpty()){
+            throw new ValidationException(errors);
+        }
     }
 
     private void validateStockInput(InventoryData inventoryProduct, Integer lostQuantity){

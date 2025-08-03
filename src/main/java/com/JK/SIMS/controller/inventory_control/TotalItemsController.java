@@ -1,9 +1,8 @@
 package com.JK.SIMS.controller.inventory_control;
 
-import com.JK.SIMS.models.IC_models.InventoryDataDto;
+import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataDto;
 import com.JK.SIMS.models.PaginatedResponse;
-import com.JK.SIMS.service.InventoryControl_service.InventoryControlService;
-import com.JK.SIMS.service.InventoryControl_service.totalItemsService.TotalItemsService;
+import com.JK.SIMS.service.InventoryControl_service.TotalItemsService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,7 +60,7 @@ public class TotalItemsController {
     // Export to Excel
     @GetMapping("/report")
     public void generateReport(HttpServletResponse response,
-                               @RequestParam(defaultValue = "pmProduct.name") String sortBy,
+                               @RequestParam(defaultValue = "pmProduct.productID") String sortBy,
                                @RequestParam(defaultValue = "asc") String sortDirection) {
         logger.info("TotalItemsController: generateReport() calling...");
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
