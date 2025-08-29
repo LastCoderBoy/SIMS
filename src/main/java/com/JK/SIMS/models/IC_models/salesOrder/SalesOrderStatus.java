@@ -1,6 +1,6 @@
-package com.JK.SIMS.models.IC_models.outgoing;
+package com.JK.SIMS.models.IC_models.salesOrder;
 
-public enum OrderStatus {
+public enum SalesOrderStatus {
     PENDING,    // When the Sales order is created will be on this status, until confirmed
     PROCESSING, // After PENDING.
     SHIPPED,

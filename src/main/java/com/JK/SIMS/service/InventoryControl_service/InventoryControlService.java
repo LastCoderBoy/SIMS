@@ -6,14 +6,14 @@ import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataStatus;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryMetrics;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryPageResponse;
-import com.JK.SIMS.models.IC_models.outgoing.OrderResponseDto;
-import com.JK.SIMS.models.IC_models.outgoing.OrderStatus;
+import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderResponseDto;
+import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.IC_repo.IC_repository;
-import com.JK.SIMS.service.incomingStock_service.IncomingStockService;
+import com.JK.SIMS.service.purchaseOrderService.PurchaseOrderService;
 import com.JK.SIMS.service.productManagement_service.ProductManagementService;
 import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
@@ -36,17 +36,17 @@ public class InventoryControlService {
 
     private final IC_repository icRepository;
     private final ProductManagementService pmService;
-    private final OutgoingStockService outgoingStockService;
+    private final SalesOrderService salesOrderService;
     private final DamageLossService damageLossService;
-    private final IncomingStockService incomingStockService;
+    private final PurchaseOrderService purchaseOrderService;
     @Autowired
-    public InventoryControlService(IC_repository icRepository, @Lazy ProductManagementService pmService, @Lazy OutgoingStockService outgoingStockService,
-                                   DamageLossService damageLossService, @Lazy IncomingStockService incomingStockService) {
+    public InventoryControlService(IC_repository icRepository, @Lazy ProductManagementService pmService, @Lazy SalesOrderService salesOrderService,
+                                   DamageLossService damageLossService, @Lazy PurchaseOrderService purchaseOrderService) {
         this.icRepository = icRepository;
         this.pmService = pmService;
-        this.outgoingStockService = outgoingStockService;
+        this.salesOrderService = salesOrderService;
         this.damageLossService = damageLossService;
-        this.incomingStockService = incomingStockService;
+        this.purchaseOrderService = purchaseOrderService;
     }
 
     @Transactional(readOnly = true)
@@ -55,15 +55,15 @@ public class InventoryControlService {
             InventoryMetrics metrics = icRepository.getInventoryMetrics();
 
             // Used to represent at the end of the page
-            PaginatedResponse<OrderResponseDto> allPendingOrderDtos =
-                    outgoingStockService.getAllOrdersSorted(page, size, "orderDate", "desc", Optional.of(OrderStatus.PENDING));
+            PaginatedResponse<SalesOrderResponseDto> allPendingOrderDtos =
+                    salesOrderService.getAllSalesOrdersSorted(page, size, "orderDate", "desc", Optional.of(SalesOrderStatus.PENDING));
 
             // Create the response object
             InventoryPageResponse inventoryPageResponse = new InventoryPageResponse(
                     metrics.getTotalCount(),
                     metrics.getLowStockCount(), // Checks against the VALID products only
-                    incomingStockService.getTotalValidIncomingStockSize(),
-                    outgoingStockService.getTotalValidOutgoingStockSize(),
+                    purchaseOrderService.getTotalValidPoSize(),
+                    salesOrderService.getTotalValidOutgoingStockSize(),
                     damageLossService.getDamageLossMetrics().getTotalReport(),
                     allPendingOrderDtos
             );
@@ -114,34 +114,6 @@ public class InventoryControlService {
             throw new ServiceException("IC: Unexpected error occurred while adding product", e);
         }
     }
-
-
-
-    private String generateSKU(String productID, ProductCategories category){
-        try {
-            if (productID == null || productID.length() < 4) {
-                throw new IllegalArgumentException("Product ID must be at least 4 characters (e.g., PRD001)");
-            }
-            if (category == null) {
-                throw new IllegalArgumentException("Category cannot be null");
-            }
-
-            String lastDigits = productID.substring(3);
-            String categoryStart = category.toString().substring(0, 3);
-            return categoryStart + "-" + lastDigits;
-        }
-        catch (IllegalArgumentException iae) {
-            logger.error("IC: Invalid input for SKU generation - productID: {}, category: {}: {}",
-                    productID, category, iae.getMessage());
-            throw new InventoryException("IC: Invalid product ID or category for SKU generation", iae);
-        }
-        catch (StringIndexOutOfBoundsException sioobe) {
-            logger.error("IC: SKU generation failed due to malformed productID {} or category {}: {}",
-                    productID, category, sioobe.getMessage());
-            throw new InventoryException("IC: Malformed product ID or category for SKU generation", sioobe);
-        }
-    }
-
 
     // Only currentStock and minLevel can be updated in the IC section
     @Transactional
@@ -224,9 +196,8 @@ public class InventoryControlService {
     }
 
     @Transactional(readOnly = true)
-    public InventoryData getInventoryProductByProductId(String productId) {
-        return icRepository.findByPmProduct_ProductID(productId)
-                .orElseThrow(() -> new ResourceNotFoundException("IC (getInventoryProductByProductId): Inventory Data Not Found"));
+    public Optional<InventoryData> getInventoryProductByProductId(String productId) {
+        return icRepository.findByPmProduct_ProductID(productId);
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
@@ -345,6 +316,46 @@ public class InventoryControlService {
         } catch (DataAccessException e) {
             logger.error("IC (releaseReservation): Database error - {}", e.getMessage());
             throw new DatabaseException("Failed to release reservation", e);
+        }
+    }
+
+    @Transactional
+    public void updateInventoryStatus(Optional<InventoryData> productInIcOpt, InventoryDataStatus status) {
+        if (productInIcOpt.isPresent()) {
+            InventoryData product = productInIcOpt.get();
+            product.setStatus(status);
+            try {
+                icRepository.save(product);
+            } catch (Exception e) {
+                logger.error("IC(updateInventoryStatus): Failed to update inventory data status: {}", String.valueOf(e));
+                throw new ServiceException("IC(updateInventoryStatus): Error updating inventory status", e);
+            }
+        }
+    }
+
+
+    private String generateSKU(String productID, ProductCategories category){
+        try {
+            if (productID == null || productID.length() < 4) {
+                throw new IllegalArgumentException("Product ID must be at least 4 characters (e.g., PRD001)");
+            }
+            if (category == null) {
+                throw new IllegalArgumentException("Category cannot be null");
+            }
+
+            String lastDigits = productID.substring(3);
+            String categoryStart = category.toString().substring(0, 3);
+            return categoryStart + "-" + lastDigits;
+        }
+        catch (IllegalArgumentException iae) {
+            logger.error("IC: Invalid input for SKU generation - productID: {}, category: {}: {}",
+                    productID, category, iae.getMessage());
+            throw new InventoryException("IC: Invalid product ID or category for SKU generation", iae);
+        }
+        catch (StringIndexOutOfBoundsException sioobe) {
+            logger.error("IC: SKU generation failed due to malformed productID {} or category {}: {}",
+                    productID, category, sioobe.getMessage());
+            throw new InventoryException("IC: Malformed product ID or category for SKU generation", sioobe);
         }
     }
 

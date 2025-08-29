@@ -1,7 +1,7 @@
 package com.JK.SIMS.service.email_service;
 
-import com.JK.SIMS.models.IC_models.incoming.IncomingStock;
-import com.JK.SIMS.models.IC_models.incoming.token.ConfirmationToken;
+import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
+import com.JK.SIMS.models.IC_models.purchaseOrder.token.ConfirmationToken;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
@@ -52,7 +52,7 @@ public class EmailService {
     }
 
     @Async
-    public void sendOrderRequest(String supplierEmail, IncomingStock order, ConfirmationToken confirmationToken) {
+    public void sendPurchaseOrderRequest(String supplierEmail, PurchaseOrder order, ConfirmationToken confirmationToken) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8"); // true for multipart (HTML content)
@@ -72,10 +72,10 @@ public class EmailService {
 
     /**
      * Builds the HTML content for the purchase order request email.
-     * @param order The IncomingStock entity containing order details.
+     * @param order The PurchaseOrder entity containing order details.
      * @return HTML string for the email body.
      */
-    private String buildOrderRequestHtml(IncomingStock order, ConfirmationToken confirmationToken) {
+    private String buildOrderRequestHtml(PurchaseOrder order, ConfirmationToken confirmationToken) {
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
         String productName = order.getProduct().getName();
@@ -122,7 +122,7 @@ public class EmailService {
                 + "<p>This email serves as a formal purchase order request for the following item:</p>"
                 + "<table class='detail-table'>"
                 + "<tr><th>PO Number:</th><td>" + poNumber + "</td></tr>"
-                + "<tr><th>Order Date:</th><td>" + orderDate.format(dateFormatter) + "</td></tr>"
+                + "<tr><th>Purchase Order Date:</th><td>" + orderDate.format(dateFormatter) + "</td></tr>"
                 + "<tr><th>Expected Arrival:</th><td>" + expectedArrivalDate.format(dateFormatter) + "</td></tr>"
                 + "<tr><th>Product Name:</th><td>" + productName + "</td></tr>"
                 + "<tr><th>Product Category:</th><td>" + productCategory + "</td></tr>"
@@ -132,8 +132,8 @@ public class EmailService {
                 + "<p>Please review the details above and confirm or cancel the order using the buttons below:</p>"
                 + "<p>The button links will expire within a day.</p>"
                 + "<div class='button-container'>"
-                + "<a href=\"" + confirmUrl + "\" class=\"button confirm\">Confirm Order</a>"
-                + "<a href=\"" + cancelUrl + "\" class=\"button cancel\">Cancel Order</a>"
+                + "<a href=\"" + confirmUrl + "\" class=\"button confirm\">Confirm SalesOrder</a>"
+                + "<a href=\"" + cancelUrl + "\" class=\"button cancel\">Cancel SalesOrder</a>"
                 + "</div>"
                 + "<p>If you have any questions or require further information, please do not hesitate to contact us.</p>"
                 + "</div>"

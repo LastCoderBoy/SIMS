@@ -1,4 +1,4 @@
-package com.JK.SIMS.service.incomingStock_service;
+package com.JK.SIMS.service.purchaseOrderService;
 
 import com.JK.SIMS.exceptionHandler.DatabaseException;
 import com.JK.SIMS.exceptionHandler.ResourceNotFoundException;
@@ -7,16 +7,16 @@ import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataStatus;
-import com.JK.SIMS.models.IC_models.incoming.*;
-import com.JK.SIMS.models.IC_models.incoming.incomingSpecification.IncomingStockSpecification;
-import com.JK.SIMS.models.IC_models.incoming.token.ConfirmationToken;
-import com.JK.SIMS.models.IC_models.incoming.token.ConfirmationTokenStatus;
+import com.JK.SIMS.models.IC_models.purchaseOrder.*;
+import com.JK.SIMS.models.IC_models.purchaseOrder.purchaseOrderSpec.PurchaseOrderSpecification;
+import com.JK.SIMS.models.IC_models.purchaseOrder.token.ConfirmationToken;
+import com.JK.SIMS.models.IC_models.purchaseOrder.token.ConfirmationTokenStatus;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.supplier.Supplier;
-import com.JK.SIMS.repository.IC_repo.IncomingStock_repository;
+import com.JK.SIMS.repository.IC_repo.PurchaseOrderRepository;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import com.JK.SIMS.service.InventoryControl_service.InventoryControlService;
 import com.JK.SIMS.service.confirmTokenService.ConfirmationTokenService;
@@ -50,16 +50,16 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static com.JK.SIMS.service.incomingStock_service.IncomingStockHelper.buildConfirmationPage;
+import static com.JK.SIMS.service.purchaseOrderService.PurchaseOrderHelper.buildConfirmationPage;
 
 @Service
-public class IncomingStockService {
+public class PurchaseOrderService {
 
-    private static final Logger logger = LoggerFactory.getLogger(IncomingStockService.class);
+    private static final Logger logger = LoggerFactory.getLogger(PurchaseOrderService.class);
     private static final int MAX_PO_GENERATION_RETRIES = 5;
     private final Clock clock;
 
-    private final IncomingStock_repository incomingStockRepository;
+    private final PurchaseOrderRepository purchaseOrderRepository;
 
     private final GlobalServiceHelper globalServiceHelper;
     private final SupplierService supplierService;
@@ -68,11 +68,11 @@ public class IncomingStockService {
     private final InventoryControlService inventoryControlService;
     private final ConfirmationTokenService confirmationTokenService;
     @Autowired
-    public IncomingStockService(Clock clock, IncomingStock_repository incomingStockRepository, GlobalServiceHelper globalServiceHelper,
+    public PurchaseOrderService(Clock clock, PurchaseOrderRepository purchaseOrderRepository, GlobalServiceHelper globalServiceHelper,
                                 SupplierService supplierService, EmailService emailService, ProductManagementService pmService,
                                 @Lazy InventoryControlService inventoryControlService, ConfirmationTokenService confirmationTokenService) {
         this.clock = clock;
-        this.incomingStockRepository = incomingStockRepository;
+        this.purchaseOrderRepository = purchaseOrderRepository;
         this.globalServiceHelper = globalServiceHelper;
         this.supplierService = supplierService;
         this.emailService = emailService;
@@ -82,14 +82,12 @@ public class IncomingStockService {
     }
 
     @Transactional
-    public void createPurchaseOrder(@Valid IncomingStockRequestDto stockRequest, String jwtToken) throws BadRequestException {
+    public void createPurchaseOrder(@Valid PurchaseOrderRequestDto stockRequest, String jwtToken) throws BadRequestException {
         try {
             String orderedPerson = globalServiceHelper.validateAndExtractUser(jwtToken);
             ProductsForPM orderedProduct = validateAndGetProduct(stockRequest.getProductId());
-            handleInventoryStatusUpdates(orderedProduct);
-            IncomingStock order = createOrderEntity(stockRequest, orderedProduct, orderedPerson);
+            PurchaseOrder order = createOrderEntity(stockRequest, orderedProduct, orderedPerson);
             savePurchaseOrder(order);
-
             logger.info("IS (createPurchaseOrder): Product ordered successfully. PO Number: {}", order.getPONumber());
         } catch (DataIntegrityViolationException de) {
             throw new DatabaseException("IS (createPurchaseOrder): Failed to create incoming stock due to PO Number collision. Please try again.");
@@ -110,7 +108,7 @@ public class IncomingStockService {
             String updatedPerson = globalServiceHelper.validateAndExtractUser(jwtToken);
             validateOrderId(orderId); // check against null, throws an exception
 
-            IncomingStock order = getIncomingStockOrderById(orderId);
+            PurchaseOrder order = getIncomingStockOrderById(orderId);
 
             if(order.isFinalized()){
                 throw new ValidationException("IS (receiveIncomingStock): Cannot receive stock for finalized order");
@@ -135,11 +133,11 @@ public class IncomingStockService {
     }
 
     @Transactional(readOnly = true)
-    public PaginatedResponse<IncomingStockResponseDto> getAllIncomingStockRecords(int page, int size) {
+    public PaginatedResponse<PurchaseOrderResponseDto> getAllIncomingStockRecords(int page, int size) {
         try {
             Pageable pageable = PageRequest.of(page, size, Sort.by("product.name"));
-            Page<IncomingStock> entityResponse = incomingStockRepository.findAll(pageable);
-            PaginatedResponse<IncomingStockResponseDto> dtoResponse = transformToPaginatedDto(entityResponse);
+            Page<PurchaseOrder> entityResponse = purchaseOrderRepository.findAll(pageable);
+            PaginatedResponse<PurchaseOrderResponseDto> dtoResponse = transformToPaginatedDto(entityResponse);
             logger.info("IS (getAllIncomingStock): Returning {} paginated data", dtoResponse.getContent().size());
             return dtoResponse;
         }catch (DataAccessException da){
@@ -155,26 +153,26 @@ public class IncomingStockService {
             validateOrderId(orderId); // check against null, throws an exception
             String user = globalServiceHelper.validateAndExtractUser(jwtToken);
 
-            IncomingStock incomingStock = getIncomingStockOrderById(orderId);
+            PurchaseOrder purchaseOrder = getIncomingStockOrderById(orderId);
 
             // Cancellation only allowed if not already received or failed  
-            if (incomingStock.isFinalized()) {
-                throw new ValidationException("IS (cancelIncomingStock): Cannot cancel an incoming stock record with status: " + incomingStock.getStatus());
+            if (purchaseOrder.isFinalized()) {
+                throw new ValidationException("IS (cancelIncomingStock): Cannot cancel an incoming stock record with status: " + purchaseOrder.getStatus());
             }
 
-            incomingStock.setStatus(IncomingStockStatus.CANCELLED);
-            incomingStock.setUpdatedBy(user);
+            purchaseOrder.setStatus(PurchaseOrderStatus.CANCELLED);
+            purchaseOrder.setUpdatedBy(user);
 
             // Return back the Product Management section into the previous state
-            updateProductManagementStatus(incomingStock.getProduct());
+            updateProductManagementStatus(purchaseOrder.getProduct());
 
             // Return back the Inventory Control into the previous state
-            InventoryData inventoryProductOpt =
-                    inventoryControlService.getInventoryProductByProductId(incomingStock.getProduct().getProductID());
+            Optional<InventoryData> inventoryProductOpt =
+                    inventoryControlService.getInventoryProductByProductId(purchaseOrder.getProduct().getProductID());
             handleActiveStatusUpdate(inventoryProductOpt);
 
-            incomingStockRepository.save(incomingStock);
-            logger.info("IS (cancelIncomingStock): Order cancelled successfully. PO Number: {}", incomingStock.getPONumber());
+            purchaseOrderRepository.save(purchaseOrder);
+            logger.info("IS (cancelIncomingStock): SalesOrder cancelled successfully. PO Number: {}", purchaseOrder.getPONumber());
             return new ApiResponse(true, "The order cancelled successfully.");
         } catch (DataAccessException e) {
             logger.error("IS (cancelIncomingStock): Database error while cancelling order", e);
@@ -189,21 +187,21 @@ public class IncomingStockService {
     }
 
     @Transactional(readOnly = true)
-    public IncomingStock getIncomingStockOrderById(Long orderId) {
-        return incomingStockRepository.findById(orderId)
+    public PurchaseOrder getIncomingStockOrderById(Long orderId) {
+        return purchaseOrderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("IS (getIncomingStockOrderById): No incoming stock order found for ID: " + orderId));
     }
 
 
     @Transactional(readOnly = true)
-    public PaginatedResponse<IncomingStockResponseDto> searchProduct(String text, int page, int size) {
+    public PaginatedResponse<PurchaseOrderResponseDto> searchProduct(String text, int page, int size) {
         if (text == null || text.isEmpty()) {
             logger.warn("IS (searchProduct): Search text is null or empty");
             throw new ValidationException("IS (searchProduct): Search text cannot be empty");
         }
         try {
             Pageable pageable = PageRequest.of(page, size, Sort.by("product.name"));
-            Page<IncomingStock> searchEntityResponse = incomingStockRepository.searchProducts(text.trim().toLowerCase(), pageable);
+            Page<PurchaseOrder> searchEntityResponse = purchaseOrderRepository.searchProducts(text.trim().toLowerCase(), pageable);
             return transformToPaginatedDto(searchEntityResponse);
         } catch (DataAccessException dae) {
             logger.error("IS (searchProduct): Database error while searching products", dae);
@@ -215,7 +213,7 @@ public class IncomingStockService {
     }
 
     @Transactional(readOnly = true)
-    public PaginatedResponse<IncomingStockResponseDto> filterIncomingStock(IncomingStockStatus status, ProductCategories category,
+    public PaginatedResponse<PurchaseOrderResponseDto> filterIncomingStock(PurchaseOrderStatus status, ProductCategories category,
                                                                            String sortBy, String sortDirection, int page, int size){
         // Parse sort direction
         Sort.Direction direction = sortDirection.equalsIgnoreCase("desc") ?
@@ -225,14 +223,15 @@ public class IncomingStockService {
         Sort sort = Sort.by(direction, sortBy);
         Pageable pageable = PageRequest.of(page, size, sort);
 
-        Specification<IncomingStock> spec = Specification
-                .where(IncomingStockSpecification.hasStatus(status))
-                .and(IncomingStockSpecification.hasProductCategory(category));
+        Specification<PurchaseOrder> spec = Specification
+                .where(PurchaseOrderSpecification.hasStatus(status))
+                .and(PurchaseOrderSpecification.hasProductCategory(category));
 
-        Page<IncomingStock> filterResult = incomingStockRepository.findAll(spec, pageable);
+        Page<PurchaseOrder> filterResult = purchaseOrderRepository.findAll(spec, pageable);
         return transformToPaginatedDto(filterResult);
     }
 
+    // TODO: Only set to INCOMING in IC when email is Confirmed
     // Method for the Email Confirmation
     @Transactional
     public String confirmPurchaseOrder(String token) {
@@ -241,24 +240,29 @@ public class IncomingStockService {
             return buildConfirmationPage("Email link is expired or already processed.", "alert-danger");
         }
 
-        IncomingStock order = confirmationToken.getOrder();
-        if (order.getStatus() == IncomingStockStatus.AWAITING_APPROVAL) {
+        PurchaseOrder order = confirmationToken.getOrder();
+        ProductsForPM orderedProduct = order.getProduct();
+        if (order.getStatus() == PurchaseOrderStatus.AWAITING_APPROVAL) {
             try {
-                order.setStatus(IncomingStockStatus.DELIVERY_IN_PROCESS);
+                // Update the status of the product in the Inventory Control section
+                handleInventoryStatusUpdates(orderedProduct);
+
+                // Update the PO
+                order.setStatus(PurchaseOrderStatus.DELIVERY_IN_PROCESS);
                 order.setUpdatedBy("Supplier via Email Link.");
-                incomingStockRepository.save(order);
+                purchaseOrderRepository.save(order);
 
                 updateConfirmationToken(confirmationToken, ConfirmationTokenStatus.CONFIRMED);
 
-                logger.info("IS (confirmOrder): Order confirmed by supplier. PO Number: {}", order.getPONumber());
-                return buildConfirmationPage("Order " + order.getPONumber() + " has been successfully confirmed!", "alert-success");
+                logger.info("IS (confirmOrder): SalesOrder confirmed by supplier. PO Number: {}", order.getPONumber());
+                return buildConfirmationPage("SalesOrder " + order.getPONumber() + " has been successfully confirmed!", "alert-success");
             } catch (OptimisticLockingFailureException | OptimisticLockException e) {
-                logger.warn("Race condition detected when confirming order. Order ID: {}", order.getId());
+                logger.warn("Race condition detected when confirming order. SalesOrder ID: {}", order.getId());
                 return buildConfirmationPage("This order has already been processed by someone else.", "alert-danger");
             }
         } else {
-            logger.warn("IS (confirmOrder): Order ID {} is not in AWAITING_SUPPLIER_CONFIRMATION status. Current status: {}", order.getId(), order.getStatus());
-            return buildConfirmationPage("Order already confirmed or cancelled.", "alert-danger");
+            logger.warn("IS (confirmOrder): SalesOrder ID {} is not in AWAITING_SUPPLIER_CONFIRMATION status. Current status: {}", order.getId(), order.getStatus());
+            return buildConfirmationPage("SalesOrder already confirmed or cancelled.", "alert-danger");
         }
     }
 
@@ -270,34 +274,36 @@ public class IncomingStockService {
             return buildConfirmationPage("Email link is expired or already processed.", "alert-danger");
         }
 
-        IncomingStock order = confirmationToken.getOrder();
-        if (order.getStatus() == IncomingStockStatus.AWAITING_APPROVAL) {
+        PurchaseOrder order = confirmationToken.getOrder();
+        if (order.getStatus() == PurchaseOrderStatus.AWAITING_APPROVAL) {
             try {
-                order.setStatus(IncomingStockStatus.FAILED);
+                order.setStatus(PurchaseOrderStatus.FAILED);
                 order.setUpdatedBy("Supplier via Email Link.");
-                incomingStockRepository.save(order);
+                purchaseOrderRepository.save(order);
 
                 updateConfirmationToken(confirmationToken, ConfirmationTokenStatus.CANCELLED);
 
                 // Change the status from PLANNING -> ACTIVE
                 updateProductManagementStatus(order.getProduct());
 
-                logger.info("IS (cancelPurchaseOrder): Order cancelled by supplier. PO Number: {}", order.getPONumber());
-                return buildConfirmationPage("Order " + order.getPONumber() + " has been successfully cancelled!", "alert-success");
+                logger.info("IS (cancelPurchaseOrder): SalesOrder cancelled by supplier. PO Number: {}", order.getPONumber());
+                return buildConfirmationPage("SalesOrder " + order.getPONumber() + " has been successfully cancelled!", "alert-success");
             } catch (OptimisticLockingFailureException | OptimisticLockException e) {
-                logger.warn("Race condition detected when cancelling order. Order ID: {}", order.getId());
+                logger.warn("Race condition detected when cancelling order. SalesOrder ID: {}", order.getId());
                 return buildConfirmationPage("This order has already been processed by someone else.", "alert-danger");
             }
         } else {
-            logger.warn("IS (cancelPurchaseOrder): Order ID {} is not in AWAITING_SUPPLIER_CONFIRMATION status. Current status: {}", order.getId(), order.getStatus());
-            return buildConfirmationPage("Order already confirmed or cancelled.", "alert-danger");
+            logger.warn("IS (cancelPurchaseOrder): SalesOrder ID {} is not in AWAITING_SUPPLIER_CONFIRMATION status. Current status: {}", order.getId(), order.getStatus());
+            return buildConfirmationPage("SalesOrder already confirmed or cancelled.", "alert-danger");
         }
     }
 
     @Transactional(readOnly = true)
-    public Long getTotalValidIncomingStockSize(){
-        return incomingStockRepository.getTotalValidIncomingStockSize();
+    public Long getTotalValidPoSize(){
+        return purchaseOrderRepository.getTotalValidPoSize();
     }
+
+    // Private helper methods
 
     @Nullable
     private ConfirmationToken validateConfirmationToken(String token) {
@@ -315,31 +321,28 @@ public class IncomingStockService {
         confirmationTokenService.saveConfirmationToken(token);
     }
 
-    // Private helper methods
-
     private ProductsForPM validateAndGetProduct(String productId) {
         ProductsForPM product = pmService.findProductById(productId);
 
         if (GlobalServiceHelper.amongInvalidStatus(product.getStatus())) {
             throw new ValidationException("Product is not for sale and cannot be ordered. Please update the status in the PM section first.");
         }
-
         return product;
     }
 
     private void handleInventoryStatusUpdates(ProductsForPM orderedProduct) {
-        InventoryData inventoryProductOpt =
+        Optional<InventoryData> inventoryProductOpt =
                 inventoryControlService.getInventoryProductByProductId(orderedProduct.getProductID());
 
         if (orderedProduct.getStatus() == ProductStatus.PLANNING) {
-            handlePlanningStatusUpdate(orderedProduct, Optional.ofNullable(inventoryProductOpt));
+            handlePlanningStatusUpdate(orderedProduct, inventoryProductOpt);
         } else if (orderedProduct.getStatus() == ProductStatus.ACTIVE) {
             handleActiveStatusUpdate(inventoryProductOpt);
         }
     }
 
     private void handlePlanningStatusUpdate(ProductsForPM orderedProduct, Optional<InventoryData> inventoryProductOpt) {
-        // Update product status from PLANNING to ON_ORDER
+        // Update the product status from PLANNING to ON_ORDER
         orderedProduct.setStatus(ProductStatus.ON_ORDER);
         pmService.saveProduct(orderedProduct);
 
@@ -347,28 +350,27 @@ public class IncomingStockService {
             // Product not in inventory, add it
             inventoryControlService.addProduct(orderedProduct, true);
         } else {
-            // Update existing inventory status to INCOMING
-            InventoryData inventoryData = inventoryProductOpt.get();
+            // Else update the existing inventory status to INCOMING
+            handleActiveStatusUpdate(inventoryProductOpt);
+        }
+    }
+
+    private void handleActiveStatusUpdate(Optional<InventoryData> inventoryDataOpt) {
+        if(inventoryDataOpt.isPresent()) {
+            InventoryData inventoryData = inventoryDataOpt.get();
             if (inventoryData.getStatus() != InventoryDataStatus.INCOMING) {
                 inventoryData.setStatus(InventoryDataStatus.INCOMING);
                 inventoryControlService.saveInventoryProduct(inventoryData);
             }
         }
-    }
-
-    private void handleActiveStatusUpdate(InventoryData inventoryData) {
-        if (inventoryData.getStatus() != InventoryDataStatus.INCOMING) {
-            inventoryData.setStatus(InventoryDataStatus.INCOMING);
-            inventoryControlService.saveInventoryProduct(inventoryData);
-        }
         // Active status products will always be present in the Inventory
     }
 
-    private IncomingStock createOrderEntity(IncomingStockRequestDto stockRequest, ProductsForPM orderedProduct, String orderedPerson) {
+    private PurchaseOrder createOrderEntity(PurchaseOrderRequestDto stockRequest, ProductsForPM orderedProduct, String orderedPerson) {
         Supplier supplier = supplierService.getSupplierEntityById(stockRequest.getSupplierId());
         String poNumber = generatePoNumber(supplier.getId());
 
-        return new IncomingStock(
+        return new PurchaseOrder(
                 orderedProduct,
                 supplier,
                 stockRequest.getOrderQuantity(),
@@ -380,19 +382,19 @@ public class IncomingStockService {
         );
     }
 
-    private void savePurchaseOrder(IncomingStock order) {
-        incomingStockRepository.save(order);
+    private void savePurchaseOrder(PurchaseOrder order) {
+        purchaseOrderRepository.save(order);
         ConfirmationToken confirmationToken = confirmationTokenService.createConfirmationToken(order);
-        // emailService.sendOrderRequest(order.getSupplier().getEmail(), order, confirmationToken);
+        emailService.sendPurchaseOrderRequest(order.getSupplier().getEmail(), order, confirmationToken);
     }
 
     private void validateOrderId(Long orderId) {
         if (orderId == null) {
-            throw new IllegalArgumentException("IS (validateOrderId): Order ID cannot be null");
+            throw new IllegalArgumentException("IS (validateOrderId): SalesOrder ID cannot be null");
         }
     }
 
-    private void updateOrderWithReceivedStock(IncomingStock order, ReceiveStockRequestDto receiveRequest) {
+    private void updateOrderWithReceivedStock(PurchaseOrder order, ReceiveStockRequestDto receiveRequest) {
         // Set actual arrival date
         if (receiveRequest.getActualArrivalDate() != null) {
             if (receiveRequest.getActualArrivalDate().isAfter(LocalDate.now())) {
@@ -413,12 +415,12 @@ public class IncomingStockService {
         updateOrderStatus(order);
     }
 
-    private void updateOrderStatus(IncomingStock order) {
+    private void updateOrderStatus(PurchaseOrder order) {
         if (order.getReceivedQuantity() >= order.getOrderedQuantity()) {
-            order.setStatus(IncomingStockStatus.RECEIVED);
+            order.setStatus(PurchaseOrderStatus.RECEIVED);
             updateProductManagementStatus(order.getProduct());
         } else if (order.getReceivedQuantity() > 0) {
-            order.setStatus(IncomingStockStatus.PARTIALLY_RECEIVED);
+            order.setStatus(PurchaseOrderStatus.PARTIALLY_RECEIVED);
         }
         // If no quantity received, status remains unchanged
     }
@@ -430,28 +432,30 @@ public class IncomingStockService {
         }
     }
 
-    private void updateInventoryLevels(IncomingStock order, int receivedQuantity) {
+    private void updateInventoryLevels(PurchaseOrder order, int receivedQuantity) {
         if (receivedQuantity <= 0) {
             return; // No inventory update needed
         }
-
         try {
-            InventoryData inventoryProduct =
+            Optional<InventoryData> inventoryProductOpt =
                     inventoryControlService.getInventoryProductByProductId(order.getProduct().getProductID());
-            int newStockLevel = inventoryProduct.getCurrentStock() + receivedQuantity;
+            if(inventoryProductOpt.isPresent()){
+                InventoryData inventoryProduct = inventoryProductOpt.get();
+                int newStockLevel = inventoryProduct.getCurrentStock() + receivedQuantity;
 
-            // The service method to update stock levels with proper error handling
-            inventoryControlService.updateStockLevels(inventoryProduct,
-                    Optional.of(newStockLevel),
-                    Optional.empty());
+                // The service method to update stock levels with proper error handling
+                inventoryControlService.updateStockLevels(inventoryProduct,
+                        Optional.of(newStockLevel),
+                        Optional.empty());
+            }
         } catch (Exception e) {
             throw new ServiceException("IS (updateIncomingStockOrder): Failed to update inventory levels: " + e.getMessage());
         }
     }
 
-    private void finalizeOrderUpdate(IncomingStock order, String updatedPerson) {
+    private void finalizeOrderUpdate(PurchaseOrder order, String updatedPerson) {
         order.setUpdatedBy(updatedPerson);
-        incomingStockRepository.save(order);
+        purchaseOrderRepository.save(order);
     }
 
     private String generatePoNumber(Long supplierId) {
@@ -459,7 +463,7 @@ public class IncomingStockService {
             String uniqueIdPart = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
             String potentialPONumber = "PO-" + supplierId + "-" + uniqueIdPart;
 
-            if (!incomingStockRepository.existsByPONumber(potentialPONumber)) {
+            if (!purchaseOrderRepository.existsByPONumber(potentialPONumber)) {
                 return potentialPONumber;
             }
 
@@ -470,9 +474,9 @@ public class IncomingStockService {
         throw new ServiceException("Failed to generate a unique PO Number after " + MAX_PO_GENERATION_RETRIES + " attempts.");
     }
 
-    private PaginatedResponse<IncomingStockResponseDto> transformToPaginatedDto(Page<IncomingStock> entityResponse){
-        PaginatedResponse<IncomingStockResponseDto> response = new PaginatedResponse<>();
-        List<IncomingStockResponseDto> convertedContent =
+    private PaginatedResponse<PurchaseOrderResponseDto> transformToPaginatedDto(Page<PurchaseOrder> entityResponse){
+        PaginatedResponse<PurchaseOrderResponseDto> response = new PaginatedResponse<>();
+        List<PurchaseOrderResponseDto> convertedContent =
                 entityResponse.getContent().stream().map(this::convertToDTO).toList();
         response.setContent(convertedContent);
         response.setTotalPages(entityResponse.getTotalPages());
@@ -480,7 +484,7 @@ public class IncomingStockService {
         return response;
     }
 
-    private IncomingStockResponseDto convertToDTO(IncomingStock order){
-        return new IncomingStockResponseDto(order);
+    private PurchaseOrderResponseDto convertToDTO(PurchaseOrder order){
+        return new PurchaseOrderResponseDto(order);
     }
 }

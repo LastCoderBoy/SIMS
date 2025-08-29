@@ -1,4 +1,4 @@
-package com.JK.SIMS.models.IC_models.outgoing;
+package com.JK.SIMS.models.IC_models.salesOrder;
 
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import jakarta.persistence.*;
@@ -31,7 +31,7 @@ public class OrderItem {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = false)
-    private Order order;
+    private SalesOrder salesOrder;
 
     public OrderItem(Integer quantity, ProductsForPM product, BigDecimal orderPrice){
         this.quantity = quantity;

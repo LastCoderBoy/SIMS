@@ -1,6 +1,6 @@
 package com.JK.SIMS.models.IC_models.inventoryData;
 
-import com.JK.SIMS.models.IC_models.outgoing.OrderResponseDto;
+import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderResponseDto;
 import com.JK.SIMS.models.PaginatedResponse;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -20,5 +20,5 @@ public class InventoryPageResponse {
 
     private Long damageLossSize;
 
-    private PaginatedResponse<OrderResponseDto> allPendingOrders;
+    private PaginatedResponse<SalesOrderResponseDto> allPendingOrders;
 }

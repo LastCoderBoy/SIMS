@@ -1,4 +1,4 @@
-package com.JK.SIMS.models.IC_models.incoming;
+package com.JK.SIMS.models.IC_models.purchaseOrder;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;

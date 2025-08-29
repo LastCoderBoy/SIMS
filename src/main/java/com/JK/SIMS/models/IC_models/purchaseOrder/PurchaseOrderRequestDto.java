@@ -1,4 +1,4 @@
-package com.JK.SIMS.models.IC_models.incoming;
+package com.JK.SIMS.models.IC_models.purchaseOrder;
 
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
@@ -10,12 +10,12 @@ import java.time.LocalDate;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class IncomingStockRequestDto {
+public class PurchaseOrderRequestDto {
     @NotBlank(message = "Product ID is required")
     private String productId;
 
     @NotNull(message = "Ordered quantity is required")
-    @Min(value = 1, message = "Order quantity must be at least 1")
+    @Min(value = 1, message = "SalesOrder quantity must be at least 1")
     private Integer orderQuantity;
 
     @NotNull(message = "Supplier ID is required")

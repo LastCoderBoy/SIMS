@@ -11,12 +11,14 @@ public class ConfirmationTokenScheduler {
 
     private static final Logger logger = LoggerFactory.getLogger(ConfirmationTokenScheduler.class);
 
+    private final ConfirmationTokenService tokenService;
     @Autowired
-    private ConfirmationTokenService tokenService;
+    public ConfirmationTokenScheduler(ConfirmationTokenService tokenService) {
+        this.tokenService = tokenService;
+    }
 
 
 //    @Scheduled(cron = "*/15 * * * * *")  //15 seconds
-
     @Scheduled(cron = "0 0 */12 * * *")
     public void expireOldTokens() {
         logger.info("Check expired old Confirmation Tokens.");

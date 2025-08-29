@@ -1,4 +1,4 @@
-package com.JK.SIMS.models.IC_models.outgoing;
+package com.JK.SIMS.models.IC_models.salesOrder;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -9,7 +9,7 @@ import java.util.List;
 
 @Data
 @AllArgsConstructor
-public class OrderRequestDto {
+public class SalesOrderRequestDto {
     @NotBlank(message = "Destination is required")
     private String destination;
 

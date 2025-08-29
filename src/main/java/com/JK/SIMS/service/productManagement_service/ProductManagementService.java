@@ -167,6 +167,7 @@ public class ProductManagementService {
      * @throws ValidationException if the new location format is invalid
      * @throws ServiceException    if any other error occurs during update
      */
+    @Transactional
     public ApiResponse updateProduct(String productId, ProductsForPM newProduct) {
         try {
             ProductsForPM currentProduct = pmRepository.findById(productId)
@@ -178,7 +179,7 @@ public class ProductManagementService {
             }
 
             updateProductFields(currentProduct, newProduct);
-            updateInventoryProductStatus(currentProduct, newProduct, productId);
+            updateProductAndInventoryStatus(currentProduct, newProduct, productId);
             updateProductLocation(currentProduct, newProduct);
 
             pmRepository.save(currentProduct);
@@ -186,83 +187,16 @@ public class ProductManagementService {
 
             return new ApiResponse(true, "Product with ID " + productId + " updated successfully!");
         } catch (ResourceNotFoundException e) {
-            throw new ResourceNotFoundException("PM (updateProduct): Product with ID " + productId + " not found");
+            logger.error("PM (updateProduct): Product with ID {} not found: {}", productId, e.getMessage());
+            throw new ResourceNotFoundException("PM (updateProduct): " + e.getMessage() );
         } catch (ValidationException e) {
+            logger.error("PM (updateProduct): Invalid location format: {}", e.getMessage());
             throw new ValidationException(e.getMessage());
         } catch (Exception e) {
+            logger.error("PM (updateProduct): Internal error: {}", e.getMessage());
             throw new ServiceException("PM (updateProduct): Internal error " + productId, e);
         }
     }
-
-    private void updateProductFields(ProductsForPM currentProduct, ProductsForPM newProduct) {
-        if (newProduct.getName() != null) {
-            currentProduct.setName(newProduct.getName());
-        }
-        if (newProduct.getCategory() != null) {
-            currentProduct.setCategory(newProduct.getCategory());
-        }
-        if (newProduct.getPrice() != null) {
-            currentProduct.setPrice(newProduct.getPrice());
-        }
-    }
-
-    private void updateInventoryProductStatus(ProductsForPM currentProduct, ProductsForPM newProduct, String productId) {
-        if (newProduct.getStatus() != null) {
-            InventoryData productInIC = icService.getInventoryProductByProductId(productId);
-            ProductStatus previousStatus = currentProduct.getStatus();
-
-            if (validateStatusBeforeAdding(currentProduct, newProduct)) {
-                currentProduct.setStatus(newProduct.getStatus());
-                handleStatusChange(currentProduct, newProduct, previousStatus, Optional.ofNullable(productInIC));
-            } else {
-                currentProduct.setStatus(newProduct.getStatus());
-                if (amongInvalidStatus(newProduct.getStatus())) {
-                    updateInventoryDataStatus(productInIC, InventoryDataStatus.INVALID);
-                }else{
-                    if(productInIC.getCurrentStock() <= productInIC.getMinLevel()){
-                        updateInventoryDataStatus(productInIC, InventoryDataStatus.LOW_STOCK);
-                    }else {
-                        updateInventoryDataStatus(productInIC, InventoryDataStatus.IN_STOCK);
-                    }
-                }
-            }
-        }
-    }
-
-    private void handleStatusChange(ProductsForPM currentProduct, ProductsForPM newProduct, ProductStatus previousStatus, Optional<InventoryData> productInIC) {
-        if (newProduct.getStatus().equals(ProductStatus.ACTIVE) || newProduct.getStatus().equals(ProductStatus.ON_ORDER)) {
-            if (previousStatus.equals(ProductStatus.ARCHIVED)) {
-                if (productInIC.isEmpty()) {
-                    icService.addProduct(currentProduct, false);
-                }
-            } else {
-                icService.addProduct(currentProduct, false);
-            }
-        } else {
-            // No need to add to IC, because the product is already present in the IC and we have to change to INVALID status
-            updateInventoryDataStatus(productInIC.get(), InventoryDataStatus.INVALID);
-        }
-    }
-
-    private void updateInventoryDataStatus(InventoryData productInIC, InventoryDataStatus status) {
-        if (productInIC != null) {
-            productInIC.setStatus(status);
-            try {
-                icService.saveInventoryProduct(productInIC);
-            } catch (Exception e) {
-                logger.error("Failed to update inventory data status: {}", e.getMessage());
-                throw new ServiceException("Error updating inventory status", e);
-            }
-        }
-    }
-
-    private void updateProductLocation(ProductsForPM currentProduct, ProductsForPM newProduct) {
-        if (newProduct.getLocation() != null) {
-            validateLocationFormat(newProduct.getLocation());
-            currentProduct.setLocation(newProduct.getLocation());
-        }
-    }
-
 
     /**
      * Searches for products based on a text query with pagination support.
@@ -276,6 +210,7 @@ public class ProductManagementService {
      * @throws DatabaseException if an error occurs accessing the database
      * @throws ServiceException if an error occurs during the search operation
      */
+    @Transactional(readOnly = true)
     public PaginatedResponse<ProductManagementDTO> searchProduct(String text, int page, int size) {
         try {
             if (text != null && !text.trim().isEmpty()) {
@@ -308,6 +243,7 @@ public class ProductManagementService {
      * @throws DatabaseException   if database operation fails
      * @throws ServiceException    if any other error occurs
      */
+    @Transactional(readOnly = true)
     public PaginatedResponse<ProductManagementDTO> filterProducts(String filter, String sortBy, String direction, int page, int size) {
         try {
             Sort.Direction sortDirection = direction.equalsIgnoreCase("desc") ?
@@ -352,6 +288,60 @@ public class ProductManagementService {
             throw new DatabaseException("PM (filterProducts): Database error", da);
         } catch (Exception e) {
             throw new ServiceException("PM (filterProducts): Failed to filter products", e);
+        }
+    }
+
+    private void updateProductFields(ProductsForPM currentProduct, ProductsForPM newProduct) {
+        if (newProduct.getName() != null) {
+            currentProduct.setName(newProduct.getName());
+        }
+        if (newProduct.getCategory() != null) {
+            currentProduct.setCategory(newProduct.getCategory());
+        }
+        if (newProduct.getPrice() != null) {
+            currentProduct.setPrice(newProduct.getPrice());
+        }
+    }
+
+    private void updateProductAndInventoryStatus(ProductsForPM currentProduct, ProductsForPM newProduct, String productId) {
+        if (newProduct.getStatus() != null && !newProduct.getStatus().equals(currentProduct.getStatus())) {
+            Optional<InventoryData> productInIcOpt =
+                    icService.getInventoryProductByProductId(productId);
+            ProductStatus previousStatus = currentProduct.getStatus();
+
+            if (validateStatusBeforeAdding(currentProduct, newProduct)) {
+                currentProduct.setStatus(newProduct.getStatus());
+                handleStatusChange(currentProduct, newProduct, previousStatus, productInIcOpt);
+            } else {
+                currentProduct.setStatus(newProduct.getStatus());
+                if (amongInvalidStatus(newProduct.getStatus())) {
+                    icService.updateInventoryStatus(productInIcOpt, InventoryDataStatus.INVALID);
+                }
+            }
+        }
+    }
+
+    private void handleStatusChange(ProductsForPM currentProduct, ProductsForPM newProduct, ProductStatus previousStatus, Optional<InventoryData> productInIcOpt) {
+        if (newProduct.getStatus().equals(ProductStatus.ACTIVE) || newProduct.getStatus().equals(ProductStatus.ON_ORDER)) {
+            if (previousStatus.equals(ProductStatus.ARCHIVED)) {
+                // the status is changing from ACTIVE, ON_ORDER -> ARCHIVED
+                if (productInIcOpt.isEmpty()) {
+                    icService.addProduct(currentProduct, false);
+                }
+            } else {
+                // Which means the status is changing from PLANNING -> ACTIVE or ON_ORDER
+                icService.addProduct(currentProduct, false);
+            }
+        } else {
+            // No need to add to IC, if the product is present in the IC change to INVALID status or else skip it
+            icService.updateInventoryStatus(productInIcOpt, InventoryDataStatus.INVALID);
+        }
+    }
+
+    private void updateProductLocation(ProductsForPM currentProduct, ProductsForPM newProduct) {
+        if (newProduct.getLocation() != null) {
+            validateLocationFormat(newProduct.getLocation());
+            currentProduct.setLocation(newProduct.getLocation());
         }
     }
 
@@ -431,7 +421,7 @@ public class ProductManagementService {
     @Transactional(readOnly = true)
     public ProductsForPM findProductById(String productId) {
         return pmRepository.findById(productId)
-                .orElseThrow(() -> new ResourceNotFoundException("PM (updateProduct): Product with ID " + productId + " not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("PM (findProductById): Product with ID " + productId + " not found"));
     }
 
     @Transactional(propagation = Propagation.MANDATORY)

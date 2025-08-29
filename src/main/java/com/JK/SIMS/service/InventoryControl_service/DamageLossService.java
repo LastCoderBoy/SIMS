@@ -7,7 +7,7 @@ import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
 import com.JK.SIMS.models.IC_models.damage_loss.*;
 import com.JK.SIMS.models.PaginatedResponse;
-import com.JK.SIMS.repository.IC_repo.DamageLoss_repository;
+import com.JK.SIMS.repository.IC_repo.DamageLossRepository;
 import com.JK.SIMS.service.userManagement_service.JWTService;
 import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
@@ -37,10 +37,10 @@ public class DamageLossService {
     private final InventoryControlService inventoryControlService;
     private final Clock clock;
 
-    private final DamageLoss_repository damageLoss_repository;
+    private final DamageLossRepository damageLoss_repository;
 
     @Autowired
-    public DamageLossService(DamageLoss_repository damageLoss_repository, JWTService jWTService,
+    public DamageLossService(DamageLossRepository damageLoss_repository, JWTService jWTService,
                              @Lazy InventoryControlService inventoryControlService, Clock clock){
         this.damageLoss_repository = damageLoss_repository;
         this.jWTService = jWTService;

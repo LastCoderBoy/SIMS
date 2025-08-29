@@ -13,6 +13,8 @@ import java.time.temporal.ChronoUnit;
 @Component
 public class GlobalServiceHelper {
 
+    //TODO: Use abstract inheritance for common logic serives
+
     public final JWTService jwtService;
     @Autowired
     public GlobalServiceHelper(JWTService jwtService) {

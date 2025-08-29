@@ -6,14 +6,14 @@ import com.JK.SIMS.exceptionHandler.InvalidTokenException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryPageResponse;
-import com.JK.SIMS.models.IC_models.incoming.ReceiveStockRequestDto;
-import com.JK.SIMS.models.IC_models.outgoing.OrderResponseDto;
-import com.JK.SIMS.models.IC_models.outgoing.OrderStatus;
+import com.JK.SIMS.models.IC_models.purchaseOrder.ReceiveStockRequestDto;
+import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderResponseDto;
+import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryControl_service.InventoryControlService;
-import com.JK.SIMS.service.InventoryControl_service.OutgoingStockService;
+import com.JK.SIMS.service.InventoryControl_service.SalesOrderService;
 import com.JK.SIMS.service.utilities.TokenUtils;
-import com.JK.SIMS.service.incomingStock_service.IncomingStockService;
+import com.JK.SIMS.service.purchaseOrderService.PurchaseOrderService;
 import jakarta.validation.Valid;
 import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
@@ -32,13 +32,13 @@ public class InventoryController {
 
     private static final Logger logger = LoggerFactory.getLogger(InventoryController.class);
     private final InventoryControlService icService;
-    private final IncomingStockService incomingStockService;
-    private final OutgoingStockService outgoingStockService;
+    private final PurchaseOrderService purchaseOrderService;
+    private final SalesOrderService salesOrderService;
     @Autowired
-    public InventoryController(InventoryControlService icService, IncomingStockService incomingStockService, OutgoingStockService outgoingStockService) {
+    public InventoryController(InventoryControlService icService, PurchaseOrderService purchaseOrderService, SalesOrderService salesOrderService) {
         this.icService = icService;
-        this.incomingStockService = incomingStockService;
-        this.outgoingStockService = outgoingStockService;
+        this.purchaseOrderService = purchaseOrderService;
+        this.salesOrderService = salesOrderService;
     }
 
 
@@ -61,7 +61,7 @@ public class InventoryController {
         if(SecurityUtils.hasAccess()) {
             if(token != null && !token.trim().isEmpty()) {
                 String jwtToken = TokenUtils.extractToken(token);
-                ApiResponse response =  incomingStockService.receiveIncomingStock(orderId, receiveRequest, jwtToken);
+                ApiResponse response =  purchaseOrderService.receiveIncomingStock(orderId, receiveRequest, jwtToken);
                 return new ResponseEntity<>(response, HttpStatus.OK);
             }
             throw new InvalidTokenException("IC: receiveIncomingStockOrder() Invalid Token provided.");
@@ -78,7 +78,7 @@ public class InventoryController {
         if(SecurityUtils.hasAccess()) {
             if(token != null && !token.trim().isEmpty()) {
                 String jwtToken = TokenUtils.extractToken(token);
-                ApiResponse response = outgoingStockService.processOrderRequest(orderId, jwtToken);
+                ApiResponse response = salesOrderService.processOrderRequest(orderId, jwtToken);
                 return new ResponseEntity<>(response, HttpStatus.OK);
             }
             throw new InvalidTokenException("IC: processOrderedProduct() Invalid Token provided.");
@@ -94,7 +94,7 @@ public class InventoryController {
         if(SecurityUtils.hasAccess()) {
             if(token != null && !token.trim().isEmpty()) {
                 String jwtToken = TokenUtils.extractToken(token);
-                ApiResponse response = outgoingStockService.cancelOutgoingStockOrder(orderId, jwtToken);
+                ApiResponse response = salesOrderService.cancelOutgoingStockOrder(orderId, jwtToken);
                 return new ResponseEntity<>(response, HttpStatus.OK);
             }
             throw new InvalidTokenException("IC: cancelOutgoingStockOrder() Invalid Token provided.");
@@ -123,8 +123,8 @@ public class InventoryController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size){
         logger.info("IC: searchOutgoingStock() calling...");
-        PaginatedResponse<OrderResponseDto> outgoingStockDTOList =
-                outgoingStockService.searchOutgoingStock(text, page, size, Optional.of(OrderStatus.PENDING));
+        PaginatedResponse<SalesOrderResponseDto> outgoingStockDTOList =
+                salesOrderService.searchOutgoingStock(text, page, size, Optional.of(SalesOrderStatus.PENDING));
         return ResponseEntity.ok(outgoingStockDTOList);
     }
 
@@ -143,8 +143,8 @@ public class InventoryController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         logger.info("IC: sortProductBy() calling with page {} and size {}...", page, size);
-        PaginatedResponse<OrderResponseDto> sortedDTOs =
-                outgoingStockService.getAllOrdersSorted(page, size, sortBy, sortDirection, Optional.of(OrderStatus.PENDING));
+        PaginatedResponse<SalesOrderResponseDto> sortedDTOs =
+                salesOrderService.getAllSalesOrdersSorted(page, size, sortBy, sortDirection, Optional.of(SalesOrderStatus.PENDING));
         return ResponseEntity.ok(sortedDTOs);
     }
 

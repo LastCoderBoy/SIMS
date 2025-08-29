@@ -1,4 +1,4 @@
-package com.JK.SIMS.models.IC_models.incoming;
+package com.JK.SIMS.models.IC_models.purchaseOrder;
 
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.supplier.Supplier;
@@ -18,8 +18,8 @@ import java.util.Objects;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name = "incoming_stock")
-public class IncomingStock {
+@Table(name = "purchase_order")
+public class PurchaseOrder {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -37,7 +37,7 @@ public class IncomingStock {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private IncomingStockStatus status; // DELIVERY_IN_PROCESS, RECEIVED, PARTIALLY_RECEIVED, CANCELLED, FAILED
+    private PurchaseOrderStatus status; // DELIVERY_IN_PROCESS, RECEIVED, PARTIALLY_RECEIVED, CANCELLED, FAILED
 
     @Column(nullable = false)
     private LocalDate orderDate;
@@ -65,7 +65,7 @@ public class IncomingStock {
     private Integer version; // Used to handle the Optimistic Locking
 
     // Business constructor for creating new purchase orders
-    public IncomingStock(ProductsForPM product,
+    public PurchaseOrder(ProductsForPM product,
                          Supplier supplier,
                          Integer orderedQuantity,
                          LocalDate expectedArrivalDate,
@@ -80,19 +80,19 @@ public class IncomingStock {
         this.expectedArrivalDate = expectedArrivalDate;
         this.notes = notes != null ? notes : "";
         this.PONumber = Objects.requireNonNull(poNumber, "PO Number cannot be null");
-        this.orderDate = Objects.requireNonNull(orderDate, "Order date cannot be null");
+        this.orderDate = Objects.requireNonNull(orderDate, "SalesOrder date cannot be null");
         this.lastUpdated = Objects.requireNonNull(lastUpdated, "Last updated cannot be null");
         this.orderedBy = Objects.requireNonNull(orderedBy, "Updated by cannot be null");
 
         // Set defaults
         this.receivedQuantity = 0;
-        this.status = IncomingStockStatus.AWAITING_APPROVAL;
+        this.status = PurchaseOrderStatus.AWAITING_APPROVAL;
         this.actualArrivalDate = null;
         this.updatedBy = null;
     }
 
     // Convenience constructor with common defaults
-    public IncomingStock(ProductsForPM product,
+    public PurchaseOrder(ProductsForPM product,
                          Supplier supplier,
                          Integer orderedQuantity,
                          LocalDate expectedArrivalDate,
@@ -107,8 +107,8 @@ public class IncomingStock {
     }
 
     public boolean isFinalized() {
-        return this.status == IncomingStockStatus.RECEIVED ||
-                this.status == IncomingStockStatus.CANCELLED ||
-                this.status == IncomingStockStatus.FAILED;
+        return this.status == PurchaseOrderStatus.RECEIVED ||
+                this.status == PurchaseOrderStatus.CANCELLED ||
+                this.status == PurchaseOrderStatus.FAILED;
     }
 }

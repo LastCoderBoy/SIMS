@@ -1,6 +1,6 @@
-package com.JK.SIMS.models.IC_models.incoming.token;
+package com.JK.SIMS.models.IC_models.purchaseOrder.token;
 
-import com.JK.SIMS.models.IC_models.incoming.IncomingStock;
+import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -33,11 +33,11 @@ public class ConfirmationToken {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(
-            name = "incoming_stock_id",
+            name = "purchase_order_id",
             nullable = false)
-    private IncomingStock order;
+    private PurchaseOrder order;
 
-    public ConfirmationToken(String token, LocalDateTime createdAt, ConfirmationTokenStatus status, LocalDateTime expiresAt, IncomingStock order) {
+    public ConfirmationToken(String token, LocalDateTime createdAt, ConfirmationTokenStatus status, LocalDateTime expiresAt, PurchaseOrder order) {
         this.token = token;
         this.createdAt = createdAt;
         this.status = status;

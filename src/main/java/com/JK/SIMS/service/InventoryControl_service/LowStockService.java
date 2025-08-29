@@ -3,15 +3,11 @@ package com.JK.SIMS.service.InventoryControl_service;
 import com.JK.SIMS.exceptionHandler.DatabaseException;
 import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
-import com.JK.SIMS.models.IC_models.incoming.IncomingStockStatus;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataDto;
-import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataStatus;
-import com.JK.SIMS.models.IC_models.inventoryData.inventorySpecification.InventorySpecification;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.IC_repo.IC_repository;
-import com.JK.SIMS.service.utilities.ExcelReporterHelper;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
@@ -24,7 +20,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,8 +44,6 @@ public class LowStockService {
         this.globalServiceHelper = globalServiceHelper;
         this.icRepository = icRepository;
     }
-
-    // TODO: Native Query, rewrite the Queries
     @Transactional(readOnly = true)
     public PaginatedResponse<InventoryDataDto> getAllPaginatedLowStockRecords(String sortBy, String sortDirection, int page, int size) {
         try {

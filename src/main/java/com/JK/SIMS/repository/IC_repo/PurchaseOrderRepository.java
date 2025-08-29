@@ -1,7 +1,6 @@
 package com.JK.SIMS.repository.IC_repo;
 
-import com.JK.SIMS.models.IC_models.damage_loss.DamageLoss;
-import com.JK.SIMS.models.IC_models.incoming.IncomingStock;
+import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -10,19 +9,19 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface IncomingStock_repository extends JpaRepository<IncomingStock, Long>, JpaSpecificationExecutor<IncomingStock> {
+public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, Long>, JpaSpecificationExecutor<PurchaseOrder> {
 
     boolean existsByPONumber(String potentialPONumber);
 
-    @Query("SELECT isr FROM IncomingStock isr WHERE " +
+    @Query("SELECT isr FROM PurchaseOrder isr WHERE " +
             "LOWER(isr.product.name) LIKE CONCAT('%', :text, '%') OR " +
             "LOWER(isr.supplier.name) LIKE CONCAT('%', :text, '%') OR " +
             "LOWER(isr.orderedBy) LIKE CONCAT('%', :text, '%') OR " +
             "LOWER(isr.updatedBy) LIKE CONCAT('%', :text, '%') OR " +
             "LOWER(isr.PONumber) LIKE CONCAT('%', :text, '%')")
-    Page<IncomingStock> searchProducts(String text, Pageable pageable);
+    Page<PurchaseOrder> searchProducts(String text, Pageable pageable);
 
-    @Query(value = "SELECT COUNT(*) FROM incoming_stock WHERE status IN ('DELIVERY_IN_PROCESS', 'PARTIALLY_RECEIVED') ", nativeQuery = true)
-    Long getTotalValidIncomingStockSize();
+    @Query(value = "SELECT COUNT(*) FROM purchase_order WHERE status IN ('DELIVERY_IN_PROCESS', 'PARTIALLY_RECEIVED') ", nativeQuery = true)
+    Long getTotalValidPoSize();
 
 }

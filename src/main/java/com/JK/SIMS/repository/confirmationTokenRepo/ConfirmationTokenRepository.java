@@ -1,6 +1,6 @@
 package com.JK.SIMS.repository.confirmationTokenRepo;
 
-import com.JK.SIMS.models.IC_models.incoming.token.ConfirmationToken;
+import com.JK.SIMS.models.IC_models.purchaseOrder.token.ConfirmationToken;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

@@ -1,10 +1,10 @@
 package com.JK.SIMS.controller.inventory_control;
 
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.IC_models.outgoing.OrderRequestDto;
-import com.JK.SIMS.models.IC_models.outgoing.OrderResponseDto;
+import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderRequestDto;
+import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderResponseDto;
 import com.JK.SIMS.models.PaginatedResponse;
-import com.JK.SIMS.service.InventoryControl_service.OutgoingStockService;
+import com.JK.SIMS.service.InventoryControl_service.SalesOrderService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.slf4j.Logger;
@@ -18,19 +18,19 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/priority/inventory/outgoing-stock")
-public class OutgoingStockController {
+public class SalesOrderControllerInIC {
 
-    private static final Logger logger = LoggerFactory.getLogger(OutgoingStockController.class);
-    private final OutgoingStockService outgoingStockService;
+    private static final Logger logger = LoggerFactory.getLogger(SalesOrderControllerInIC.class);
+    private final SalesOrderService salesOrderService;
     @Autowired
-    public OutgoingStockController(OutgoingStockService outgoingStockService) {
-        this.outgoingStockService = outgoingStockService;
+    public SalesOrderControllerInIC(SalesOrderService salesOrderService) {
+        this.salesOrderService = salesOrderService;
     }
 
     @PostMapping("/create-order")
-    public ResponseEntity<?> createOrder(@RequestBody OrderRequestDto orderRequestDto){
+    public ResponseEntity<?> createOrder(@RequestBody SalesOrderRequestDto salesOrderRequestDto){
         logger.info("OS createOrder() is calling...");
-        ApiResponse response = outgoingStockService.createOrder(orderRequestDto);
+        ApiResponse response = salesOrderService.createOrder(salesOrderRequestDto);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
@@ -44,7 +44,7 @@ public class OutgoingStockController {
         logger.info("OS Controller: Fetching orders - page: {}, size: {}, sortBy: {}, sortDir: {}",
                 page, size, sortBy, sortDir);
 
-        PaginatedResponse<OrderResponseDto> orders = outgoingStockService.getAllOrdersSorted(page, size, sortBy, sortDir, Optional.empty());
+        PaginatedResponse<SalesOrderResponseDto> orders = salesOrderService.getAllSalesOrdersSorted(page, size, sortBy, sortDir, Optional.empty());
 
         return ResponseEntity.ok(orders);
     }

@@ -1,12 +1,12 @@
 package com.JK.SIMS.service.confirmTokenService;
 
-import com.JK.SIMS.models.IC_models.incoming.IncomingStock;
-import com.JK.SIMS.models.IC_models.incoming.IncomingStockStatus;
-import com.JK.SIMS.models.IC_models.incoming.token.ConfirmationToken;
-import com.JK.SIMS.models.IC_models.incoming.token.ConfirmationTokenStatus;
+import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
+import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
+import com.JK.SIMS.models.IC_models.purchaseOrder.token.ConfirmationToken;
+import com.JK.SIMS.models.IC_models.purchaseOrder.token.ConfirmationTokenStatus;
 import com.JK.SIMS.repository.confirmationTokenRepo.ConfirmationTokenRepository;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
-import com.JK.SIMS.service.incomingStock_service.IncomingStockHelper;
+import com.JK.SIMS.service.purchaseOrderService.PurchaseOrderHelper;
 import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,11 +25,11 @@ public class ConfirmationTokenService {
     private static final Logger logger = LoggerFactory.getLogger(ConfirmationTokenService.class);
 
     private final ConfirmationTokenRepository tokenRepository;
-    private final IncomingStockHelper incomingStockHelper;
+    private final PurchaseOrderHelper purchaseOrderHelper;
     private final Clock clock;
 
     @Transactional
-    public ConfirmationToken createConfirmationToken(IncomingStock order){
+    public ConfirmationToken createConfirmationToken(PurchaseOrder order){
         String token = generateConfirmationToken();
         ConfirmationToken confirmationToken = new ConfirmationToken(
                 token,
@@ -45,10 +45,10 @@ public class ConfirmationTokenService {
         List<ConfirmationToken> expiredTokens = tokenRepository.findAllByExpiresAtBeforeAndClickedAtIsNull(LocalDateTime.now());
         for (ConfirmationToken token : expiredTokens) {
             // Set the purchase order status to the FAILED and save it
-            IncomingStock order = token.getOrder();
-            order.setStatus(IncomingStockStatus.FAILED);
+            PurchaseOrder order = token.getOrder();
+            order.setStatus(PurchaseOrderStatus.FAILED);
 
-            incomingStockHelper.saveIncomingStock(order);
+            purchaseOrderHelper.saveIncomingStock(order);
             tokenRepository.delete(token);
             logger.info("Deleted {} Expired Confirmation Token", expiredTokens.size());
         }
