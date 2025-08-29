@@ -52,6 +52,6 @@ public class UserController {
         String jwtToken = TokenUtils.extractToken(token);
         userService.updateUser(user, jwtToken);
         logger.info("User updated successfully.");
-        return ResponseEntity.ok(new ApiResponse(true, "User updated successfully."));
+        return ResponseEntity.ok(new ApiResponse(true, "User updated successfully. Please re-login to see the changes."));
     }
 }

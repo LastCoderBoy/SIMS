@@ -16,6 +16,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
 
@@ -73,15 +74,14 @@ public class UserService {
         if (jwtToken == null || jwtToken.isEmpty()) {
             throw new InvalidTokenException("UM (logout): Token cannot be null or empty");
         }
-
         try {
-            // Check if the token is expired before blacklisting
-            if (jwtService.isTokenExpired(jwtToken)) {
-                throw new InvalidTokenException("UM (logout): Token is already expired");
+            String username = jwtService.extractUsername(jwtToken);
+            if (jwtService.isTokenBlacklisted(jwtToken)) {
+                logger.warn("UM (logout): Token has already been blacklisted");
+                return;
             }
-
             blackListTokenRepository.save(new BlacklistedToken(jwtToken, new Date()));
-            logger.info("Token has been blacklisted");
+            logger.info("User: {}, Token has been blacklisted", username);
         }
         catch (JwtException e) {
             throw new InvalidTokenException("UM (logout): Invalid token format", e);
@@ -91,6 +91,7 @@ public class UserService {
         }
     }
 
+    @Transactional
     public void updateUser(Users user, String jwtToken) {
         if (jwtToken == null || jwtToken.isEmpty()) {
             throw new InvalidTokenException("UM (updateUser): Invalid token provided");
@@ -105,7 +106,7 @@ public class UserService {
             Users currentUser = userRepository.findByUsernameOrEmail(username)
                     .orElseThrow(() -> new ResourceNotFoundException("UM (updateUser): User not found"));
 
-            updateUserFields(currentUser, user);
+            updateUserFields(currentUser, user, jwtToken);
             userRepository.save(currentUser);
             logger.info("User '{}' updated successfully.", username);
 
@@ -116,24 +117,27 @@ public class UserService {
         }
     }
 
-    private void updateUserFields(Users currentUser, Users newUser) {
-        if (newUser.getPassword() != null) {
-            if (!isValidPassword(newUser.getPassword())) {
+    private void updateUserFields(Users currentUser, Users newUserInfo, String jwtToken) throws JwtAuthenticationException {
+        if (newUserInfo.getPassword() != null) {
+            String newPassword = newUserInfo.getPassword();
+            if (!isValidPassword(newPassword)) {
                 logger.warn("Update user failed: Invalid password format");
                 throw new PasswordValidationException(
                         "Password must contain at least 8 characters, including 1 uppercase, " +
                                 "1 lowercase, 1 number and 1 special character (@#$%^&*()-_+)."
                 );
             }
-            currentUser.setPassword(passwordsEncoder.encode(newUser.getPassword()));
+            currentUser.setPassword(passwordsEncoder.encode(newPassword));
+            blackListTokenRepository.save(new BlacklistedToken(jwtToken, new Date()));
+            logger.info("User '{}' password updated. Token invalidated - re-login required.", currentUser.getUsername());
         }
 
-        if (newUser.getFirstName() != null) {
-            currentUser.setFirstName(newUser.getFirstName());
+        if (newUserInfo.getFirstName() != null) {
+            currentUser.setFirstName(newUserInfo.getFirstName());
         }
 
-        if (newUser.getLastName() != null) {
-            currentUser.setLastName(newUser.getLastName());
+        if (newUserInfo.getLastName() != null) {
+            currentUser.setLastName(newUserInfo.getLastName());
         }
     }
 

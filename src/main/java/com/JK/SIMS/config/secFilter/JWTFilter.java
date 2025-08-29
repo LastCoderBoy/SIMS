@@ -16,6 +16,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -44,31 +45,58 @@ public class JWTFilter extends OncePerRequestFilter {
                         throw new JwtAuthenticationException("Token has been blacklisted");
                     }
                     userInfo = jwtService.extractUsername(token);
-                } catch (JwtAuthenticationException e) {
+                } catch (ExpiredJwtException e) {
+                    setErrorMessage(request, "Token has expired");
+                    throw new JwtAuthenticationException("Token has expired");
+                } catch (JwtException e) {
+                    setErrorMessage(request, "Invalid token format");
                     throw new JwtAuthenticationException("Invalid token format");
+                } catch (JwtAuthenticationException e) {
+                    // Re-throw our custom exceptions
+                    throw e;
+                } catch (Exception e) {
+                    setErrorMessage(request, "Authentication failed");
+                    throw new JwtAuthenticationException("Authentication failed");
                 }
             }
 
             if (userInfo != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UserDetails userDetails = context.getBean(UserDetailsServiceImpl.class).loadUserByUsername(userInfo);
-                if (jwtService.validateToken(token, userDetails)) {
-                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                            userDetails, null, userDetails.getAuthorities()
-                    );
-                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
-                } else {
-                    throw new JwtAuthenticationException("Invalid token");
+                try {
+                    UserDetails userDetails = context.getBean(UserDetailsServiceImpl.class).loadUserByUsername(userInfo);
+
+                    if (jwtService.validateToken(token, userDetails)) {
+                        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                                userDetails, null, userDetails.getAuthorities()
+                        );
+                        authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                        SecurityContextHolder.getContext().setAuthentication(authToken);
+                    } else {
+                        setErrorMessage(request, "Invalid or expired token");
+                        throw new JwtAuthenticationException("Invalid token");
+                    }
+                } catch (UsernameNotFoundException e) {
+                    setErrorMessage(request, "User not found");
+                    throw new JwtAuthenticationException("User not found");
+                } catch (JwtAuthenticationException e) {
+                    throw e;
+                } catch (Exception e) {
+                    setErrorMessage(request, "Authentication failed");
+                    throw new JwtAuthenticationException("Authentication failed");
                 }
             }
 
             filterChain.doFilter(request, response);
+        }catch (JwtAuthenticationException e) {
+            throw e;
+        } catch (Exception e) {
+            logger.error("Unexpected error in JWT filter: " + e.getMessage(), e);
+            setErrorMessage(request, "Internal authentication error");
+            throw new JwtAuthenticationException("Internal authentication error");
         }
-        catch (ExpiredJwtException e) {
-            throw new JwtAuthenticationException("Token has expired");
-        }
-        catch (JwtException e) {
-            throw new JwtAuthenticationException("Invalid token format");
-        }
+    }
+
+    private void setErrorMessage(HttpServletRequest request, String message) {
+        request.setAttribute("jwt_error_message", message);
+        logger.warn("JWT Authentication error: " + message);
     }
 }

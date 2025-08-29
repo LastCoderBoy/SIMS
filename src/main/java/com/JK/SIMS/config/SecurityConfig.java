@@ -49,12 +49,30 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/user/login").permitAll() // Everyone can log in
                         .requestMatchers("/api/v1/SIMS/**").permitAll() // Used for Confirmation in Email
                         .anyRequest().authenticated())
-                .exceptionHandling(exception -> exception.accessDeniedHandler(
-                        (request, response, accessDeniedException) -> {
+                .exceptionHandling(exception -> exception
+                        // Handle access denied (403) - user is authenticated but lacks permission
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
                             logger.info("Access Denied: " + accessDeniedException.getMessage());
                             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                             response.setContentType("application/json");
                             ApiResponse apiResponse = new ApiResponse(false, "You do not have access to this resource");
+                            ObjectMapper mapper = new ObjectMapper();
+                            response.getWriter().write(mapper.writeValueAsString(apiResponse));
+                        })
+                        // Handle authentication failures (401) - invalid/missing/expired tokens
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            logger.info("Authentication Failed: " + authException.getMessage());
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setContentType("application/json");
+                            response.setCharacterEncoding("UTF-8");
+
+                            // If JWT filter has a specific error message
+                            String errorMessage = (String) request.getAttribute("jwt_error_message");
+                            if (errorMessage == null) {
+                                errorMessage = "Authentication failed: " + authException.getMessage();
+                            }
+
+                            ApiResponse apiResponse = new ApiResponse(false, errorMessage);
                             ObjectMapper mapper = new ObjectMapper();
                             response.getWriter().write(mapper.writeValueAsString(apiResponse));
                         }))
