@@ -5,15 +5,27 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 public class InventoryDataDto {
 
-    private InventoryData inventoryData;
-
+    // Product info
+    private String productID;
     private String productName;
-
     private ProductCategories category;
+    private BigDecimal price;
+    private String productStatus;
+
+    // Inventory info
+    private String SKU;
+    private String location;
+    private int currentStock;
+    private int minLevel;
+    private int reservedStock;
+    private InventoryDataStatus status;
+    private String lastUpdate;
 
 }

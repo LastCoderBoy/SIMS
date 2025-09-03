@@ -41,7 +41,7 @@ public class PMServiceHelper {
             errorMessage.append("Location is required. ");
         } else {
             if (!LOCATION_PATTERN.matcher(product.getLocation()).matches()) {
-                errorMessage.append("Invalid location format. Expected format: section-shelf (e.g., A1-101). ");
+                errorMessage.append("Invalid location format. Expected format: section-shelf (e.g., A1-101).");
             }
         }
 
@@ -71,9 +71,8 @@ public class PMServiceHelper {
     }
 
     protected static void validateLocationFormat(String location) {
-        Pattern locationPattern = Pattern.compile("^[A-Za-z]\\d{1,2}-\\d{3}$");
-        if (!locationPattern.matcher(location).matches()) {
-            throw new ValidationException("PM (updateProduct): Invalid location format.");
+        if (!LOCATION_PATTERN.matcher(location).matches()) {
+            throw new ValidationException("PM (updateProduct): Invalid location format. Expected format: section-shelf (e.g., A1-101). ");
         }
     }
 }

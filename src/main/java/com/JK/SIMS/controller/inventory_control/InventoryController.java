@@ -102,16 +102,6 @@ public class InventoryController {
         throw new AccessDeniedException("IC: cancelOutgoingStockOrder() You cannot perform the following operation.");
     }
 
-    // Used to update the IC levels.
-    @PutMapping("/{sku}")
-    public ResponseEntity<?> updateProduct(@PathVariable String sku, @RequestBody InventoryData newInventoryData) throws BadRequestException {
-        if(sku == null || sku.trim().isEmpty() || newInventoryData == null){
-            throw new BadRequestException("IC: updateProduct() SKU or new input body cannot be null or empty");
-        }
-        ApiResponse response = icService.updateProduct(sku.toUpperCase(), newInventoryData);
-        return ResponseEntity.ok(response);
-    }
-
     /**
      * Search for the PENDING Outgoing Stock Products based on the provided text.
      * @param text search text
@@ -147,19 +137,4 @@ public class InventoryController {
                 salesOrderService.getAllSalesOrdersSorted(page, size, sortBy, sortDirection, Optional.of(SalesOrderStatus.PENDING));
         return ResponseEntity.ok(sortedDTOs);
     }
-
-    @DeleteMapping("/{sku}")
-    public ResponseEntity<?> deleteProduct(@PathVariable String sku) throws BadRequestException, AccessDeniedException {
-        if(SecurityUtils.hasAccess()) {
-            if(sku == null || sku.trim().isEmpty()){
-                throw new BadRequestException("IC: deleteProduct() SKU cannot be empty");
-            }
-            logger.info("IC: deleteProduct() calling...");
-
-            ApiResponse response = icService.deleteProduct(sku);
-            return ResponseEntity.ok(response);
-        }
-        throw new AccessDeniedException("IC: deleteProduct() You cannot perform the following operation.");
-    }
-
 }

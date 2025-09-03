@@ -19,10 +19,6 @@ import org.springframework.web.bind.annotation.*;
 import java.nio.file.AccessDeniedException;
 import java.util.List;
 
-/**
- *  Where every successful user can access to this endpoint.
- */
-
 @RestController
 @RequestMapping("/api/v1/products")
 public class ProductController {

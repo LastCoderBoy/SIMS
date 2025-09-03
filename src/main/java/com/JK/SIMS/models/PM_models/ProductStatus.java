@@ -8,7 +8,7 @@ public enum ProductStatus {
     PLANNING, // Product is being considered to sell
 
 
-     //  INVALID statuses
+     //  ******* INVALID statuses *******
 
     DISCONTINUED, // Product is stopped but present in the Inventory
 

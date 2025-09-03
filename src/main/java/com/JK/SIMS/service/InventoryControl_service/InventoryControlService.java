@@ -54,7 +54,7 @@ public class InventoryControlService {
         try {
             InventoryMetrics metrics = icRepository.getInventoryMetrics();
 
-            // Used to represent at the end of the page
+            // OUTGOING(SO) PENDING orders will be displayed at the end of the page
             PaginatedResponse<SalesOrderResponseDto> allPendingOrderDtos =
                     salesOrderService.getAllSalesOrdersSorted(page, size, "orderDate", "desc", Optional.of(SalesOrderStatus.PENDING));
 
@@ -115,78 +115,6 @@ public class InventoryControlService {
         }
     }
 
-    // Only currentStock and minLevel can be updated in the IC section
-    @Transactional
-    public ApiResponse updateProduct(String sku, InventoryData newInventoryData) throws BadRequestException {
-        try {
-            // Validate input parameters
-            validateUpdateRequest(newInventoryData);
-
-            // Find and validate the existing product
-            InventoryData existingProduct = getInventoryDataBySku(sku);
-
-            // Update stock levels
-            updateStockLevels(existingProduct,
-                    Optional.ofNullable(newInventoryData.getCurrentStock()),
-                    Optional.ofNullable(newInventoryData.getMinLevel()));
-
-            logger.info("IC (updateProduct): Product with SKU {} updated successfully", sku);
-            return new ApiResponse(true, sku + " is updated successfully");
-
-        } catch (DataAccessException da) {
-            logger.error("IC (updateProduct): Database error while updating SKU {}: {}",
-                    sku, da.getMessage());
-            throw new DatabaseException("IC (updateProduct): Database error", da);
-        } catch (BadRequestException | ValidationException e) {
-            throw e;
-        } catch (Exception ex) {
-            logger.error("IC (updateProduct): Unexpected error while updating SKU {}: {}",
-                    sku, ex.getMessage(), ex);
-            throw new ServiceException("IC (updateProduct): Internal Service error", ex);
-        }
-    }
-
-    /**
-     * Deletes a product from the inventory control system and archives it in the Product Management system.
-     *
-     * @param sku The Stock Keeping Unit identifier of the product to delete
-     * @return ApiResponse containing success status and confirmation message
-     * @throws BadRequestException if product is not found in IC or PM system
-     * @throws DatabaseException   if database operation fails
-     * @throws ServiceException    if any other error occurs during deletion
-     */
-    @Transactional
-    public ApiResponse deleteProduct(String sku) throws BadRequestException {
-        try{
-            Optional<InventoryData> product = icRepository.findBySKU(sku);
-            if(product.isPresent()){
-                InventoryData productToBeDeleted = product.get();
-                String id = productToBeDeleted.getPmProduct().getProductID();
-
-                ProductsForPM productInPM = pmService.findProductById(id);
-
-                if(productInPM.getStatus().equals(ProductStatus.ACTIVE) ||
-                        productInPM.getStatus().equals(ProductStatus.PLANNING) ||
-                        productInPM.getStatus().equals(ProductStatus.ON_ORDER) ) {
-                    productInPM.setStatus(ProductStatus.ARCHIVED);
-                    pmService.saveProduct(productInPM);
-                }
-
-                icRepository.deleteBySKU(sku);
-
-                logger.info("IC (deleteProduct): Product {} is deleted successfully.", sku);
-                return new ApiResponse(true, "Product " + sku + " is deleted successfully.");
-            }
-            throw new BadRequestException("IC (deleteProduct): Product with SKU " + sku + " not found");
-        }catch (DataAccessException de){
-            throw new DatabaseException("IC (deleteProduct): Database error occurred.", de);
-        }catch (BadRequestException be){
-            throw be;
-        }catch (Exception e){
-            throw new ServiceException("IC (deleteProduct): Failed to delete product", e);
-        }
-    }
-
     // Helper methods.
     @Transactional(readOnly = true)
     public InventoryData getInventoryDataBySku(String sku) throws BadRequestException {
@@ -208,7 +136,7 @@ public class InventoryControlService {
         // Update minimum level if provided
         newMinLevel.ifPresent(existingProduct::setMinLevel);
 
-        //Update the status as well based on the latest update
+        //Update the status based on the latest update
         InventoryServiceHelper.updateInventoryStatus(existingProduct);
 
         icRepository.save(existingProduct);

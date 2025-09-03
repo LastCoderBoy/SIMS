@@ -43,16 +43,16 @@ public class ExcelReporterHelper {
         int dataRowIndex = 1;
         for (InventoryDataDto ic : allProducts) {
             XSSFRow rowForData = sheet.createRow(dataRowIndex);
-            rowForData.createCell(0).setCellValue(ic.getInventoryData().getSKU());
-            rowForData.createCell(1).setCellValue(ic.getInventoryData().getPmProduct().getProductID());
+            rowForData.createCell(0).setCellValue(ic.getSKU());
+            rowForData.createCell(1).setCellValue(ic.getProductID());
             rowForData.createCell(2).setCellValue(ic.getProductName());
             rowForData.createCell(3).setCellValue(ic.getCategory().toString());
-            rowForData.createCell(4).setCellValue(ic.getInventoryData().getLocation() != null ? ic.getInventoryData().getLocation() : "");
-            rowForData.createCell(5).setCellValue(ic.getInventoryData().getPmProduct().getPrice().doubleValue());
-            rowForData.createCell(6).setCellValue(ic.getInventoryData().getPmProduct().getStatus().toString());
-            rowForData.createCell(7).setCellValue(ic.getInventoryData().getCurrentStock());
-            rowForData.createCell(8).setCellValue(ic.getInventoryData().getMinLevel());
-            rowForData.createCell(9).setCellValue(ic.getInventoryData().getStatus().toString());
+            rowForData.createCell(4).setCellValue(ic.getLocation() != null ? ic.getLocation() : "");
+            rowForData.createCell(5).setCellValue(ic.getPrice().doubleValue());
+            rowForData.createCell(6).setCellValue(ic.getStatus().toString());
+            rowForData.createCell(7).setCellValue(ic.getCurrentStock());
+            rowForData.createCell(8).setCellValue(ic.getMinLevel());
+            rowForData.createCell(9).setCellValue(ic.getStatus().toString());
             dataRowIndex++;
         }
     }

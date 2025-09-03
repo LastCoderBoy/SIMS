@@ -3,16 +3,21 @@ package com.JK.SIMS.service.InventoryControl_service;
 import com.JK.SIMS.exceptionHandler.DatabaseException;
 import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
+import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataDto;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataStatus;
 import com.JK.SIMS.models.IC_models.inventoryData.inventorySpecification.InventorySpecification;
 import com.JK.SIMS.models.PM_models.ProductCategories;
+import com.JK.SIMS.models.PM_models.ProductStatus;
+import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.IC_repo.IC_repository;
+import com.JK.SIMS.service.productManagement_service.ProductManagementService;
 import com.JK.SIMS.service.utilities.ExcelReporterHelper;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.coyote.BadRequestException;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
@@ -30,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
 
+import static com.JK.SIMS.service.InventoryControl_service.InventoryServiceHelper.validateUpdateRequest;
 import static com.JK.SIMS.service.utilities.ExcelReporterHelper.*;
 
 @Service
@@ -40,11 +46,16 @@ public class TotalItemsService {
 
     private final GlobalServiceHelper globalServiceHelper;
     private final InventoryServiceHelper inventoryServiceHelper;
+    private final InventoryControlService icService;
+    private final ProductManagementService pmService;
+
     private final IC_repository icRepository; // We are working with the Inventory Products so that's why we need this repository
     @Autowired
-    public TotalItemsService(GlobalServiceHelper globalServiceHelper, InventoryServiceHelper inventoryServiceHelper, IC_repository icRepository) {
+    public TotalItemsService(GlobalServiceHelper globalServiceHelper, InventoryServiceHelper inventoryServiceHelper, InventoryControlService icService, ProductManagementService pmService, IC_repository icRepository) {
         this.globalServiceHelper = globalServiceHelper;
         this.inventoryServiceHelper = inventoryServiceHelper;
+        this.icService = icService;
+        this.pmService = pmService;
         this.icRepository = icRepository;
     }
 
@@ -66,6 +77,37 @@ public class TotalItemsService {
         } catch (Exception e){
             logger.error("TotalItems (getInventoryDataDTOList): Failed to retrieve products: {}", e.getMessage(), e);
             throw new ServiceException("TotalItems (getInventoryDataDTOList): Failed to retrieve products", e);
+        }
+    }
+
+    // Only currentStock and minLevel can be updated in the IC section
+    @Transactional
+    public ApiResponse updateProduct(String sku, InventoryData newInventoryData) throws BadRequestException {
+        try {
+            // Validate input parameters
+            validateUpdateRequest(newInventoryData);
+
+            // Find and validate the existing product
+            InventoryData existingProduct = icService.getInventoryDataBySku(sku);
+
+            // Update stock levels
+            icService.updateStockLevels(existingProduct,
+                    Optional.ofNullable(newInventoryData.getCurrentStock()),
+                    Optional.ofNullable(newInventoryData.getMinLevel()));
+
+            logger.info("IC (updateProduct): Product with SKU {} updated successfully", sku);
+            return new ApiResponse(true, sku + " is updated successfully");
+
+        } catch (DataAccessException da) {
+            logger.error("IC (updateProduct): Database error while updating SKU {}: {}",
+                    sku, da.getMessage());
+            throw new DatabaseException("IC (updateProduct): Database error", da);
+        } catch (BadRequestException | ValidationException e) {
+            throw e;
+        } catch (Exception ex) {
+            logger.error("IC (updateProduct): Unexpected error while updating SKU {}: {}",
+                    sku, ex.getMessage(), ex);
+            throw new ServiceException("IC (updateProduct): Internal Service error", ex);
         }
     }
 
@@ -150,6 +192,44 @@ public class TotalItemsService {
         }
     }
 
+    /**
+     * Deletes a product from the inventory control system and archives it in the Product Management system.
+     *
+     * @param sku The Stock Keeping Unit identifier of the product to delete
+     * @return ApiResponse containing success status and confirmation message
+     * @throws BadRequestException if product is not found in IC or PM system
+     * @throws DatabaseException   if database operation fails
+     * @throws ServiceException    if any other error occurs during deletion
+     */
+    @Transactional
+    public ApiResponse deleteProduct(String sku) throws BadRequestException {
+        try{
+            Optional<InventoryData> product = icRepository.findBySKU(sku);
+            if(product.isPresent()){
+                InventoryData productToBeDeleted = product.get();
+                ProductsForPM productInPM = productToBeDeleted.getPmProduct();
+
+                if(productInPM.getStatus().equals(ProductStatus.ACTIVE) ||
+                        productInPM.getStatus().equals(ProductStatus.PLANNING) ||
+                        productInPM.getStatus().equals(ProductStatus.ON_ORDER) ) {
+                    productInPM.setStatus(ProductStatus.ARCHIVED);
+                    pmService.saveProduct(productInPM);
+                }
+                icRepository.deleteBySKU(sku);
+
+                logger.info("IC (deleteProduct): Product {} is deleted successfully.", sku);
+                return new ApiResponse(true, "Product " + sku + " is deleted successfully.");
+            }
+            throw new BadRequestException("IC (deleteProduct): Product with SKU " + sku + " not found");
+        }catch (DataAccessException de){
+            throw new DatabaseException("IC (deleteProduct): Database error occurred.", de);
+        }catch (BadRequestException be){
+            throw be;
+        }catch (Exception e){
+            throw new ServiceException("IC (deleteProduct): Failed to delete product", e);
+        }
+    }
+
     public void generateReport(HttpServletResponse response, String sortBy, String sortDirection) {
         XSSFWorkbook workbook = new XSSFWorkbook();
         XSSFSheet sheet = workbook.createSheet("All Inventory Products");
@@ -161,6 +241,7 @@ public class TotalItemsService {
     }
 
     // Helper methods
+    @Transactional(readOnly = true)
     public List<InventoryDataDto> getAllInventoryProducts(String sortBy, String sortDirection) {
         try {
             // Parse sort direction

@@ -2,13 +2,17 @@ package com.JK.SIMS.models.IC_models.inventoryData;
 
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
 @Table(name = "InventoryControl_Data")
 public class InventoryData {
 
@@ -21,7 +25,7 @@ public class InventoryData {
     private ProductsForPM pmProduct;
 
     @Column(name = "Location")
-    private String location; // Location of the product in the factory
+    private String location; // Location of the product in the factory shelf
 
     @Column(name = "CurrentStock")
     private Integer currentStock;

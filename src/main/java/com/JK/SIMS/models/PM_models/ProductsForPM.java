@@ -20,7 +20,7 @@ public class ProductsForPM {
     @Column(name = "Name")
     private String name;
 
-    // The Location is the location of the product on the shelf.
+    // Location of the product on the shelf.
     @Column(name = "Location")
     private String location;
 

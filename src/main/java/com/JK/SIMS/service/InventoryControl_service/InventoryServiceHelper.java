@@ -20,18 +20,20 @@ public class InventoryServiceHelper {
 
     protected static void validateUpdateRequest(InventoryData newInventoryData) {
         List<String> errors = new ArrayList<>();
+        Integer newCurrentStock = newInventoryData.getCurrentStock();
+        Integer newMinLevel = newInventoryData.getMinLevel();
 
-        if (newInventoryData.getCurrentStock() == null && newInventoryData.getMinLevel() == null) {
+        if (newCurrentStock == null && newMinLevel == null) {
             errors.add("At least one of currentStock or minLevel must be provided");
         }
 
-        if (newInventoryData.getCurrentStock() != null &&
-                newInventoryData.getCurrentStock() <= 0) {
+        if (newCurrentStock != null &&
+                newCurrentStock <= 0) {
             errors.add("Current stock must be greater than 0");
         }
 
-        if (newInventoryData.getMinLevel() != null &&
-                newInventoryData.getMinLevel() <= 0) {
+        if (newMinLevel != null &&
+                newMinLevel <= 0) {
             errors.add("Minimum stock level must be greater than 0");
         }
 
@@ -41,10 +43,12 @@ public class InventoryServiceHelper {
     }
 
     protected static void updateInventoryStatus(InventoryData product) {
-        if (product.getCurrentStock() <= product.getMinLevel()) {
-            product.setStatus(InventoryDataStatus.LOW_STOCK);
-        } else {
-            product.setStatus(InventoryDataStatus.IN_STOCK);
+        if(product.getStatus() != InventoryDataStatus.INVALID) {
+            if (product.getCurrentStock() <= product.getMinLevel()) {
+                product.setStatus(InventoryDataStatus.LOW_STOCK);
+            } else {
+                product.setStatus(InventoryDataStatus.IN_STOCK);
+            }
         }
     }
 
@@ -57,11 +61,24 @@ public class InventoryServiceHelper {
         return dtoResponse;
     }
 
-    public InventoryDataDto convertToDTO(InventoryData currentProduct) {
-        InventoryDataDto inventoryDataDTO = new InventoryDataDto();
-        inventoryDataDTO.setInventoryData(currentProduct);
-        inventoryDataDTO.setProductName(currentProduct.getPmProduct().getName());
-        inventoryDataDTO.setCategory(currentProduct.getPmProduct().getCategory());
-        return inventoryDataDTO;
+    public InventoryDataDto convertToDTO(InventoryData inventoryData) {
+        InventoryDataDto dto = new InventoryDataDto();
+        // Set product fields
+        dto.setProductID(inventoryData.getPmProduct().getProductID());
+        dto.setProductName(inventoryData.getPmProduct().getName());
+        dto.setCategory(inventoryData.getPmProduct().getCategory());
+        dto.setPrice(inventoryData.getPmProduct().getPrice());
+        dto.setProductStatus(inventoryData.getPmProduct().getStatus().toString());
+
+        // Set inventory fields
+        dto.setSKU(inventoryData.getSKU());
+        dto.setLocation(inventoryData.getLocation());
+        dto.setCurrentStock(inventoryData.getCurrentStock());
+        dto.setMinLevel(inventoryData.getMinLevel());
+        dto.setReservedStock(inventoryData.getReservedStock());
+        dto.setStatus(inventoryData.getStatus());
+        dto.setLastUpdate(inventoryData.getLastUpdate().toString());
+
+        return dto;
     }
 }

@@ -97,7 +97,7 @@ public class ProductManagementService {
     
     /**
      * Adds a new product to the system after validation and generates a new product ID.
-     * If the product status is not in PLANNING and ARCHIVED, it will also be added to IC section.
+     * If the product status is NOT Equal to PLANNING, it will be added to IC section.
      *
      * @param newProduct The product object containing all required product details
      * @return ApiResponse object containing success status and message

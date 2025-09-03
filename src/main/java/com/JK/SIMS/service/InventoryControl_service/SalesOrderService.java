@@ -163,7 +163,8 @@ public class SalesOrderService {
 
     // Will be used in the SORT logic and the normal GET all logic
     @Transactional(readOnly = true)
-    public PaginatedResponse<SalesOrderResponseDto> getAllSalesOrdersSorted(int page, int size, String sortBy, String sortDir, Optional<SalesOrderStatus> status) {
+    public PaginatedResponse<SalesOrderResponseDto> getAllSalesOrdersSorted(int page, int size, String sortBy, String sortDir,
+                                                                            Optional<SalesOrderStatus> status) {
         try {
             globalServiceHelper.validatePaginationParameters(page, size);
 

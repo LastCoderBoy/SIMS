@@ -1,17 +1,20 @@
 package com.JK.SIMS.controller.inventory_control;
 
+import com.JK.SIMS.config.SecurityUtils;
+import com.JK.SIMS.models.ApiResponse;
+import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataDto;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryControl_service.TotalItemsService;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.nio.file.AccessDeniedException;
 
 @RestController
 @RequestMapping("/api/v1/products/inventory/total")
@@ -32,6 +35,16 @@ public class TotalItemsController {
         logger.info("TotalItemsController: getAllProducts() calling with page {} and size {}...", page, size);
         PaginatedResponse<InventoryDataDto> inventoryResponse = totalItemsService.getPaginatedInventoryDto(sortBy, sortDirection, page, size);
         return ResponseEntity.ok(inventoryResponse);
+    }
+
+    // Used to update the IC levels.
+    @PutMapping("/{sku}")
+    public ResponseEntity<?> updateProduct(@PathVariable String sku, @RequestBody InventoryData newInventoryData) throws BadRequestException {
+        if(sku == null || sku.trim().isEmpty() || newInventoryData == null){
+            throw new BadRequestException("IC: updateProduct() SKU or new input body cannot be null or empty");
+        }
+        ApiResponse response = totalItemsService.updateProduct(sku.toUpperCase(), newInventoryData);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/search")
@@ -55,6 +68,20 @@ public class TotalItemsController {
         PaginatedResponse<InventoryDataDto> filterResponse =
                 totalItemsService.filterProducts(filterBy, sortBy, sortDirection, page, size);
         return ResponseEntity.ok(filterResponse);
+    }
+
+    @DeleteMapping("/{sku}")
+    public ResponseEntity<?> deleteProduct(@PathVariable String sku) throws BadRequestException, AccessDeniedException {
+        if(SecurityUtils.hasAccess()) {
+            if(sku == null || sku.trim().isEmpty()){
+                throw new BadRequestException("IC: deleteProduct() SKU cannot be empty");
+            }
+            logger.info("IC: deleteProduct() calling...");
+
+            ApiResponse response = totalItemsService.deleteProduct(sku);
+            return ResponseEntity.ok(response);
+        }
+        throw new AccessDeniedException("IC: deleteProduct() You cannot perform the following operation.");
     }
 
     // Export to Excel

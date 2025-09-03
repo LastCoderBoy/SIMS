@@ -23,7 +23,7 @@ public class SalesOrder {
     private Long id;
 
     @Column(nullable = false, unique = true)
-    private String orderReference; // "SO-2024-07-20-001" [SO-data-nextOrderNumberOnThatDay]
+    private String orderReference; // "SO-2024-07-20-001" [SO-date-nextOrderNumberOnThatDay]
 
     @Column(nullable = false)
     private String destination; // To companies, third parties
