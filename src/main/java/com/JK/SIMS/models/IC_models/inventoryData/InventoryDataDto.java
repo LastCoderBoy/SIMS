@@ -1,6 +1,7 @@
 package com.JK.SIMS.models.IC_models.inventoryData;
 
 import com.JK.SIMS.models.PM_models.ProductCategories;
+import com.JK.SIMS.models.PM_models.ProductStatus;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -17,7 +18,7 @@ public class InventoryDataDto {
     private String productName;
     private ProductCategories category;
     private BigDecimal price;
-    private String productStatus;
+    private ProductStatus productStatus;
 
     // Inventory info
     private String SKU;
@@ -25,7 +26,7 @@ public class InventoryDataDto {
     private int currentStock;
     private int minLevel;
     private int reservedStock;
-    private InventoryDataStatus status;
+    private InventoryDataStatus inventoryStatus;
     private String lastUpdate;
 
 }

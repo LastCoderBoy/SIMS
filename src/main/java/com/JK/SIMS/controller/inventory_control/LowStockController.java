@@ -2,7 +2,6 @@ package com.JK.SIMS.controller.inventory_control;
 
 
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataDto;
-import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataStatus;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryControl_service.LowStockService;
@@ -16,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.io.IOException;
 
 @RestController
 @RequestMapping("/api/v1/products/inventory/low-stock")

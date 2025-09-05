@@ -3,6 +3,8 @@ package com.JK.SIMS.service.utilities;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataDto;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -26,33 +28,51 @@ public class ExcelReporterHelper {
     }
 
     public static void createHeaderRowForInventoryDto(XSSFSheet sheet) {
+        // Create a bold font style
+        XSSFWorkbook workbook = sheet.getWorkbook();
+        Font headerFont = workbook.createFont();
+        headerFont.setBold(true);
+
+        // Create a cell style with the bold font
+        CellStyle headerStyle = workbook.createCellStyle();
+        headerStyle.setFont(headerFont);
+
+        // Create the header row
         XSSFRow row = sheet.createRow(0);
-        row.createCell(0).setCellValue("SKU");
-        row.createCell(1).setCellValue("Product ID");
-        row.createCell(2).setCellValue("Name");
-        row.createCell(3).setCellValue("Category");
-        row.createCell(4).setCellValue("Location");
-        row.createCell(5).setCellValue("Price");
-        row.createCell(6).setCellValue("Product Status");
-        row.createCell(7).setCellValue("Current Stock");
-        row.createCell(8).setCellValue("Minimum Stock");
-        row.createCell(9).setCellValue("Inventory Status");
+
+        // Create cells with the bold style
+        createHeaderCell(row, 0, "Product ID", headerStyle);
+        createHeaderCell(row, 1, "SKU", headerStyle);
+        createHeaderCell(row, 2, "Name", headerStyle);
+        createHeaderCell(row, 3, "Category", headerStyle);
+        createHeaderCell(row, 4, "Location", headerStyle);
+        createHeaderCell(row, 5, "Price", headerStyle);
+        createHeaderCell(row, 6, "Product Status", headerStyle);
+        createHeaderCell(row, 7, "Current Stock", headerStyle);
+        createHeaderCell(row, 8, "Minimum Stock", headerStyle);
+        createHeaderCell(row, 9, "Inventory Status", headerStyle);
+    }
+
+    private static void createHeaderCell(XSSFRow row, int column, String value, org.apache.poi.ss.usermodel.CellStyle style) {
+        org.apache.poi.ss.usermodel.Cell cell = row.createCell(column);
+        cell.setCellValue(value);
+        cell.setCellStyle(style);
     }
 
     public static void populateDataRowsForInventoryDto(XSSFSheet sheet, List<InventoryDataDto> allProducts) {
         int dataRowIndex = 1;
         for (InventoryDataDto ic : allProducts) {
             XSSFRow rowForData = sheet.createRow(dataRowIndex);
-            rowForData.createCell(0).setCellValue(ic.getSKU());
-            rowForData.createCell(1).setCellValue(ic.getProductID());
+            rowForData.createCell(0).setCellValue(ic.getProductID());
+            rowForData.createCell(1).setCellValue(ic.getSKU());
             rowForData.createCell(2).setCellValue(ic.getProductName());
             rowForData.createCell(3).setCellValue(ic.getCategory().toString());
             rowForData.createCell(4).setCellValue(ic.getLocation() != null ? ic.getLocation() : "");
             rowForData.createCell(5).setCellValue(ic.getPrice().doubleValue());
-            rowForData.createCell(6).setCellValue(ic.getStatus().toString());
+            rowForData.createCell(6).setCellValue(ic.getProductStatus().toString());
             rowForData.createCell(7).setCellValue(ic.getCurrentStock());
             rowForData.createCell(8).setCellValue(ic.getMinLevel());
-            rowForData.createCell(9).setCellValue(ic.getStatus().toString());
+            rowForData.createCell(9).setCellValue(ic.getInventoryStatus().toString());
             dataRowIndex++;
         }
     }

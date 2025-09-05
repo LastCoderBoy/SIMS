@@ -59,6 +59,7 @@ public class TotalItemsService {
         this.icRepository = icRepository;
     }
 
+    @Transactional(readOnly = true)
     public PaginatedResponse<InventoryDataDto> getPaginatedInventoryDto(String sortBy, String sortDirection, int page, int size) {
         try{
             globalServiceHelper.validatePaginationParameters(page, size);
@@ -111,6 +112,7 @@ public class TotalItemsService {
         }
     }
 
+    // Search by SKU, Location, ID, Name, Category.
     @Transactional(readOnly = true)
     public PaginatedResponse<InventoryDataDto> searchProduct(String text, int page, int size) {
         try {
@@ -164,8 +166,7 @@ public class TotalItemsService {
                     boolean isStatusType = GlobalServiceHelper.isInEnum(filterBy.trim().toUpperCase(), InventoryDataStatus.class);
                     Specification<InventoryData> specification;
                     if(isStatusType){
-                        specification =
-                                Specification.where(InventorySpecification.hasStatus(
+                        specification = Specification.where(InventorySpecification.hasStatus(
                                         InventoryDataStatus.valueOf(filterBy.trim().toUpperCase())));
                     }else {
                         specification =
@@ -233,15 +234,15 @@ public class TotalItemsService {
     public void generateReport(HttpServletResponse response, String sortBy, String sortDirection) {
         XSSFWorkbook workbook = new XSSFWorkbook();
         XSSFSheet sheet = workbook.createSheet("All Inventory Products");
-        List<InventoryDataDto> allProducts = getAllInventoryProducts(sortBy, sortDirection);
         createHeaderRowForInventoryDto(sheet);
+
+        List<InventoryDataDto> allProducts = getAllInventoryProducts(sortBy, sortDirection);
         populateDataRowsForInventoryDto(sheet, allProducts);
         logger.info("TotalItems (generateReport): {} products retrieved.", allProducts.size());
         writeWorkbookToResponse(response, workbook);
     }
 
     // Helper methods
-    @Transactional(readOnly = true)
     public List<InventoryDataDto> getAllInventoryProducts(String sortBy, String sortDirection) {
         try {
             // Parse sort direction

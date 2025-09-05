@@ -272,7 +272,7 @@ public class InventoryControlService {
             }
 
             String lastDigits = productID.substring(3);
-            String categoryStart = category.toString().substring(0, 3);
+            String categoryStart = category.toString().substring(0, 3); // EDUCATION -> "EDU"
             return categoryStart + "-" + lastDigits;
         }
         catch (IllegalArgumentException iae) {

@@ -48,6 +48,7 @@ public class GlobalServiceHelper {
         }
     }
 
+    // Checks the given input is in the ENUM class or not.
     public static <T extends Enum<T>> boolean isInEnum(String value, Class<T> enumClass) {
         try {
             Enum.valueOf(enumClass, value);

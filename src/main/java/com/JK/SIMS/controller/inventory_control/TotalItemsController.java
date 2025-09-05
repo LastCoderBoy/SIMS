@@ -33,13 +33,15 @@ public class TotalItemsController {
                                             @RequestParam(defaultValue = "0") int page,
                                             @RequestParam(defaultValue = "10") int size){
         logger.info("TotalItemsController: getAllProducts() calling with page {} and size {}...", page, size);
-        PaginatedResponse<InventoryDataDto> inventoryResponse = totalItemsService.getPaginatedInventoryDto(sortBy, sortDirection, page, size);
+        PaginatedResponse<InventoryDataDto> inventoryResponse =
+                totalItemsService.getPaginatedInventoryDto(sortBy, sortDirection, page, size);
         return ResponseEntity.ok(inventoryResponse);
     }
 
-    // Used to update the IC levels.
+    // Used to update the IC Stock levels.
     @PutMapping("/{sku}")
-    public ResponseEntity<?> updateProduct(@PathVariable String sku, @RequestBody InventoryData newInventoryData) throws BadRequestException {
+    public ResponseEntity<?> updateProduct(@PathVariable String sku,
+                                           @RequestBody InventoryData newInventoryData) throws BadRequestException {
         if(sku == null || sku.trim().isEmpty() || newInventoryData == null){
             throw new BadRequestException("IC: updateProduct() SKU or new input body cannot be null or empty");
         }

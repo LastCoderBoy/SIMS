@@ -54,7 +54,8 @@ public class InventoryServiceHelper {
 
     public PaginatedResponse<InventoryDataDto> transformToPaginatedDTOResponse(Page<InventoryData> inventoryPage){
         PaginatedResponse<InventoryDataDto> dtoResponse = new PaginatedResponse<>();
-        dtoResponse.setContent(inventoryPage.getContent().stream().map(this::convertToDTO).toList());
+        dtoResponse.setContent(inventoryPage.getContent().stream()
+                                                        .map(this::convertToDTO).toList());
         dtoResponse.setTotalPages(inventoryPage.getTotalPages());
         dtoResponse.setTotalElements(inventoryPage.getTotalElements());
         logger.info("TotalItems (getInventoryDataDTOList): {} products retrieved.", inventoryPage.getContent().size());
@@ -68,7 +69,7 @@ public class InventoryServiceHelper {
         dto.setProductName(inventoryData.getPmProduct().getName());
         dto.setCategory(inventoryData.getPmProduct().getCategory());
         dto.setPrice(inventoryData.getPmProduct().getPrice());
-        dto.setProductStatus(inventoryData.getPmProduct().getStatus().toString());
+        dto.setProductStatus(inventoryData.getPmProduct().getStatus());
 
         // Set inventory fields
         dto.setSKU(inventoryData.getSKU());
@@ -76,7 +77,7 @@ public class InventoryServiceHelper {
         dto.setCurrentStock(inventoryData.getCurrentStock());
         dto.setMinLevel(inventoryData.getMinLevel());
         dto.setReservedStock(inventoryData.getReservedStock());
-        dto.setStatus(inventoryData.getStatus());
+        dto.setInventoryStatus(inventoryData.getStatus());
         dto.setLastUpdate(inventoryData.getLastUpdate().toString());
 
         return dto;
