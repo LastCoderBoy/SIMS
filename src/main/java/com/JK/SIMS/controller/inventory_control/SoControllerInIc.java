@@ -18,21 +18,15 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/priority/inventory/outgoing-stock")
-public class SalesOrderControllerInIC {
+public class SoControllerInIc {
 
-    private static final Logger logger = LoggerFactory.getLogger(SalesOrderControllerInIC.class);
+    private static final Logger logger = LoggerFactory.getLogger(SoControllerInIc.class);
     private final SalesOrderService salesOrderService;
     @Autowired
-    public SalesOrderControllerInIC(SalesOrderService salesOrderService) {
+    public SoControllerInIc(SalesOrderService salesOrderService) {
         this.salesOrderService = salesOrderService;
     }
 
-    @PostMapping("/create-order")
-    public ResponseEntity<?> createOrder(@RequestBody SalesOrderRequestDto salesOrderRequestDto){
-        logger.info("OS createOrder() is calling...");
-        ApiResponse response = salesOrderService.createOrder(salesOrderRequestDto);
-        return new ResponseEntity<>(response, HttpStatus.CREATED);
-    }
 
     @GetMapping("/orders")
     public ResponseEntity<?> getAllOrders(

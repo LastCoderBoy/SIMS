@@ -5,8 +5,8 @@ import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
 import com.JK.SIMS.models.IC_models.purchaseOrder.token.ConfirmationToken;
 import com.JK.SIMS.models.IC_models.purchaseOrder.token.ConfirmationTokenStatus;
 import com.JK.SIMS.repository.confirmationTokenRepo.ConfirmationTokenRepository;
+import com.JK.SIMS.service.purchaseOrderService.PurchaseOrderServiceHelper;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
-import com.JK.SIMS.service.purchaseOrderService.PurchaseOrderHelper;
 import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,7 +25,7 @@ public class ConfirmationTokenService {
     private static final Logger logger = LoggerFactory.getLogger(ConfirmationTokenService.class);
 
     private final ConfirmationTokenRepository tokenRepository;
-    private final PurchaseOrderHelper purchaseOrderHelper;
+    private final PurchaseOrderServiceHelper purchaseOrderServiceHelper;
     private final Clock clock;
 
     @Transactional
@@ -48,7 +48,7 @@ public class ConfirmationTokenService {
             PurchaseOrder order = token.getOrder();
             order.setStatus(PurchaseOrderStatus.FAILED);
 
-            purchaseOrderHelper.saveIncomingStock(order);
+            purchaseOrderServiceHelper.saveIncomingStock(order);
             tokenRepository.delete(token);
             logger.info("Deleted {} Expired Confirmation Token", expiredTokens.size());
         }

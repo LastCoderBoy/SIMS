@@ -1,4 +1,4 @@
-package com.JK.SIMS.models.IC_models.purchaseOrder.purchaseOrderSpec;
+package com.JK.SIMS.repository.PO_repo.purchaseOrderSpec;
 
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;

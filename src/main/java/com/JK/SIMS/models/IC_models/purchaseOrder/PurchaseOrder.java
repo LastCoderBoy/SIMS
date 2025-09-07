@@ -31,17 +31,23 @@ public class PurchaseOrder {
     @JoinColumn(name = "product_id", nullable = false)
     private ProductsForPM product;
 
-    @Column(nullable = false)
+    @Column(nullable = false, name = "ordered_quantity")
     private Integer orderedQuantity; // Quantity initially ordered
+
+    @Column(name = "received_quantity")
     private Integer receivedQuantity = 0; // Quantity actually received so far (defaults to 0)
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PurchaseOrderStatus status; // DELIVERY_IN_PROCESS, RECEIVED, PARTIALLY_RECEIVED, CANCELLED, FAILED
 
-    @Column(nullable = false)
+    @Column(nullable = false, name = "order_date")
     private LocalDate orderDate;
+
+    @Column(name = "expected_arrival_date")
     private LocalDate expectedArrivalDate;
+
+    @Column(name = "actual_arrival_date")
     private LocalDate actualArrivalDate; // When the stock was actually received
 
     @Column(columnDefinition = "TEXT")
@@ -51,14 +57,14 @@ public class PurchaseOrder {
     @JoinColumn(name = "supplier_id")
     private Supplier supplier; // The supplier from whom the stock is coming
 
-    @UpdateTimestamp
-    @Column(nullable = false)
+    @UpdateTimestamp // Automatically will be set
+    @Column(nullable = false, name = "last_updated")
     private LocalDateTime lastUpdated;
 
-    @Column(nullable = false)
+    @Column(nullable = false, name = "ordered_by")
     private String orderedBy;
 
-    @Column
+    @Column(name = "updated_by")
     private String updatedBy;
 
     @Version

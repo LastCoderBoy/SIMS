@@ -8,15 +8,13 @@ import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataStatus;
 import com.JK.SIMS.models.IC_models.purchaseOrder.*;
-import com.JK.SIMS.models.IC_models.purchaseOrder.purchaseOrderSpec.PurchaseOrderSpecification;
 import com.JK.SIMS.models.IC_models.purchaseOrder.token.ConfirmationToken;
 import com.JK.SIMS.models.IC_models.purchaseOrder.token.ConfirmationTokenStatus;
-import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.supplier.Supplier;
-import com.JK.SIMS.repository.IC_repo.PurchaseOrderRepository;
+import com.JK.SIMS.repository.PO_repo.PurchaseOrderRepository;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import com.JK.SIMS.service.InventoryControl_service.InventoryControlService;
 import com.JK.SIMS.service.confirmTokenService.ConfirmationTokenService;
@@ -39,18 +37,16 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static com.JK.SIMS.service.purchaseOrderService.PurchaseOrderHelper.buildConfirmationPage;
+import static com.JK.SIMS.service.purchaseOrderService.PurchaseOrderServiceHelper.buildConfirmationPage;
 
 @Service
 public class PurchaseOrderService {
@@ -67,10 +63,11 @@ public class PurchaseOrderService {
     private final ProductManagementService pmService;
     private final InventoryControlService inventoryControlService;
     private final ConfirmationTokenService confirmationTokenService;
+    private final PurchaseOrderServiceHelper poServiceHelper;
     @Autowired
     public PurchaseOrderService(Clock clock, PurchaseOrderRepository purchaseOrderRepository, GlobalServiceHelper globalServiceHelper,
                                 SupplierService supplierService, EmailService emailService, ProductManagementService pmService,
-                                @Lazy InventoryControlService inventoryControlService, ConfirmationTokenService confirmationTokenService) {
+                                @Lazy InventoryControlService inventoryControlService, ConfirmationTokenService confirmationTokenService, PurchaseOrderServiceHelper poServiceHelper) {
         this.clock = clock;
         this.purchaseOrderRepository = purchaseOrderRepository;
         this.globalServiceHelper = globalServiceHelper;
@@ -79,6 +76,7 @@ public class PurchaseOrderService {
         this.pmService = pmService;
         this.inventoryControlService = inventoryControlService;
         this.confirmationTokenService = confirmationTokenService;
+        this.poServiceHelper = poServiceHelper;
     }
 
     @Transactional
@@ -137,7 +135,7 @@ public class PurchaseOrderService {
         try {
             Pageable pageable = PageRequest.of(page, size, Sort.by("product.name"));
             Page<PurchaseOrder> entityResponse = purchaseOrderRepository.findAll(pageable);
-            PaginatedResponse<PurchaseOrderResponseDto> dtoResponse = transformToPaginatedDto(entityResponse);
+            PaginatedResponse<PurchaseOrderResponseDto> dtoResponse = poServiceHelper.transformToPaginatedDtoResponse(entityResponse);
             logger.info("IS (getAllIncomingStock): Returning {} paginated data", dtoResponse.getContent().size());
             return dtoResponse;
         }catch (DataAccessException da){
@@ -190,45 +188,6 @@ public class PurchaseOrderService {
     public PurchaseOrder getIncomingStockOrderById(Long orderId) {
         return purchaseOrderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("IS (getIncomingStockOrderById): No incoming stock order found for ID: " + orderId));
-    }
-
-
-    @Transactional(readOnly = true)
-    public PaginatedResponse<PurchaseOrderResponseDto> searchProduct(String text, int page, int size) {
-        if (text == null || text.isEmpty()) {
-            logger.warn("IS (searchProduct): Search text is null or empty");
-            throw new ValidationException("IS (searchProduct): Search text cannot be empty");
-        }
-        try {
-            Pageable pageable = PageRequest.of(page, size, Sort.by("product.name"));
-            Page<PurchaseOrder> searchEntityResponse = purchaseOrderRepository.searchProducts(text.trim().toLowerCase(), pageable);
-            return transformToPaginatedDto(searchEntityResponse);
-        } catch (DataAccessException dae) {
-            logger.error("IS (searchProduct): Database error while searching products", dae);
-            throw new DatabaseException("IS (searchProduct): Error occurred while searching products");
-        } catch (Exception e) {
-            logger.error("IS (searchProduct): Unexpected error while searching products", e);
-            throw new ServiceException("IS (searchProduct): Error occurred while searching products");
-        }
-    }
-
-    @Transactional(readOnly = true)
-    public PaginatedResponse<PurchaseOrderResponseDto> filterIncomingStock(PurchaseOrderStatus status, ProductCategories category,
-                                                                           String sortBy, String sortDirection, int page, int size){
-        // Parse sort direction
-        Sort.Direction direction = sortDirection.equalsIgnoreCase("desc") ?
-                Sort.Direction.DESC : Sort.Direction.ASC;
-
-        // Create sort
-        Sort sort = Sort.by(direction, sortBy);
-        Pageable pageable = PageRequest.of(page, size, sort);
-
-        Specification<PurchaseOrder> spec = Specification
-                .where(PurchaseOrderSpecification.hasStatus(status))
-                .and(PurchaseOrderSpecification.hasProductCategory(category));
-
-        Page<PurchaseOrder> filterResult = purchaseOrderRepository.findAll(spec, pageable);
-        return transformToPaginatedDto(filterResult);
     }
 
     // TODO: Only set to INCOMING in IC when email is Confirmed
@@ -474,17 +433,4 @@ public class PurchaseOrderService {
         throw new ServiceException("Failed to generate a unique PO Number after " + MAX_PO_GENERATION_RETRIES + " attempts.");
     }
 
-    private PaginatedResponse<PurchaseOrderResponseDto> transformToPaginatedDto(Page<PurchaseOrder> entityResponse){
-        PaginatedResponse<PurchaseOrderResponseDto> response = new PaginatedResponse<>();
-        List<PurchaseOrderResponseDto> convertedContent =
-                entityResponse.getContent().stream().map(this::convertToDTO).toList();
-        response.setContent(convertedContent);
-        response.setTotalPages(entityResponse.getTotalPages());
-        response.setTotalElements(entityResponse.getTotalElements());
-        return response;
-    }
-
-    private PurchaseOrderResponseDto convertToDTO(PurchaseOrder order){
-        return new PurchaseOrderResponseDto(order);
-    }
 }

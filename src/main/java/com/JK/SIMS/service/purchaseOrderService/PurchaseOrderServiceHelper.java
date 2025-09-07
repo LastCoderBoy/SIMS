@@ -1,30 +1,52 @@
 package com.JK.SIMS.service.purchaseOrderService;
 
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
-import com.JK.SIMS.repository.IC_repo.PurchaseOrderRepository;
+import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderResponseDto;
+import com.JK.SIMS.models.PaginatedResponse;
+import com.JK.SIMS.repository.PO_repo.PurchaseOrderRepository;
 import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.util.List;
 
 @Service
 @AllArgsConstructor
-public class PurchaseOrderHelper {
+public class PurchaseOrderServiceHelper {
 
-    private static final Logger logger = LoggerFactory.getLogger(PurchaseOrderHelper.class);
+    private static final Logger logger = LoggerFactory.getLogger(PurchaseOrderServiceHelper.class);
     private final PurchaseOrderRepository incomingStockRepository;
     private final Clock clock;
 
     @Transactional(propagation = Propagation.MANDATORY)
     public void saveIncomingStock(PurchaseOrder order) {
         incomingStockRepository.save(order);
-        logger.info("PurchaseOrderHelper: Successfully saved/updated product with PO Number: {}",
+        logger.info("PurchaseOrderServiceHelper: Successfully saved/updated product with PO Number: {}",
                 order.getPONumber());
     }
+
+    public PaginatedResponse<PurchaseOrderResponseDto> transformToPaginatedDtoResponse(Page<PurchaseOrder> poEntityPage){
+        PaginatedResponse<PurchaseOrderResponseDto> paginatedResponse = new PaginatedResponse<>();
+        paginatedResponse.setTotalElements(poEntityPage.getTotalElements());
+        paginatedResponse.setTotalPages(poEntityPage.getTotalPages());
+        List<PurchaseOrderResponseDto> dtoList = poEntityPage.stream().map(this::convertToDto).toList();
+        paginatedResponse.setContent(dtoList);
+        return paginatedResponse;
+    }
+
+    public PurchaseOrderResponseDto convertToDto(PurchaseOrder order){
+        return new PurchaseOrderResponseDto(order);
+    }
+
+    public Page<PurchaseOrderResponseDto> convertToDto(Page<PurchaseOrder> poEntityPage){
+        return poEntityPage.map(this::convertToDto);
+    }
+
 
     // Helper method to build a simple HTML response page for the supplier after clicking a link
     public static String buildConfirmationPage(String message, String alertClass) {
