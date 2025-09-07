@@ -291,6 +291,55 @@ public class ProductManagementService {
         }
     }
 
+    /**
+     * Generates an Excel report containing product management data.
+     * Creates a workbook with product details including ID, category, name,
+     * location, price, and status.
+     *
+     * @param response HttpServletResponse to write the Excel file to
+     */
+    public void generatePMReport(HttpServletResponse response) {
+        XSSFWorkbook workbook = new XSSFWorkbook();
+        XSSFSheet sheet = workbook.createSheet("Product Management");
+        List<ProductManagementDTO> allProducts = getAllProducts();
+        createHeaderRow(sheet);
+        populateDataRows(sheet, allProducts);
+        logger.info("PM (GeneratePmReport): Retrieved {} products from database for report generation.)", allProducts.size());
+        ExcelReporterHelper.writeWorkbookToResponse(response, workbook);
+    }
+
+    // Helper method for internal use
+    @Transactional(readOnly = true)
+    public ProductsForPM findProductById(String productId) {
+        return pmRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("PM (findProductById): Product with ID " + productId + " not found"));
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void saveProduct(ProductsForPM product) {
+        try {
+            pmRepository.save(product);
+            logger.info("PM (saveProduct): Successfully saved/updated product with ID {}",
+                    product.getProductID());
+        } catch (DataAccessException da) {
+            logger.error("PM (saveProduct): Database error while saving product: {}",
+                    da.getMessage());
+            throw new DatabaseException("Failed to save product", da);
+        } catch (Exception e) {
+            logger.error("PM (saveProduct): Unexpected error while saving product: {}",
+                    e.getMessage());
+            throw new ServiceException("Failed to save product", e);
+        }
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void updateIncomingProductStatusInPm(ProductsForPM orderedProduct) {
+        if (orderedProduct.getStatus() == ProductStatus.ON_ORDER) {
+            orderedProduct.setStatus(ProductStatus.ACTIVE);
+            pmRepository.save(orderedProduct);
+        }
+    }
+
     private void updateProductFields(ProductsForPM currentProduct, ProductsForPM newProduct) {
         if (newProduct.getName() != null) {
             currentProduct.setName(newProduct.getName());
@@ -345,6 +394,30 @@ public class ProductManagementService {
         }
     }
 
+    private void createHeaderRow(XSSFSheet sheet) {
+        XSSFRow row = sheet.createRow(0);
+        row.createCell(0).setCellValue("Product ID");
+        row.createCell(1).setCellValue("Category");
+        row.createCell(2).setCellValue("Name");
+        row.createCell(3).setCellValue("Location");
+        row.createCell(4).setCellValue("Price");
+        row.createCell(5).setCellValue("Status");
+    }
+
+    private void populateDataRows(XSSFSheet sheet, List<ProductManagementDTO> allProducts) {
+        int dataRowIndex = 1;
+        for (ProductManagementDTO pm : allProducts) {
+            XSSFRow rowForData = sheet.createRow(dataRowIndex);
+            rowForData.createCell(0).setCellValue(pm.getProductID());
+            rowForData.createCell(1).setCellValue(pm.getCategory().toString());
+            rowForData.createCell(2).setCellValue(pm.getName());
+            rowForData.createCell(3).setCellValue(pm.getLocation());
+            rowForData.createCell(4).setCellValue(pm.getPrice().doubleValue());
+            rowForData.createCell(5).setCellValue(pm.getStatus().toString());
+            dataRowIndex++;
+        }
+    }
+
     private ProductManagementDTO convertToDTO(ProductsForPM product) {
         return new ProductManagementDTO(
                 product.getProductID(),
@@ -374,71 +447,6 @@ public class ProductManagementService {
             return String.format("PRD%03d", lastNumber + 1);
         }
         return "PRD001";
-    }
-
-    /**
-     * Generates an Excel report containing product management data.
-     * Creates a workbook with product details including ID, category, name,
-     * location, price, and status.
-     *
-     * @param response HttpServletResponse to write the Excel file to
-     */
-    public void generatePMReport(HttpServletResponse response) {
-        XSSFWorkbook workbook = new XSSFWorkbook();
-        XSSFSheet sheet = workbook.createSheet("Product Management");
-        List<ProductManagementDTO> allProducts = getAllProducts();
-        createHeaderRow(sheet);
-        populateDataRows(sheet, allProducts);
-        logger.info("PM (GeneratePmReport): Retrieved {} products from database for report generation.)", allProducts.size());
-        ExcelReporterHelper.writeWorkbookToResponse(response, workbook);
-    }
-
-    private void createHeaderRow(XSSFSheet sheet) {
-        XSSFRow row = sheet.createRow(0);
-        row.createCell(0).setCellValue("Product ID");
-        row.createCell(1).setCellValue("Category");
-        row.createCell(2).setCellValue("Name");
-        row.createCell(3).setCellValue("Location");
-        row.createCell(4).setCellValue("Price");
-        row.createCell(5).setCellValue("Status");
-    }
-
-    private void populateDataRows(XSSFSheet sheet, List<ProductManagementDTO> allProducts) {
-        int dataRowIndex = 1;
-        for (ProductManagementDTO pm : allProducts) {
-            XSSFRow rowForData = sheet.createRow(dataRowIndex);
-            rowForData.createCell(0).setCellValue(pm.getProductID());
-            rowForData.createCell(1).setCellValue(pm.getCategory().toString());
-            rowForData.createCell(2).setCellValue(pm.getName());
-            rowForData.createCell(3).setCellValue(pm.getLocation());
-            rowForData.createCell(4).setCellValue(pm.getPrice().doubleValue());
-            rowForData.createCell(5).setCellValue(pm.getStatus().toString());
-            dataRowIndex++;
-        }
-    }
-
-    // Helper method for internal use
-    @Transactional(readOnly = true)
-    public ProductsForPM findProductById(String productId) {
-        return pmRepository.findById(productId)
-                .orElseThrow(() -> new ResourceNotFoundException("PM (findProductById): Product with ID " + productId + " not found"));
-    }
-
-    @Transactional(propagation = Propagation.MANDATORY)
-    public void saveProduct(ProductsForPM product) {
-        try {
-            pmRepository.save(product);
-            logger.info("PM (saveProduct): Successfully saved/updated product with ID {}",
-                    product.getProductID());
-        } catch (DataAccessException da) {
-            logger.error("PM (saveProduct): Database error while saving product: {}",
-                    da.getMessage());
-            throw new DatabaseException("Failed to save product", da);
-        } catch (Exception e) {
-            logger.error("PM (saveProduct): Unexpected error while saving product: {}",
-                    e.getMessage());
-            throw new ServiceException("Failed to save product", e);
-        }
     }
 }
 

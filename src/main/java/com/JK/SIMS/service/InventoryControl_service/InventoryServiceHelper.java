@@ -42,7 +42,7 @@ public class InventoryServiceHelper {
         }
     }
 
-    protected static void updateInventoryStatus(InventoryData product) {
+    public static void updateInventoryStatus(InventoryData product) {
         if(product.getStatus() != InventoryDataStatus.INVALID) {
             if (product.getCurrentStock() <= product.getMinLevel()) {
                 product.setStatus(InventoryDataStatus.LOW_STOCK);

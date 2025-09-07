@@ -4,6 +4,7 @@ import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
@@ -19,6 +20,7 @@ public class ConfirmationToken {
     @Column(nullable = false, unique = true)
     private String token;
 
+    @CreationTimestamp
     @Column(nullable = false)
     private LocalDateTime createdAt;
 

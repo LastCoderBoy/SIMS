@@ -12,6 +12,7 @@ import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryControl_service.InventoryControlService;
 import com.JK.SIMS.service.InventoryControl_service.SalesOrderService;
+import com.JK.SIMS.service.purchaseOrderService.PoServiceInIc;
 import com.JK.SIMS.service.utilities.TokenUtils;
 import com.JK.SIMS.service.purchaseOrderService.PurchaseOrderService;
 import jakarta.validation.Valid;
@@ -32,12 +33,12 @@ public class InventoryController {
 
     private static final Logger logger = LoggerFactory.getLogger(InventoryController.class);
     private final InventoryControlService icService;
-    private final PurchaseOrderService purchaseOrderService;
+    private final PoServiceInIc poServiceInIc;
     private final SalesOrderService salesOrderService;
     @Autowired
-    public InventoryController(InventoryControlService icService, PurchaseOrderService purchaseOrderService, SalesOrderService salesOrderService) {
+    public InventoryController(InventoryControlService icService, PoServiceInIc poServiceInIc, SalesOrderService salesOrderService) {
         this.icService = icService;
-        this.purchaseOrderService = purchaseOrderService;
+        this.poServiceInIc = poServiceInIc;
         this.salesOrderService = salesOrderService;
     }
 
@@ -61,7 +62,7 @@ public class InventoryController {
         if(SecurityUtils.hasAccess()) {
             if(token != null && !token.trim().isEmpty()) {
                 String jwtToken = TokenUtils.extractToken(token);
-                ApiResponse response =  purchaseOrderService.receiveIncomingStock(orderId, receiveRequest, jwtToken);
+                ApiResponse response =  poServiceInIc.receivePurchaseOrder(orderId, receiveRequest, jwtToken);
                 return new ResponseEntity<>(response, HttpStatus.OK);
             }
             throw new InvalidTokenException("IC: receiveIncomingStockOrder() Invalid Token provided.");

@@ -8,6 +8,7 @@ import com.JK.SIMS.repository.confirmationTokenRepo.ConfirmationTokenRepository;
 import com.JK.SIMS.service.purchaseOrderService.PurchaseOrderServiceHelper;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import lombok.AllArgsConstructor;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -54,9 +55,18 @@ public class ConfirmationTokenService {
         }
     }
 
+    @Nullable
+    public ConfirmationToken validateConfirmationToken(String token) {
+        ConfirmationToken confirmationToken = getConfirmationToken(token);
+        if (confirmationToken.getClickedAt() != null ||
+                confirmationToken.getExpiresAt().isBefore(LocalDateTime.now())) {
+            return null;
+        }
+        return confirmationToken;
+    }
+
     public ConfirmationToken getConfirmationToken(String token) {
-        return tokenRepository.findByToken(token)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid confirmation token"));
+        return tokenRepository.findByToken(token).orElse(null);
     }
 
     public void saveConfirmationToken(ConfirmationToken confirmationToken){

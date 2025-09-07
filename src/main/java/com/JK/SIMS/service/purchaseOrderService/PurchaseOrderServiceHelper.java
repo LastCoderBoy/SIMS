@@ -1,5 +1,6 @@
 package com.JK.SIMS.service.purchaseOrderService;
 
+import com.JK.SIMS.exceptionHandler.ResourceNotFoundException;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderResponseDto;
 import com.JK.SIMS.models.PaginatedResponse;
@@ -20,12 +21,12 @@ import java.util.List;
 public class PurchaseOrderServiceHelper {
 
     private static final Logger logger = LoggerFactory.getLogger(PurchaseOrderServiceHelper.class);
-    private final PurchaseOrderRepository incomingStockRepository;
+    private final PurchaseOrderRepository purchaseOrderRepository;
     private final Clock clock;
 
     @Transactional(propagation = Propagation.MANDATORY)
     public void saveIncomingStock(PurchaseOrder order) {
-        incomingStockRepository.save(order);
+        purchaseOrderRepository.save(order);
         logger.info("PurchaseOrderServiceHelper: Successfully saved/updated product with PO Number: {}",
                 order.getPONumber());
     }
@@ -45,6 +46,12 @@ public class PurchaseOrderServiceHelper {
 
     public Page<PurchaseOrderResponseDto> convertToDto(Page<PurchaseOrder> poEntityPage){
         return poEntityPage.map(this::convertToDto);
+    }
+
+    @Transactional(readOnly = true)
+    public PurchaseOrder getPurchaseOrderById(Long orderId) {
+        return purchaseOrderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("PoHelper (getPurchaseOrderById): No incoming stock order found for ID: " + orderId));
     }
 
 

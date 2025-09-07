@@ -9,6 +9,14 @@ import org.springframework.data.jpa.domain.Specification;
 
 public class PurchaseOrderSpecification {
 
+    public static Specification<PurchaseOrder> isPending() {
+        return (root, query, cb) -> root.get("status").in(
+                PurchaseOrderStatus.DELIVERY_IN_PROCESS,
+                PurchaseOrderStatus.PARTIALLY_RECEIVED,
+                PurchaseOrderStatus.AWAITING_APPROVAL
+        );
+    }
+
     public static Specification<PurchaseOrder> hasStatus(PurchaseOrderStatus status){
         return (root, query, criteriaBuilder) -> {
             if(status == null) return null;
