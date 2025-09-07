@@ -9,6 +9,7 @@ import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
+import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.util.List;
 
-@Service
+@Component
 @AllArgsConstructor
 public class PurchaseOrderServiceHelper {
 
@@ -32,12 +33,8 @@ public class PurchaseOrderServiceHelper {
     }
 
     public PaginatedResponse<PurchaseOrderResponseDto> transformToPaginatedDtoResponse(Page<PurchaseOrder> poEntityPage){
-        PaginatedResponse<PurchaseOrderResponseDto> paginatedResponse = new PaginatedResponse<>();
-        paginatedResponse.setTotalElements(poEntityPage.getTotalElements());
-        paginatedResponse.setTotalPages(poEntityPage.getTotalPages());
-        List<PurchaseOrderResponseDto> dtoList = poEntityPage.stream().map(this::convertToDto).toList();
-        paginatedResponse.setContent(dtoList);
-        return paginatedResponse;
+        Page<PurchaseOrderResponseDto> paginatedResponse = poEntityPage.map(this::convertToDto);
+        return new PaginatedResponse<>(paginatedResponse);
     }
 
     public PurchaseOrderResponseDto convertToDto(PurchaseOrder order){
@@ -58,7 +55,7 @@ public class PurchaseOrderServiceHelper {
     // Helper method to build a simple HTML response page for the supplier after clicking a link
     public static String buildConfirmationPage(String message, String alertClass) {
         return "<html>"
-                + "<head><title>SalesOrder Confirmation</title>"
+                + "<head><title>Purchase Order Confirmation</title>"
                 + "<style>"
                 + "body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }"
                 + ".alert { padding: 20px; margin: 20px auto; border-radius: 5px; max-width: 500px; }"

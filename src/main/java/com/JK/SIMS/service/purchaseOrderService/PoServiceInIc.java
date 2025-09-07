@@ -23,6 +23,7 @@ import jakarta.validation.Valid;
 import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
@@ -50,7 +51,7 @@ public class PoServiceInIc {
     private final InventoryControlService inventoryControlService;
     private final ProductManagementService pmService;
     private final InventoryServiceHelper inventoryServiceHelper;
-
+    @Autowired
     public PoServiceInIc(Clock clock, PurchaseOrderRepository purchaseOrderRepository, PurchaseOrderServiceHelper poServiceHelper,
                          @Qualifier("icPoSearchStrategy") PoStrategy poStrategy, GlobalServiceHelper globalServiceHelper, InventoryControlService inventoryControlService, ProductManagementService pmService, InventoryServiceHelper inventoryServiceHelper) {
         this.clock = clock;
@@ -64,19 +65,19 @@ public class PoServiceInIc {
     }
 
     @Transactional(readOnly = true)
-    public PaginatedResponse<PurchaseOrderResponseDto> getAllPendingStockRecords(int page, int size) {
+    public PaginatedResponse<PurchaseOrderResponseDto> getAllPendingPurchaseOrders(int page, int size) {
         try {
             Pageable pageable = PageRequest.of(page, size, Sort.by("product.name"));
             Page<PurchaseOrder> entityResponse = purchaseOrderRepository.findAllPendingOrders(pageable);
             PaginatedResponse<PurchaseOrderResponseDto> dtoResponse =
                     poServiceHelper.transformToPaginatedDtoResponse(entityResponse);
-            logger.info("PO (getAllPendingStockRecords): Returning {} paginated data", dtoResponse.getContent().size());
+            logger.info("PO (getAllPendingPurchaseOrders): Returning {} paginated data", dtoResponse.getContent().size());
             return dtoResponse;
         }catch (DataAccessException da){
-            throw new DatabaseException("PO (getAllPendingStockRecords): Database error", da);
+            throw new DatabaseException("PO (getAllPendingPurchaseOrders): Database error", da);
         }catch (Exception e){
-            logger.error("PO (getAllPendingStockRecords): Service error occurred: {}", e.getMessage(), e);
-            throw new ServiceException("PO (getAllPendingStockRecords): Service error occurred", e);
+            logger.error("PO (getAllPendingPurchaseOrders): Service error occurred: {}", e.getMessage(), e);
+            throw new ServiceException("PO (getAllPendingPurchaseOrders): Service error occurred", e);
         }
     }
 
@@ -190,7 +191,7 @@ public class PoServiceInIc {
             // Return back the Inventory Control into the previous state
             Optional<InventoryData> inventoryProductOpt =
                     inventoryControlService.getInventoryProductByProductId(purchaseOrder.getProduct().getProductID());
-            inventoryProductOpt.ifPresent(InventoryServiceHelper::updateInventoryStatus);
+            inventoryProductOpt.ifPresent(inventoryServiceHelper::updateInventoryStatus);
 
             purchaseOrderRepository.save(purchaseOrder);
             logger.info("PO (cancelPurchaseOrderInternal): SalesOrder cancelled successfully. PO Number: {}", purchaseOrder.getPONumber());

@@ -1,5 +1,6 @@
-package com.JK.SIMS.models.IC_models.salesOrder;
+package com.JK.SIMS.models.IC_models.salesOrder.orderItem;
 
+import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;

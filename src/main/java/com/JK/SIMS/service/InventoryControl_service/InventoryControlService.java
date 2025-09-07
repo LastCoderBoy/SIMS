@@ -1,7 +1,6 @@
 package com.JK.SIMS.service.InventoryControl_service;
 
 import com.JK.SIMS.exceptionHandler.*;
-import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataStatus;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryMetrics;
@@ -9,12 +8,12 @@ import com.JK.SIMS.models.IC_models.inventoryData.InventoryPageResponse;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderResponseDto;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.PM_models.ProductCategories;
-import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.IC_repo.IC_repository;
 import com.JK.SIMS.service.purchaseOrderService.PurchaseOrderService;
 import com.JK.SIMS.service.productManagement_service.ProductManagementService;
+import com.JK.SIMS.service.salesOrderService.SalesOrderService;
 import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,7 +27,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
 
 import static com.JK.SIMS.service.utilities.GlobalServiceHelper.amongInvalidStatus;
-import static com.JK.SIMS.service.InventoryControl_service.InventoryServiceHelper.validateUpdateRequest;
 
 @Service
 public class InventoryControlService {
@@ -39,14 +37,16 @@ public class InventoryControlService {
     private final SalesOrderService salesOrderService;
     private final DamageLossService damageLossService;
     private final PurchaseOrderService purchaseOrderService;
+    private final InventoryServiceHelper inventoryServiceHelper;
     @Autowired
     public InventoryControlService(IC_repository icRepository, @Lazy ProductManagementService pmService, @Lazy SalesOrderService salesOrderService,
-                                   DamageLossService damageLossService, @Lazy PurchaseOrderService purchaseOrderService) {
+                                   DamageLossService damageLossService, @Lazy PurchaseOrderService purchaseOrderService, InventoryServiceHelper inventoryServiceHelper) {
         this.icRepository = icRepository;
         this.pmService = pmService;
         this.salesOrderService = salesOrderService;
         this.damageLossService = damageLossService;
         this.purchaseOrderService = purchaseOrderService;
+        this.inventoryServiceHelper = inventoryServiceHelper;
     }
 
     @Transactional(readOnly = true)
@@ -137,7 +137,7 @@ public class InventoryControlService {
         newMinLevel.ifPresent(existingProduct::setMinLevel);
 
         //Update the status based on the latest update
-        InventoryServiceHelper.updateInventoryStatus(existingProduct);
+        inventoryServiceHelper.updateInventoryStatus(existingProduct);
 
         icRepository.save(existingProduct);
     }
@@ -216,7 +216,7 @@ public class InventoryControlService {
             inventory.setReservedStock(inventory.getReservedStock() - quantity);
 
             // Update status based on new stock level
-            InventoryServiceHelper.updateInventoryStatus(inventory);
+            inventoryServiceHelper.updateInventoryStatus(inventory);
 
             icRepository.save(inventory);
             logger.debug("IC (fulfillReservation): Fulfilled reservation of {} units for product {}", quantity, productId);

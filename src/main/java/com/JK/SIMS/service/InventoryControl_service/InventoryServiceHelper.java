@@ -5,8 +5,10 @@ import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataDto;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataStatus;
 import com.JK.SIMS.models.PaginatedResponse;
+import com.JK.SIMS.service.email_service.LowStockScheduler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
@@ -17,6 +19,13 @@ import java.util.List;
 public class InventoryServiceHelper {
 
     private static final Logger logger = LoggerFactory.getLogger(InventoryServiceHelper.class);
+
+    private final LowStockScheduler lowStockAlert;
+    @Autowired
+    public InventoryServiceHelper(LowStockScheduler lowStockAlert) {
+        this.lowStockAlert = lowStockAlert;
+    }
+
 
     protected static void validateUpdateRequest(InventoryData newInventoryData) {
         List<String> errors = new ArrayList<>();
@@ -42,10 +51,11 @@ public class InventoryServiceHelper {
         }
     }
 
-    public static void updateInventoryStatus(InventoryData product) {
+    public void updateInventoryStatus(InventoryData product) {
         if(product.getStatus() != InventoryDataStatus.INVALID) {
             if (product.getCurrentStock() <= product.getMinLevel()) {
                 product.setStatus(InventoryDataStatus.LOW_STOCK);
+                lowStockAlert.sendDailyLowStockAlert();
             } else {
                 product.setStatus(InventoryDataStatus.IN_STOCK);
             }

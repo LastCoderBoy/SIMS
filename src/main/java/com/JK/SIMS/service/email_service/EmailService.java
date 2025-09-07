@@ -43,7 +43,7 @@ public class EmailService {
             helper.setFrom(sender, "SIMS Inventory System");
             helper.setTo(lowStockReceiver);
             helper.setSubject(subject);
-            helper.setText(htmlBody, true); // `true` means it's HTML
+            helper.setText(htmlBody, true);
 
             mailSender.send(message);
         } catch (MessagingException | java.io.UnsupportedEncodingException e) {

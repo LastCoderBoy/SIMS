@@ -33,11 +33,11 @@ public class PoControllerInIc {
     }
 
     @GetMapping
-    public ResponseEntity<?> getAllPendingStockRecords(
+    public ResponseEntity<?> getAllPendingPurchaseOrders(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size){
-        logger.info("IcPo: getAllPendingStockRecords() calling with page {} and size {}", page, size);
-        PaginatedResponse<PurchaseOrderResponseDto> paginatedStockResponse = poServiceInIc.getAllPendingStockRecords(page, size);
+        logger.info("IcPo: getAllPendingPurchaseOrders() calling with page {} and size {}", page, size);
+        PaginatedResponse<PurchaseOrderResponseDto> paginatedStockResponse = poServiceInIc.getAllPendingPurchaseOrders(page, size);
         return ResponseEntity.ok(paginatedStockResponse);
     }
 
@@ -104,4 +104,8 @@ public class PoControllerInIc {
         }
         throw new AccessDeniedException("IcPo: cancelPurchaseOrderInternal() You cannot perform the following operation.");
     }
+
+    //TODO:
+    // Display Mini Chart, Stock Impact Review
+    // View in OM and PM sections
 }

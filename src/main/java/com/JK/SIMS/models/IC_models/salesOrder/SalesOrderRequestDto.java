@@ -1,5 +1,6 @@
 package com.JK.SIMS.models.IC_models.salesOrder;
 
+import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItemDto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.AllArgsConstructor;

@@ -1,5 +1,6 @@
 package com.JK.SIMS.models.IC_models.salesOrder;
 
+import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItem;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -41,6 +42,12 @@ public class SalesOrder {
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime orderDate;
+
+    @Column(nullable = false)
+    private LocalDateTime estimatedDeliveryDate;
+
+    @Column(nullable = false)
+    private LocalDateTime deliveryDate;
 
     @UpdateTimestamp
     private LocalDateTime lastUpdate;

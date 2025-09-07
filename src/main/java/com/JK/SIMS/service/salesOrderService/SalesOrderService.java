@@ -1,13 +1,18 @@
-package com.JK.SIMS.service.InventoryControl_service;
+package com.JK.SIMS.service.salesOrderService;
 
 import com.JK.SIMS.exceptionHandler.*;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.salesOrder.*;
+import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItem;
+import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItemDto;
+import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItemResponseDto;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.outgoingStockRepo.OrderItemRepository;
 import com.JK.SIMS.repository.outgoingStockRepo.SalesOrderRepository;
+import com.JK.SIMS.service.InventoryControl_service.InventoryControlService;
+import com.JK.SIMS.service.InventoryControl_service.InventoryServiceHelper;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import com.JK.SIMS.service.productManagement_service.ProductManagementService;
 import jakarta.validation.ConstraintViolationException;
@@ -44,15 +49,18 @@ public class SalesOrderService {
     private final OrderItemRepository orderItemRepository;
     private final ProductManagementService pmService;
     private final InventoryControlService icService;
+    private final SalesOrderServiceHelper salesOrderServiceHelper;
     @Autowired
-    public SalesOrderService(GlobalServiceHelper globalServiceHelper, SalesOrderRepository salesOrderRepository, OrderItemRepository orderItemRepository, ProductManagementService pmService, @Lazy InventoryControlService icService) {
+    public SalesOrderService(GlobalServiceHelper globalServiceHelper, SalesOrderRepository salesOrderRepository, OrderItemRepository orderItemRepository, ProductManagementService pmService, @Lazy InventoryControlService icService, SalesOrderServiceHelper salesOrderServiceHelper) {
         this.globalServiceHelper = globalServiceHelper;
         this.salesOrderRepository = salesOrderRepository;
         this.orderItemRepository = orderItemRepository;
         this.pmService = pmService;
         this.icService = icService;
+        this.salesOrderServiceHelper = salesOrderServiceHelper;
     }
 
+    // TODO: Impl. the DeliveryDate and EstimateDeliveryData logic
     @Transactional
     public ApiResponse createOrder(SalesOrderRequestDto salesOrderRequestDto) {
         try {
@@ -161,12 +169,12 @@ public class SalesOrderService {
         }
     }
 
-    // Will be used in the SORT logic and the normal GET all logic
+    // Will be used in the SORT logic and the normal GET all logic.
+    // Can be only sorted using Status.
     @Transactional(readOnly = true)
     public PaginatedResponse<SalesOrderResponseDto> getAllSalesOrdersSorted(int page, int size, String sortBy, String sortDir,
                                                                             Optional<SalesOrderStatus> status) {
         try {
-            globalServiceHelper.validatePaginationParameters(page, size);
 
             Sort sort = sortDir.equalsIgnoreCase("desc") ?
                     Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
@@ -177,7 +185,7 @@ public class SalesOrderService {
                     salesOrderRepository.findByStatus(status.get(), pageable) :
                     salesOrderRepository.findAll(pageable);
 
-            Page<SalesOrderResponseDto> dtoResponse = orders.map(this::convertToOrderResponseDto);
+            Page<SalesOrderResponseDto> dtoResponse = orders.map(salesOrderServiceHelper::convertToOrderResponseDto);
             return new PaginatedResponse<>(dtoResponse);
 
         } catch (Exception e) {
@@ -199,7 +207,7 @@ public class SalesOrderService {
                 );
 
                 logger.info("OS (searchOutgoingStock): {} orders retrieved.", outgoingStockData.getContent().size());
-                Page<SalesOrderResponseDto> dtoResponse = outgoingStockData.map(this::convertToOrderResponseDto);
+                Page<SalesOrderResponseDto> dtoResponse = outgoingStockData.map(salesOrderServiceHelper::convertToOrderResponseDto);
                 return new PaginatedResponse<>(dtoResponse);
             }
             logger.info("OS (searchOutgoingStock): No search text provided. Retrieving first page with default size.");
@@ -254,55 +262,6 @@ public class SalesOrderService {
         BigDecimal lineItemPrice = unitPriceAtOrder.multiply(BigDecimal.valueOf(orderedQuantity));
 
         return new OrderItem(orderedQuantity, product, lineItemPrice);
-    }
-
-    private SalesOrderResponseDto convertToOrderResponseDto(SalesOrder salesOrder) {
-        try {
-            List<OrderItemResponseDto> itemDtos = salesOrder.getItems().stream()
-                    .map(this::convertToOrderItemResponseDto)
-                    .collect(Collectors.toList());
-
-            // Calculate total amount and total items
-            BigDecimal totalAmount = salesOrder.getItems().stream()
-                    .map(OrderItem::getOrderPrice)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-            return new SalesOrderResponseDto(
-                    salesOrder.getId(),
-                    salesOrder.getOrderReference(),
-                    salesOrder.getDestination(),
-                    salesOrder.getCustomerName(),
-                    salesOrder.getStatus(),
-                    salesOrder.getOrderDate(),
-                    salesOrder.getLastUpdate(),
-                    totalAmount,
-                    itemDtos
-            );
-        } catch (Exception e) {
-            logger.error("OS (convertToOrderResponseDto): Error converting salesOrder {} - {}",
-                    salesOrder.getId(), e.getMessage());
-            throw new ServiceException("Failed to convert salesOrder to response DTO", e);
-        }
-    }
-
-    private OrderItemResponseDto convertToOrderItemResponseDto(OrderItem item) {
-        try {
-            ProductsForPM product = item.getProduct();
-
-            return new OrderItemResponseDto(
-                    item.getId(),
-                    product.getProductID(),
-                    product.getName(),
-                    product.getCategory(),
-                    item.getQuantity(),
-                    item.getOrderPrice().divide(BigDecimal.valueOf(item.getQuantity()), 2, RoundingMode.HALF_UP), // Unit price
-                    item.getOrderPrice() // Total price for this line item
-            );
-        } catch (Exception e) {
-            logger.error("OS (convertToOrderItemResponseDto): Error converting order item {} - {}",
-                    item.getId(), e.getMessage());
-            throw new ServiceException("Failed to convert order item to response DTO", e);
-        }
     }
 
     // internal Helper methods
