@@ -41,6 +41,14 @@ public class PoControllerInIc {
         return ResponseEntity.ok(paginatedStockResponse);
     }
 
+    @GetMapping("/overdue")
+    public ResponseEntity<?> getAllOverduePurchaseOrders(@RequestParam(defaultValue = "0") int page,
+                                                            @RequestParam(defaultValue = "10") int size){
+        logger.info("IcPo: getPendingStockRecordsByStatus() calling with page {} and size {}", page, size);
+        PaginatedResponse<PurchaseOrderResponseDto> response = poServiceInIc.getAllOverduePurchaseOrders(page, size);
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/search")
     public ResponseEntity<?> searchProduct(
             @RequestParam(required = false) String text,
@@ -96,6 +104,4 @@ public class PoControllerInIc {
         }
         throw new AccessDeniedException("IcPo: cancelPurchaseOrderInternal() You cannot perform the following operation.");
     }
-
-    // Display Overdue POs
 }

@@ -5,7 +5,6 @@ import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderResponseDto;
-import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.PO_repo.PurchaseOrderRepository;
 import com.JK.SIMS.service.purchaseOrderService.PurchaseOrderServiceHelper;
@@ -38,7 +37,7 @@ public class OmPoSearchStrategy implements PoStrategy {
         }
         try {
             Pageable pageable = PageRequest.of(page, size, Sort.by("product.name"));
-            Page<PurchaseOrder> searchEntityResponse = purchaseOrderRepository.searchProducts(text.trim().toLowerCase(), pageable);
+            Page<PurchaseOrder> searchEntityResponse = purchaseOrderRepository.searchOrders(text.trim().toLowerCase(), pageable);
             return poServiceHelper.transformToPaginatedDtoResponse(searchEntityResponse);
         } catch (DataAccessException dae) {
             logger.error("OmPo (searchProduct): Database error while searching products", dae);

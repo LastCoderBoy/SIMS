@@ -67,7 +67,7 @@ public class PoServiceInIc {
     public PaginatedResponse<PurchaseOrderResponseDto> getAllPendingStockRecords(int page, int size) {
         try {
             Pageable pageable = PageRequest.of(page, size, Sort.by("product.name"));
-            Page<PurchaseOrder> entityResponse = purchaseOrderRepository.findAllPendingProducts(pageable);
+            Page<PurchaseOrder> entityResponse = purchaseOrderRepository.findAllPendingOrders(pageable);
             PaginatedResponse<PurchaseOrderResponseDto> dtoResponse =
                     poServiceHelper.transformToPaginatedDtoResponse(entityResponse);
             logger.info("PO (getAllPendingStockRecords): Returning {} paginated data", dtoResponse.getContent().size());
@@ -109,6 +109,63 @@ public class PoServiceInIc {
         } catch (Exception e) {
             throw new ServiceException("IS (receiveIncomingStock): Unexpected error occurred: " + e.getMessage());
         }
+    }
+
+    private void updateOrderWithReceivedStock(PurchaseOrder order, ReceiveStockRequestDto receiveRequest) {
+        // Set actual arrival date
+        if (receiveRequest.getActualArrivalDate() != null) {
+            if (receiveRequest.getActualArrivalDate().isAfter(LocalDate.now())) {
+                throw new ValidationException("PO (receivePurchaseOrder): Actual arrival date cannot be in the future");
+            }
+            if (!receiveRequest.getActualArrivalDate().equals(order.getActualArrivalDate())) {
+                order.setActualArrivalDate(receiveRequest.getActualArrivalDate());
+            }
+        } else if (order.getActualArrivalDate() == null) {
+            order.setActualArrivalDate(GlobalServiceHelper.now(clock).toLocalDate());
+        }
+
+        // Update received quantity
+        int quantityToReceive = receiveRequest.getReceivedQuantity();
+        order.setReceivedQuantity(order.getReceivedQuantity() + quantityToReceive);
+
+        // Update status based on received quantity
+        updateOrderStatus(order);
+    }
+
+    private void updateInventoryLevels(PurchaseOrder order, int receivedQuantity) {
+        if (receivedQuantity <= 0) {
+            return; // No inventory update needed
+        }
+        try {
+            Optional<InventoryData> inventoryProductOpt =
+                    inventoryControlService.getInventoryProductByProductId(order.getProduct().getProductID());
+            if(inventoryProductOpt.isPresent()){
+                InventoryData inventoryProduct = inventoryProductOpt.get();
+                int newStockLevel = inventoryProduct.getCurrentStock() + receivedQuantity;
+
+                // The service method to update stock levels with proper error handling
+                inventoryControlService.updateStockLevels(inventoryProduct,
+                        Optional.of(newStockLevel),
+                        Optional.empty());
+            }
+        } catch (Exception e) {
+            throw new ServiceException("IS (updateIncomingStockOrder): Failed to update inventory levels: " + e.getMessage());
+        }
+    }
+
+    private void finalizeOrderUpdate(PurchaseOrder order, String updatedPerson) {
+        order.setUpdatedBy(updatedPerson);
+        purchaseOrderRepository.save(order);
+    }
+
+    private void updateOrderStatus(PurchaseOrder order) {
+        if (order.getReceivedQuantity() >= order.getOrderedQuantity()) {
+            order.setStatus(PurchaseOrderStatus.RECEIVED);
+            pmService.updateIncomingProductStatusInPm(order.getProduct());
+        } else if (order.getReceivedQuantity() > 0) {
+            order.setStatus(PurchaseOrderStatus.PARTIALLY_RECEIVED);
+        }
+        // If no quantity received, status remains unchanged
     }
 
     @Transactional
@@ -184,60 +241,20 @@ public class PoServiceInIc {
         }
     }
 
-    private void updateOrderWithReceivedStock(PurchaseOrder order, ReceiveStockRequestDto receiveRequest) {
-        // Set actual arrival date
-        if (receiveRequest.getActualArrivalDate() != null) {
-            if (receiveRequest.getActualArrivalDate().isAfter(LocalDate.now())) {
-                throw new ValidationException("PO (receivePurchaseOrder): Actual arrival date cannot be in the future");
-            }
-            if (!receiveRequest.getActualArrivalDate().equals(order.getActualArrivalDate())) {
-                order.setActualArrivalDate(receiveRequest.getActualArrivalDate());
-            }
-        } else if (order.getActualArrivalDate() == null) {
-            order.setActualArrivalDate(GlobalServiceHelper.now(clock).toLocalDate());
-        }
-
-        // Update received quantity
-        int quantityToReceive = receiveRequest.getReceivedQuantity();
-        order.setReceivedQuantity(order.getReceivedQuantity() + quantityToReceive);
-
-        // Update status based on received quantity
-        updateOrderStatus(order);
-    }
-
-    private void updateInventoryLevels(PurchaseOrder order, int receivedQuantity) {
-        if (receivedQuantity <= 0) {
-            return; // No inventory update needed
-        }
+    @Transactional(readOnly = true)
+    public PaginatedResponse<PurchaseOrderResponseDto> getAllOverduePurchaseOrders(int page, int size) {
         try {
-            Optional<InventoryData> inventoryProductOpt =
-                    inventoryControlService.getInventoryProductByProductId(order.getProduct().getProductID());
-            if(inventoryProductOpt.isPresent()){
-                InventoryData inventoryProduct = inventoryProductOpt.get();
-                int newStockLevel = inventoryProduct.getCurrentStock() + receivedQuantity;
-
-                // The service method to update stock levels with proper error handling
-                inventoryControlService.updateStockLevels(inventoryProduct,
-                        Optional.of(newStockLevel),
-                        Optional.empty());
-            }
+            Sort sort = Sort.by(Sort.Direction.DESC, "product.name");
+            Pageable pageable = PageRequest.of(page, size, sort);
+            Page<PurchaseOrder> allOverdueOrders = purchaseOrderRepository.findAllOverdueOrders(pageable);
+            logger.info("PO (getAllOverduePurchaseOrders): Retrieved {} overdue orders", allOverdueOrders.getTotalElements());
+            return poServiceHelper.transformToPaginatedDtoResponse(allOverdueOrders);
+        } catch (DataAccessException dae) {
+            logger.error("PO (getAllOverduePurchaseOrders): Database error while retrieving overdue orders", dae);
+            throw new DatabaseException("Failed to retrieve overdue orders due to database error");
         } catch (Exception e) {
-            throw new ServiceException("IS (updateIncomingStockOrder): Failed to update inventory levels: " + e.getMessage());
+            logger.error("PO (getAllOverduePurchaseOrders): Unexpected error while retrieving overdue orders", e);
+            throw new ServiceException("Failed to retrieve overdue orders: " + e.getMessage());
         }
-    }
-
-    private void finalizeOrderUpdate(PurchaseOrder order, String updatedPerson) {
-        order.setUpdatedBy(updatedPerson);
-        purchaseOrderRepository.save(order);
-    }
-
-    private void updateOrderStatus(PurchaseOrder order) {
-        if (order.getReceivedQuantity() >= order.getOrderedQuantity()) {
-            order.setStatus(PurchaseOrderStatus.RECEIVED);
-            pmService.updateIncomingProductStatusInPm(order.getProduct());
-        } else if (order.getReceivedQuantity() > 0) {
-            order.setStatus(PurchaseOrderStatus.PARTIALLY_RECEIVED);
-        }
-        // If no quantity received, status remains unchanged
     }
 }
