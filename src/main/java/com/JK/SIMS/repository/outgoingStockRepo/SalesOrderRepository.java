@@ -44,8 +44,8 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long> {
             "AND so.estimatedDeliveryDate < CURRENT_DATE + 2")
     Page<SalesOrder> findAllUrgentSalesOrders(Pageable pageable);
 
-    @Query(value = "SELECT SUM(DATEDIFF(expected_arrival_date, order_date)) " +
-            "FROM purchase_order WHERE status IN ('AWAITING_APPROVAL', 'DELIVERY_IN_PROCESS', 'PARTIALLY_RECEIVED')",
+    @Query(value = "SELECT SUM(DATEDIFF(estimated_delivery_date, order_date)) " +
+            "FROM sales_order WHERE status IN ('PROCESSING', 'PENDING', 'PARTIALLY_SHIPPED')",
             nativeQuery = true)
     long calculateTotalDeliveryDate();
 }

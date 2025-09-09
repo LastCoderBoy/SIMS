@@ -1,19 +1,19 @@
 package com.JK.SIMS.controller.inventory_control;
 
 import com.JK.SIMS.models.ApiResponse;
+import com.JK.SIMS.service.utilities.SecurityUtils;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderResponseDto;
 import com.JK.SIMS.models.PaginatedResponse;
-import com.JK.SIMS.service.salesOrderService.SalesOrderService;
 import com.JK.SIMS.service.salesOrderService.SoServiceInIc;
+import com.JK.SIMS.service.utilities.TokenUtils;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/products/inventory/sales-order")
@@ -51,7 +51,40 @@ public class SoControllerInIc {
         return ResponseEntity.ok(dtoResponse);
     }
 
-    //TODO: Stock Out
+    // Only High Roles can process the order
+    @PutMapping("/{orderId}/out")
+    public ResponseEntity<?> stockOutOrder(@PathVariable Long orderId, @RequestHeader("Authorization") String token){
+        logger.info("IcSo: stockOutOrder() calling...");
+        if(SecurityUtils.hasAccess()) {
+            if(token != null && !token.trim().isEmpty()) {
+                String jwtToken = TokenUtils.extractToken(token);
+                ApiResponse apiResponse = soServiceInIc.processOrderRequest(orderId, jwtToken);
+                return ResponseEntity.ok(apiResponse);
+            }
+            throw new IllegalArgumentException("IcSo: stockOutOrder() Invalid Token provided.");
+        }
+        throw new AccessDeniedException("IcSo: stockOutOrder() You cannot perform the following operation.");
+    }
 
-    //TODO: Cancel Order
+    //TODO: Consider Bulk update for each Cancel and Stock-out options.
+
+    @PutMapping("/{orderId}/cancel")
+    public ResponseEntity<?> cancelSalesOrder(@PathVariable Long orderId, @RequestHeader("Authorization") String token){
+        logger.info("IcSo: cancelSalesOrder() calling...");
+        if(SecurityUtils.hasAccess()) {
+            if(token != null && !token.trim().isEmpty()) {
+                String jwtToken = TokenUtils.extractToken(token);
+                ApiResponse apiResponse = soServiceInIc.cancelSalesOrder(orderId, jwtToken);
+                return ResponseEntity.ok(apiResponse);
+            }
+            throw new IllegalArgumentException("IcSo: cancelSalesOrder() Invalid Token provided.");
+        }
+        throw new AccessDeniedException("IcSo: cancelSalesOrder() You cannot perform the following operation.");
+    }
+
+    //TODO: Search for the PENDING Outgoing Stock Products based on the provided text.
+
+
+
+    //TODO: Filter for the PENDING Outgoing Stock Products based on the provided filters.
 }

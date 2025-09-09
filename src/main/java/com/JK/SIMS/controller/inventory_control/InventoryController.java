@@ -1,7 +1,8 @@
 package com.JK.SIMS.controller.inventory_control;
 
 
-import com.JK.SIMS.config.SecurityUtils;
+import com.JK.SIMS.service.salesOrderService.SoServiceInIc;
+import com.JK.SIMS.service.utilities.SecurityUtils;
 import com.JK.SIMS.exceptionHandler.InvalidTokenException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryPageResponse;
@@ -33,11 +34,13 @@ public class InventoryController {
     private final InventoryControlService icService;
     private final PoServiceInIc poServiceInIc;
     private final SalesOrderService salesOrderService;
+    private final SoServiceInIc soServiceInIc;
     @Autowired
-    public InventoryController(InventoryControlService icService, PoServiceInIc poServiceInIc, SalesOrderService salesOrderService) {
+    public InventoryController(InventoryControlService icService, PoServiceInIc poServiceInIc, SalesOrderService salesOrderService, SoServiceInIc soServiceInIc) {
         this.icService = icService;
         this.poServiceInIc = poServiceInIc;
         this.salesOrderService = salesOrderService;
+        this.soServiceInIc = soServiceInIc;
     }
 
 
@@ -77,7 +80,7 @@ public class InventoryController {
         if(SecurityUtils.hasAccess()) {
             if(token != null && !token.trim().isEmpty()) {
                 String jwtToken = TokenUtils.extractToken(token);
-                ApiResponse response = salesOrderService.processOrderRequest(orderId, jwtToken);
+                ApiResponse response = soServiceInIc.processOrderRequest(orderId, jwtToken);
                 return new ResponseEntity<>(response, HttpStatus.OK);
             }
             throw new InvalidTokenException("IC: processOrderedProduct() Invalid Token provided.");
@@ -93,7 +96,7 @@ public class InventoryController {
         if(SecurityUtils.hasAccess()) {
             if(token != null && !token.trim().isEmpty()) {
                 String jwtToken = TokenUtils.extractToken(token);
-                ApiResponse response = salesOrderService.cancelOutgoingStockOrder(orderId, jwtToken);
+                ApiResponse response = soServiceInIc.cancelSalesOrder(orderId, jwtToken);
                 return new ResponseEntity<>(response, HttpStatus.OK);
             }
             throw new InvalidTokenException("IC: cancelOutgoingStockOrder() Invalid Token provided.");

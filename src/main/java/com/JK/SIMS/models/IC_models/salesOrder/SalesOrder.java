@@ -23,16 +23,16 @@ public class SalesOrder {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, name = "order_reference")
     private String orderReference; // "SO-2024-07-20-001" [SO-date-nextOrderNumberOnThatDay]
 
     @Column(nullable = false)
     private String destination; // To companies, third parties
 
-    @Column(nullable = false)
+    @Column(nullable = false, name = "customer_name")
     private String customerName;
 
-    @Column
+    @Column(name = "confirmed_by")
     private String confirmedBy; // Person who is confirming the SalesOrder in the IC.
 
     @Enumerated(EnumType.STRING)
@@ -40,16 +40,17 @@ public class SalesOrder {
     private SalesOrderStatus status; // PENDING, PROCESSING, SHIPPED, COMPLETED, CANCELLED
 
     @CreationTimestamp
-    @Column(updatable = false)
+    @Column(updatable = false, name = "order_date")
     private LocalDateTime orderDate;
 
-    @Column(nullable = false)
+    @Column(nullable = false, name = "estimated_delivery_date")
     private LocalDateTime estimatedDeliveryDate;
 
-    @Column(nullable = false)
+    @Column(nullable = false, name = "delivery_date")
     private LocalDateTime deliveryDate;
 
     @UpdateTimestamp
+    @Column(name = "last_updated")
     private LocalDateTime lastUpdate;
 
     @OneToMany(mappedBy = "salesOrder", cascade = CascadeType.ALL, orphanRemoval = true)

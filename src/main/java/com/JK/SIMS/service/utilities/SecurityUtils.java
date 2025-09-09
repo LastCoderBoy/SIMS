@@ -1,4 +1,4 @@
-package com.JK.SIMS.config;
+package com.JK.SIMS.service.utilities;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;

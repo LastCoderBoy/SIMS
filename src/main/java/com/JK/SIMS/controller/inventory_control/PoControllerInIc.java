@@ -1,6 +1,6 @@
 package com.JK.SIMS.controller.inventory_control;
 
-import com.JK.SIMS.config.SecurityUtils;
+import com.JK.SIMS.service.utilities.SecurityUtils;
 import com.JK.SIMS.exceptionHandler.InvalidTokenException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderResponseDto;
@@ -17,9 +17,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.*;
-
-import java.nio.file.AccessDeniedException;
 
 @RestController
 @RequestMapping("/api/v1/products/inventory/purchase-order")

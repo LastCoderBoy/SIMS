@@ -1,6 +1,6 @@
 package com.JK.SIMS.controller.product_management;
 
-import com.JK.SIMS.config.SecurityUtils;
+import com.JK.SIMS.service.utilities.SecurityUtils;
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.PM_models.ProductManagementDTO;
@@ -17,7 +17,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.file.AccessDeniedException;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/products")

@@ -1,11 +1,18 @@
 package com.JK.SIMS.service.salesOrderService;
 
 import com.JK.SIMS.exceptionHandler.DatabaseException;
+import com.JK.SIMS.exceptionHandler.ResourceNotFoundException;
 import com.JK.SIMS.exceptionHandler.ServiceException;
+import com.JK.SIMS.exceptionHandler.ValidationException;
+import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderResponseDto;
+import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
+import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItem;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.outgoingStockRepo.SalesOrderRepository;
+import com.JK.SIMS.service.InventoryControl_service.InventoryControlService;
+import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.slf4j.Logger;
@@ -25,10 +32,14 @@ public class SoServiceInIc {
     private static final Logger logger = LoggerFactory.getLogger(SoServiceInIc.class);
 
     private final SalesOrderServiceHelper salesOrderServiceHelper;
+    private final GlobalServiceHelper globalServiceHelper;
+    private final InventoryControlService icService;
     private final SalesOrderRepository salesOrderRepository;
     @Autowired
-    public SoServiceInIc(SalesOrderServiceHelper salesOrderServiceHelper, SalesOrderRepository salesOrderRepository) {
+    public SoServiceInIc(SalesOrderServiceHelper salesOrderServiceHelper, GlobalServiceHelper globalServiceHelper, InventoryControlService icService, SalesOrderRepository salesOrderRepository) {
         this.salesOrderServiceHelper = salesOrderServiceHelper;
+        this.globalServiceHelper = globalServiceHelper;
+        this.icService = icService;
         this.salesOrderRepository = salesOrderRepository;
     }
 
@@ -72,6 +83,71 @@ public class SoServiceInIc {
             logger.error("OS (getAllUrgentSalesOrders): Error fetching orders - {}", e.getMessage());
             throw new ServiceException("Failed to fetch orders", e);
         }
+    }
+
+    // STOCK OUT button
+    @Transactional
+    public ApiResponse processOrderRequest(Long orderId, String jwtToken){
+        try {
+            String confirmedPerson = globalServiceHelper.validateAndExtractUser(jwtToken);
+            SalesOrder salesOrder = salesOrderRepository.findById(orderId)
+                    .orElseThrow(() -> new ResourceNotFoundException("SalesOrder not found"));
+
+            if (salesOrder.getStatus() != SalesOrderStatus.PENDING) {
+                throw new ValidationException("SalesOrder is not in PENDING status. Cannot process ordered products.");
+            }
+
+            salesOrder.setStatus(SalesOrderStatus.PROCESSING);
+            salesOrder.setConfirmedBy(confirmedPerson);
+
+            // Convert reservations to actual stock deductions
+            for (OrderItem item : salesOrder.getItems()) {
+                icService.fulfillReservation(item.getProduct().getProductID(), item.getQuantity());
+            }
+
+            salesOrderRepository.save(salesOrder);
+            logger.info("OS (processOrderedProduct): SalesOrder {} processed successfully", orderId);
+            return new ApiResponse(true, "SalesOrder processed successfully");
+
+        } catch (Exception e) {
+            logger.error("OS (processOrderedProduct): Error processing order - {}", e.getMessage());
+            throw new ServiceException("Failed to process order", e);
+        }
+    }
+
+    // CANCEL button
+    @Transactional
+    public ApiResponse cancelSalesOrder(Long orderId, String jwtToken) {
+        try {
+            String cancelledBy = globalServiceHelper.validateAndExtractUser(jwtToken);
+            SalesOrder salesOrder = getSalesOrderById(orderId);
+
+            if (salesOrder.getStatus() != SalesOrderStatus.PENDING) {
+                throw new ValidationException("Only PENDING orders can be cancelled.");
+            }
+
+            // Release all reservations
+            for (OrderItem item : salesOrder.getItems()) {
+                icService.releaseReservation(item.getProduct().getProductID(), item.getQuantity());
+            }
+
+            salesOrder.setStatus(SalesOrderStatus.CANCELLED);
+            salesOrder.setConfirmedBy(cancelledBy);
+            salesOrderRepository.save(salesOrder);
+
+            logger.info("OS (cancelOrder): SalesOrder {} cancelled successfully", orderId);
+            return new ApiResponse(true, "SalesOrder cancelled successfully");
+
+        } catch (Exception e) {
+            logger.error("OS (cancelOrder): Error cancelling order - {}", e.getMessage());
+            throw new ServiceException("Failed to cancel order", e);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public SalesOrder getSalesOrderById(Long orderId) {
+        return salesOrderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("SalesOrder not found"));
     }
 
     // Average Fulfill Time.

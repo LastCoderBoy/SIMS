@@ -54,6 +54,8 @@ public class InventoryControlService {
         try {
             InventoryMetrics metrics = icRepository.getInventoryMetrics();
 
+            //TODO: Display Incoming(PO) order as well at the end of the page.
+
             // OUTGOING(SO) PENDING orders will be displayed at the end of the page
             PaginatedResponse<SalesOrderResponseDto> allPendingOrderDtos =
                     salesOrderService.getAllSalesOrdersSorted(page, size, "orderDate", "desc", Optional.of(SalesOrderStatus.PENDING));
@@ -215,7 +217,7 @@ public class InventoryControlService {
             inventory.setCurrentStock(inventory.getCurrentStock() - quantity);
             inventory.setReservedStock(inventory.getReservedStock() - quantity);
 
-            // Update status based on new stock level
+            // Update status based on the new stock level
             inventoryServiceHelper.updateInventoryStatus(inventory);
 
             icRepository.save(inventory);
@@ -227,7 +229,7 @@ public class InventoryControlService {
         }
     }
 
-    // Release reservation when order is cancelled
+    // Release reservation when the order is cancelled
     @Transactional
     public void releaseReservation(String productId, int quantity) {
         try {
