@@ -37,6 +37,15 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long> {
     @Query(value = "SELECT COUNT(*) FROM sales_order WHERE status IN ('PROCESSING', 'SHIPPED')", nativeQuery = true)
     Long getOutgoingValidStockSize();
 
-    Page<SalesOrder> findAllWaitingSalesOrders(Pageable pageable, Sort sort);
+    @Query("SELECT so FROM SalesOrder so WHERE so.status IN ('PROCESSING', 'PENDING', 'PARTIALLY_SHIPPED')")
+    Page<SalesOrder> findAllWaitingSalesOrders(Pageable pageable);
 
+    @Query("SELECT so FROM SalesOrder so WHERE so.status IN ('PROCESSING', 'PENDING', 'PARTIALLY_SHIPPED') " +
+            "AND so.estimatedDeliveryDate < CURRENT_DATE + 2")
+    Page<SalesOrder> findAllUrgentSalesOrders(Pageable pageable);
+
+    @Query(value = "SELECT SUM(DATEDIFF(expected_arrival_date, order_date)) " +
+            "FROM purchase_order WHERE status IN ('AWAITING_APPROVAL', 'DELIVERY_IN_PROCESS', 'PARTIALLY_RECEIVED')",
+            nativeQuery = true)
+    long calculateTotalDeliveryDate();
 }

@@ -1,5 +1,6 @@
 package com.JK.SIMS.controller.inventory_control;
 
+import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderResponseDto;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.salesOrderService.SalesOrderService;
@@ -19,11 +20,9 @@ import java.util.Optional;
 public class SoControllerInIc {
 
     private static final Logger logger = LoggerFactory.getLogger(SoControllerInIc.class);
-    private final SalesOrderService salesOrderService;
     private final SoServiceInIc soServiceInIc;
     @Autowired
-    public SoControllerInIc(SalesOrderService salesOrderService, SoServiceInIc soServiceInIc) {
-        this.salesOrderService = salesOrderService;
+    public SoControllerInIc(SoServiceInIc soServiceInIc) {
         this.soServiceInIc = soServiceInIc;
     }
 
@@ -37,16 +36,20 @@ public class SoControllerInIc {
 
         logger.info("IcSo: getAllWaitingSalesOrders() fetching orders - page: {}, size: {}, sortBy: {}, sortDir: {}",
                 page, size, sortBy, sortDir);
-
         PaginatedResponse<SalesOrderResponseDto> orders =
                 soServiceInIc.getAllWaitingSalesOrders(page, size, sortBy, sortDir);
-
         return ResponseEntity.ok(orders);
     }
 
-    //TODO: Urgent Shipment table (CurrentDate + 2 > estimatedDeliveryDate)
-
-    //TODO: Average Fulfill Time.
+    @GetMapping("/urgent")
+    public ResponseEntity<?> getAllUrgentSalesOrders(@RequestParam(defaultValue = "0") @Min(0) int page,
+                                                     @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size,
+                                                     @RequestParam(defaultValue = "orderReference") String sortBy,
+                                                     @RequestParam(defaultValue = "desc") String sortDir){
+        logger.info("IcSo: getAllUrgentSalesOrders() calling...");
+        PaginatedResponse<SalesOrderResponseDto> dtoResponse = soServiceInIc.getAllUrgentSalesOrders(page, size, sortBy, sortDir);
+        return ResponseEntity.ok(dtoResponse);
+    }
 
     //TODO: Stock Out
 

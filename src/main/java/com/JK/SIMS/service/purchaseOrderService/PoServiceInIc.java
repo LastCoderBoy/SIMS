@@ -74,6 +74,7 @@ public class PoServiceInIc {
             logger.info("PO (getAllPendingPurchaseOrders): Returning {} paginated data", dtoResponse.getContent().size());
             return dtoResponse;
         }catch (DataAccessException da){
+            logger.error("PO (getAllPendingPurchaseOrders): Database error occurred: {}", da.getMessage(), da);
             throw new DatabaseException("PO (getAllPendingPurchaseOrders): Database error", da);
         }catch (Exception e){
             logger.error("PO (getAllPendingPurchaseOrders): Service error occurred: {}", e.getMessage(), e);
