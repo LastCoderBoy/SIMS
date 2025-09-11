@@ -38,6 +38,8 @@ public class SalesOrderServiceHelper {
                     salesOrder.getCustomerName(),
                     salesOrder.getStatus(),
                     salesOrder.getOrderDate(),
+                    salesOrder.getEstimatedDeliveryDate(),
+                    salesOrder.getDeliveryDate(),
                     salesOrder.getLastUpdate(),
                     totalAmount,
                     itemDtos

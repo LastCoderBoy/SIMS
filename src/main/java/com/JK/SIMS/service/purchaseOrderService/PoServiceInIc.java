@@ -210,31 +210,46 @@ public class PoServiceInIc {
     }
 
     @Transactional(readOnly = true)
-    public PaginatedResponse<PurchaseOrderResponseDto> searchInPendingProduct(String text, int page, int size) {
-        return poStrategy.searchInPos(text, page, size);
+    public PaginatedResponse<PurchaseOrderResponseDto> searchInIncomingPurchaseOrders(String text, int page, int size) {
+        try {
+            globalServiceHelper.validatePaginationParameters(page, size);
+            if (text == null || text.trim().isEmpty()) {
+                logger.warn("PO (searchInIncomingPurchaseOrders): Search text is null or empty, returning all incoming orders.");
+                return getAllPendingPurchaseOrders(page, size);
+            }
+            return poStrategy.searchInPos(text, page, size);
+        } catch (Exception e) {
+            logger.error("PO (searchInIncomingPurchaseOrders): Error searching orders - {}", e.getMessage());
+            throw new ServiceException("Failed to search orders", e);
+        }
     }
 
     @Transactional(readOnly = true)
-    public PaginatedResponse<PurchaseOrderResponseDto> filterPendingPurchaseOrders(PurchaseOrderStatus status, ProductCategories category,
+    public PaginatedResponse<PurchaseOrderResponseDto> filterIncomingPurchaseOrders(PurchaseOrderStatus status, ProductCategories category,
                                                                            String sortBy, String sortDirection, int page, int size){
-        // Parse sort direction
-        Sort.Direction direction = sortDirection.equalsIgnoreCase("desc") ?
-                Sort.Direction.DESC : Sort.Direction.ASC;
+        try {
+            // Parse sort direction
+            Sort.Direction direction = sortDirection.equalsIgnoreCase("desc") ?
+                    Sort.Direction.DESC : Sort.Direction.ASC;
 
-        // Create sort
-        Sort sort = Sort.by(direction, sortBy);
-        Pageable pageable = PageRequest.of(page, size, sort);
+            // Create sort
+            Sort sort = Sort.by(direction, sortBy);
+            Pageable pageable = PageRequest.of(page, size, sort);
 
-        Specification<PurchaseOrder> spec = Specification.where(PurchaseOrderSpecification.isPending());
+            Specification<PurchaseOrder> spec = Specification.where(PurchaseOrderSpecification.isPending());
 
-        if (status != null) {
-            spec = spec.and(PurchaseOrderSpecification.hasStatus(status));
+            if (status != null) {
+                spec = spec.and(PurchaseOrderSpecification.hasStatus(status));
+            }
+            if (category != null) {
+                spec = spec.and(PurchaseOrderSpecification.hasProductCategory(category));
+            }
+            Page<PurchaseOrder> filterResult = purchaseOrderRepository.findAll(spec, pageable);
+            return poServiceHelper.transformToPaginatedDtoResponse(filterResult);
+        } catch (Exception e) {
+            logger.error("PO (filterIncomingPurchaseOrders): Error filtering orders - {}", e.getMessage());
+            throw new ServiceException("Failed to filter orders", e);
         }
-        if (category != null) {
-            spec = spec.and(PurchaseOrderSpecification.hasProductCategory(category));
-        }
-        Page<PurchaseOrder> filterResult = purchaseOrderRepository.findAll(spec, pageable);
-        return poServiceHelper.transformToPaginatedDtoResponse(filterResult);
     }
 
     private void validateOrderId(Long orderId) {

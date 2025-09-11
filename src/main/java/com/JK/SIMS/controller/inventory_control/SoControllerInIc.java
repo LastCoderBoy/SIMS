@@ -1,10 +1,11 @@
 package com.JK.SIMS.controller.inventory_control;
 
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.service.utilities.SecurityUtils;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderResponseDto;
+import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.salesOrderService.SoServiceInIc;
+import com.JK.SIMS.service.utilities.SecurityUtils;
 import com.JK.SIMS.service.utilities.TokenUtils;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -14,6 +15,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/v1/products/inventory/sales-order")
@@ -82,9 +85,26 @@ public class SoControllerInIc {
         throw new AccessDeniedException("IcSo: cancelSalesOrder() You cannot perform the following operation.");
     }
 
-    //TODO: Search for the PENDING Outgoing Stock Products based on the provided text.
+    // Search by Product Name, Category, Order Reference, Destination
+    @GetMapping("/search")
+    public ResponseEntity<?> searchSoProduct(@RequestParam(required = false) String text,
+                                           @RequestParam(defaultValue = "0") int page,
+                                           @RequestParam(defaultValue = "10") int size){
+        logger.info("IcSo: searchProduct() calling...");
+        PaginatedResponse<SalesOrderResponseDto> dtoResponse = soServiceInIc.searchInOutgoingSalesOrders(text, page, size);
+        return ResponseEntity.ok(dtoResponse);
+    }
 
-
-
-    //TODO: Filter for the PENDING Outgoing Stock Products based on the provided filters.
+    @GetMapping("/filter")
+    public ResponseEntity<?> filterSoProductsByStatus( @RequestParam(required = false) SalesOrderStatus status,
+                                                       @RequestParam(required = false) String optionDate,
+                                                       @RequestParam(required = false) LocalDate startDate,
+                                                       @RequestParam(required = false) LocalDate endDate,
+                                                      @RequestParam(defaultValue = "0") int page,
+                                                      @RequestParam(defaultValue = "10") int size){
+        logger.info("IcSo: filterProductsByStatus() calling...");
+        PaginatedResponse<SalesOrderResponseDto> dtoResponse =
+                soServiceInIc.filterSoProducts(status, optionDate, startDate, endDate, page, size);
+        return ResponseEntity.ok(dtoResponse);
+    }
 }

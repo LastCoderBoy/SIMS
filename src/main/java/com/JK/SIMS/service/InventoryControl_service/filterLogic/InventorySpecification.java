@@ -1,4 +1,4 @@
-package com.JK.SIMS.models.IC_models.inventoryData.inventorySpecification;
+package com.JK.SIMS.service.InventoryControl_service.filterLogic;
 
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataStatus;

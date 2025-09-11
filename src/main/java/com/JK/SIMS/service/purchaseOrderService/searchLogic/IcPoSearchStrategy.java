@@ -17,6 +17,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
+import java.util.Optional;
+
 @Component
 public class IcPoSearchStrategy implements PoStrategy {
     private static final Logger logger = LoggerFactory.getLogger(IcPoSearchStrategy.class);
@@ -31,14 +33,15 @@ public class IcPoSearchStrategy implements PoStrategy {
 
     @Override
     public PaginatedResponse<PurchaseOrderResponseDto> searchInPos(String text, int page, int size) {
-        if (text == null || text.isEmpty()) {
-            logger.warn("IcPo (searchProduct): Search text is null or empty");
-            throw new ValidationException("IcPo (searchProduct): Search text cannot be empty");
-        }
         try {
-            Pageable pageable = PageRequest.of(page, size, Sort.by("product.name"));
-            Page<PurchaseOrder> searchEntityResponse = purchaseOrderRepository.searchInPendingOrders(text.trim().toLowerCase(), pageable);
-            return poServiceHelper.transformToPaginatedDtoResponse(searchEntityResponse);
+            Optional<String> inputText = Optional.ofNullable(text);
+            if (inputText.isPresent() && !inputText.get().trim().isEmpty()) {
+                logger.info("IcPo (searchProduct): Search text provided. Searching for orders with text '{}'", text);
+                Pageable pageable = PageRequest.of(page, size, Sort.by("product.name"));
+                Page<PurchaseOrder> searchEntityResponse = purchaseOrderRepository.searchInPendingOrders(text.trim().toLowerCase(), pageable);
+                return poServiceHelper.transformToPaginatedDtoResponse(searchEntityResponse);
+            }
+            return new PaginatedResponse<>();
         } catch (DataAccessException dae) {
             logger.error("IcPo (searchProduct): Database error while searching products", dae);
             throw new DatabaseException("IcPo (searchProduct): Error occurred while searching products");

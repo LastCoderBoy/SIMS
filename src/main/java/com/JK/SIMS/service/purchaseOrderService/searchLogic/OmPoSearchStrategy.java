@@ -10,6 +10,7 @@ import com.JK.SIMS.repository.PO_repo.PurchaseOrderRepository;
 import com.JK.SIMS.service.purchaseOrderService.PurchaseOrderServiceHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -23,7 +24,7 @@ public class OmPoSearchStrategy implements PoStrategy {
 
     private final PurchaseOrderRepository purchaseOrderRepository;
     private final PurchaseOrderServiceHelper poServiceHelper;
-
+    @Autowired
     public OmPoSearchStrategy(PurchaseOrderRepository purchaseOrderRepository, PurchaseOrderServiceHelper poServiceHelper) {
         this.purchaseOrderRepository = purchaseOrderRepository;
         this.poServiceHelper = poServiceHelper;

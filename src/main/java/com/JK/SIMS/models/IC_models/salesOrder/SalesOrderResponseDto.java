@@ -16,9 +16,11 @@ public class SalesOrderResponseDto {
     private Long id;
     private String orderReference;
     private String destination;
-    private String customerName;
+    private String customerName; // Coming from the ProductsForPM model. (SalesOrder -> OrderItem -> ProductsForPM)
     private SalesOrderStatus status;
     private LocalDateTime orderDate;
+    private LocalDateTime estimatedDeliveryDate;
+    private LocalDateTime deliveryDate;
     private LocalDateTime lastUpdate;
     private BigDecimal totalAmount;
     private List<OrderItemResponseDto> items;

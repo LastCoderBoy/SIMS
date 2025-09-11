@@ -49,24 +49,24 @@ public class PoControllerInIc {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<?> searchProduct(
+    public ResponseEntity<?> searchPoProduct(
             @RequestParam(required = false) String text,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size){
         logger.info("IcPo: searchProduct() calling with text: {}", text);
-        PaginatedResponse<PurchaseOrderResponseDto> dtoResponse = poServiceInIc.searchInPendingProduct(text, page, size);
+        PaginatedResponse<PurchaseOrderResponseDto> dtoResponse = poServiceInIc.searchInIncomingPurchaseOrders(text, page, size);
         return ResponseEntity.ok(dtoResponse);
     }
 
     @GetMapping("/filter")
-    public ResponseEntity<?> filterStock(@RequestParam(required = false) PurchaseOrderStatus status,
+    public ResponseEntity<?> filterPoStock(@RequestParam(required = false) PurchaseOrderStatus status,
                                          @RequestParam(required = false) ProductCategories category,
                                          @RequestParam(defaultValue = "product.name") String sortBy,
                                          @RequestParam(defaultValue = "asc") String sortDirection,
                                          @RequestParam(defaultValue = "0") int page,
                                          @RequestParam(defaultValue = "10") int size) {
         PaginatedResponse<PurchaseOrderResponseDto> filterResponse =
-                poServiceInIc.filterPendingPurchaseOrders(status, category, sortBy, sortDirection, page, size);
+                poServiceInIc.filterIncomingPurchaseOrders(status, category, sortBy, sortDirection, page, size);
         logger.info("IcPo filterStock(): Returning {} paginated data", filterResponse.getContent().size());
         return ResponseEntity.ok(filterResponse);
     }
