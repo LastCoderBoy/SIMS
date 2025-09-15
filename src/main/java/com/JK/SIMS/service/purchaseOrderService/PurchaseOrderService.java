@@ -19,12 +19,11 @@ import com.JK.SIMS.service.InventoryControl_service.InventoryControlService;
 import com.JK.SIMS.service.confirmTokenService.ConfirmationTokenService;
 import com.JK.SIMS.service.email_service.EmailService;
 import com.JK.SIMS.service.productManagement_service.ProductManagementService;
-import com.JK.SIMS.service.supplier_service.SupplierService;
+import com.JK.SIMS.service.supplierService.SupplierService;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;
 import org.apache.coyote.BadRequestException;
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,7 +39,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
-import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 

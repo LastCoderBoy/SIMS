@@ -5,6 +5,7 @@ import com.JK.SIMS.exceptionHandler.ResourceNotFoundException;
 import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
+import com.JK.SIMS.models.IC_models.salesOrder.BulkShipStockRequestDto;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderResponseDto;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
@@ -13,6 +14,7 @@ import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.outgoingStockRepo.SalesOrderRepository;
 import com.JK.SIMS.service.InventoryControl_service.InventoryControlService;
 import com.JK.SIMS.service.salesOrderService.filterLogic.SalesOrderSpecification;
+import com.JK.SIMS.service.salesOrderService.processSalesOrder.StockOutProcessor;
 import com.JK.SIMS.service.salesOrderService.searchLogic.SoStrategy;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import jakarta.validation.constraints.Max;
@@ -40,16 +42,18 @@ public class SoServiceInIc {
     private final SalesOrderServiceHelper salesOrderServiceHelper;
     private final GlobalServiceHelper globalServiceHelper;
     private final InventoryControlService icService;
-    private final SoStrategy soStrategy;
+    private final SoStrategy searchStrategy;
+    private final StockOutProcessor stockOutProcessor;
 
     private final SalesOrderRepository salesOrderRepository;
     @Autowired
     public SoServiceInIc(SalesOrderServiceHelper salesOrderServiceHelper, GlobalServiceHelper globalServiceHelper, InventoryControlService icService,
-                         @Qualifier("icSoSearchStrategy") SoStrategy soStrategy, SalesOrderRepository salesOrderRepository) {
+                         @Qualifier("icSoSearchStrategy") SoStrategy searchStrategy, StockOutProcessor stockOutProcessor, SalesOrderRepository salesOrderRepository) {
         this.salesOrderServiceHelper = salesOrderServiceHelper;
         this.globalServiceHelper = globalServiceHelper;
         this.icService = icService;
-        this.soStrategy = soStrategy;
+        this.searchStrategy = searchStrategy;
+        this.stockOutProcessor = stockOutProcessor;
         this.salesOrderRepository = salesOrderRepository;
     }
 
@@ -97,28 +101,10 @@ public class SoServiceInIc {
 
     // STOCK OUT button
     @Transactional
-    public ApiResponse processOrderRequest(Long orderId, String jwtToken){
+    public ApiResponse processOrderRequest(BulkShipStockRequestDto requestDto, String jwtToken){
         try {
             String confirmedPerson = globalServiceHelper.validateAndExtractUser(jwtToken);
-            SalesOrder salesOrder = salesOrderRepository.findById(orderId)
-                    .orElseThrow(() -> new ResourceNotFoundException("SalesOrder not found"));
-
-            if (salesOrder.getStatus() != SalesOrderStatus.PENDING) {
-                throw new ValidationException("SalesOrder is not in PENDING status. Cannot process ordered products.");
-            }
-
-            salesOrder.setStatus(SalesOrderStatus.PROCESSING);
-            salesOrder.setConfirmedBy(confirmedPerson);
-
-            // Convert reservations to actual stock deductions
-            for (OrderItem item : salesOrder.getItems()) {
-                icService.fulfillReservation(item.getProduct().getProductID(), item.getQuantity());
-            }
-
-            salesOrderRepository.save(salesOrder);
-            logger.info("OS (processOrderedProduct): SalesOrder {} processed successfully", orderId);
-            return new ApiResponse(true, "SalesOrder processed successfully");
-
+            return stockOutProcessor.processStockOut(requestDto, confirmedPerson);
         } catch (Exception e) {
             logger.error("OS (processOrderedProduct): Error processing order - {}", e.getMessage());
             throw new ServiceException("Failed to process order", e);
@@ -132,22 +118,21 @@ public class SoServiceInIc {
             String cancelledBy = globalServiceHelper.validateAndExtractUser(jwtToken);
             SalesOrder salesOrder = getSalesOrderById(orderId);
 
-            if (salesOrder.getStatus() != SalesOrderStatus.PENDING) {
-                throw new ValidationException("Only PENDING orders can be cancelled.");
+            if (salesOrder.getStatus() == SalesOrderStatus.PENDING || salesOrder.getStatus() == SalesOrderStatus.PARTIALLY_APPROVED
+                    || salesOrder.getStatus() == SalesOrderStatus.PARTIALLY_SHIPPED) {
+                // Release all reservations
+                for (OrderItem item : salesOrder.getItems()) {
+                    icService.releaseReservation(item.getProduct().getProductID(), item.getQuantity());
+                }
+
+                salesOrder.setStatus(SalesOrderStatus.CANCELLED);
+                salesOrder.setConfirmedBy(cancelledBy);
+                salesOrderRepository.save(salesOrder);
+
+                logger.info("OS (cancelOrder): SalesOrder {} cancelled successfully", orderId);
+                return new ApiResponse(true, "SalesOrder cancelled successfully");
             }
-
-            // Release all reservations
-            for (OrderItem item : salesOrder.getItems()) {
-                icService.releaseReservation(item.getProduct().getProductID(), item.getQuantity());
-            }
-
-            salesOrder.setStatus(SalesOrderStatus.CANCELLED);
-            salesOrder.setConfirmedBy(cancelledBy);
-            salesOrderRepository.save(salesOrder);
-
-            logger.info("OS (cancelOrder): SalesOrder {} cancelled successfully", orderId);
-            return new ApiResponse(true, "SalesOrder cancelled successfully");
-
+            throw new ValidationException("Only Waiting orders can be cancelled.");
         } catch (Exception e) {
             logger.error("OS (cancelOrder): Error cancelling order - {}", e.getMessage());
             throw new ServiceException("Failed to cancel order", e);
@@ -162,7 +147,7 @@ public class SoServiceInIc {
                 logger.warn("IcSo (searchInOutgoingSalesOrders): Search text is null or empty, returning all waiting orders.");
                 return getAllWaitingSalesOrders(page, size, "id", "asc");
             }
-            return soStrategy.searchInSo(text, page, size);
+            return searchStrategy.searchInSo(text, page, size);
         } catch (IllegalArgumentException ie) {
             logger.error("OS (searchInOutgoingSalesOrders): Invalid pagination parameters: {}", ie.getMessage());
             throw ie;
@@ -205,8 +190,7 @@ public class SoServiceInIc {
             );
             // Filtering by status if provided
             if(status != null){
-                if(status == SalesOrderStatus.PENDING || status == SalesOrderStatus.PROCESSING
-                        || status == SalesOrderStatus.PARTIALLY_SHIPPED){
+                if(status == SalesOrderStatus.PENDING || status == SalesOrderStatus.APPROVED){
                     specification = specification.and(SalesOrderSpecification.byStatus(status));
                 }
             }

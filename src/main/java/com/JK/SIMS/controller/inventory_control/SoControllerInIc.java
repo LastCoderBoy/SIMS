@@ -1,12 +1,15 @@
 package com.JK.SIMS.controller.inventory_control;
 
 import com.JK.SIMS.models.ApiResponse;
+import com.JK.SIMS.models.IC_models.salesOrder.BulkShipStockRequestDto;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderResponseDto;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
+import com.JK.SIMS.models.IC_models.salesOrder.ShipStockRequestDto;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.salesOrderService.SoServiceInIc;
 import com.JK.SIMS.service.utilities.SecurityUtils;
 import com.JK.SIMS.service.utilities.TokenUtils;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.slf4j.Logger;
@@ -17,6 +20,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.Collections;
 
 @RestController
 @RequestMapping("/api/v1/products/inventory/sales-order")
@@ -55,21 +59,22 @@ public class SoControllerInIc {
     }
 
     // Only High Roles can process the order
-    @PutMapping("/{orderId}/out")
-    public ResponseEntity<?> stockOutOrder(@PathVariable Long orderId, @RequestHeader("Authorization") String token){
-        logger.info("IcSo: stockOutOrder() calling...");
-        if(SecurityUtils.hasAccess()) {
-            if(token != null && !token.trim().isEmpty()) {
-                String jwtToken = TokenUtils.extractToken(token);
-                ApiResponse apiResponse = soServiceInIc.processOrderRequest(orderId, jwtToken);
-                return ResponseEntity.ok(apiResponse);
-            }
-            throw new IllegalArgumentException("IcSo: stockOutOrder() Invalid Token provided.");
+    // Stock OUT button in the SO section
+    @PutMapping("/stocks/out")
+    public ResponseEntity<?> bulkStockOutOrders(@Valid @RequestBody BulkShipStockRequestDto request,
+                                                @RequestHeader("Authorization") String token){
+        logger.info("IcSo: bulkStockOutOrders() called with {} orders", request.getBulkSoRequestDtos().size());
+        if (!SecurityUtils.hasAccess()) {
+            throw new AccessDeniedException("IcSo: bulkStockOutOrders() You cannot perform this operation.");
         }
-        throw new AccessDeniedException("IcSo: stockOutOrder() You cannot perform the following operation.");
+        if (token == null || token.trim().isEmpty()) {
+            throw new IllegalArgumentException("IcSo: bulkStockOutOrders() Invalid Token provided.");
+        }
+        String jwtToken = TokenUtils.extractToken(token);
+        ApiResponse response = soServiceInIc.processOrderRequest(request, jwtToken);
+        return ResponseEntity.ok(response);
     }
 
-    //TODO: Consider Bulk update for each Cancel and Stock-out options.
 
     @PutMapping("/{orderId}/cancel")
     public ResponseEntity<?> cancelSalesOrder(@PathVariable Long orderId, @RequestHeader("Authorization") String token){

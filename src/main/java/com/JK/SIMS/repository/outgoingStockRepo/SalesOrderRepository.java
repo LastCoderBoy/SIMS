@@ -36,21 +36,18 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long>, J
 """)
     Page<SalesOrder> searchOutgoingStock(@Param("text") String text, @Param("status") SalesOrderStatus status, Pageable pageable);
 
-    @Query(value = "SELECT COUNT(*) FROM sales_order WHERE status IN ('PROCESSING', 'SHIPPED')", nativeQuery = true)
+    @Query(value = "SELECT COUNT(*) FROM sales_order WHERE status IN ('PARTIALLY_APPROVED', 'PENDING', 'PARTIALLY_SHIPPED')", nativeQuery = true)
     Long getOutgoingValidStockSize();
 
-    @Query("SELECT so FROM SalesOrder so WHERE so.status IN ('PROCESSING', 'PENDING', 'PARTIALLY_SHIPPED')")
+    @Query("SELECT so FROM SalesOrder so WHERE so.status IN ('PARTIALLY_APPROVED', 'PENDING', 'PARTIALLY_SHIPPED')")
     Page<SalesOrder> findAllWaitingSalesOrders(Pageable pageable);
 
-    @Query("SELECT so FROM SalesOrder so WHERE so.status IN ('PROCESSING', 'PENDING', 'PARTIALLY_SHIPPED')")
-    Page<SalesOrder> findAllWaitingSalesOrders(Specification<SalesOrder> specification, Pageable pageable);
-
-    @Query("SELECT so FROM SalesOrder so WHERE so.status IN ('PROCESSING', 'PENDING', 'PARTIALLY_SHIPPED') " +
+    @Query("SELECT so FROM SalesOrder so WHERE so.status IN ('PARTIALLY_APPROVED', 'PENDING', 'PARTIALLY_SHIPPED') " +
             "AND so.estimatedDeliveryDate < CURRENT_DATE + 2")
     Page<SalesOrder> findAllUrgentSalesOrders(Pageable pageable);
 
     @Query(value = "SELECT SUM(DATEDIFF(estimated_delivery_date, order_date)) " +
-            "FROM sales_order WHERE status IN ('PROCESSING', 'PENDING', 'PARTIALLY_SHIPPED')",
+            "FROM sales_order WHERE status IN ('PARTIALLY_APPROVED', 'PENDING', 'PARTIALLY_SHIPPED')",
             nativeQuery = true)
     long calculateTotalDeliveryDate();
 
@@ -58,7 +55,7 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long>, J
     SELECT DISTINCT o FROM SalesOrder o
     JOIN o.items i
     JOIN i.product p
-    WHERE o.status IN ('PROCESSING', 'PENDING', 'PARTIALLY_SHIPPED')
+    WHERE o.status IN ('PARTIALLY_APPROVED', 'PENDING', 'PARTIALLY_SHIPPED')
       AND (LOWER(p.name) LIKE LOWER(CONCAT('%', :text, '%'))
        OR LOWER(p.category) LIKE LOWER(CONCAT('%', :text, '%'))
        OR LOWER(o.destination) LIKE LOWER(CONCAT('%', :text, '%'))

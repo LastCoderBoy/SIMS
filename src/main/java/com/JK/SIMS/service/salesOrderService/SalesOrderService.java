@@ -91,7 +91,7 @@ public class SalesOrderService {
 
             salesOrderRepository.save(salesOrder);
             logger.info("OS (createOrder): SalesOrder created successfully with reference ID: {}", orderReference);
-            return new ApiResponse(true, "SalesOrder created successfully and it is under PROCESSING status");
+            return new ApiResponse(true, "SalesOrder created successfully and it is under APPROVED status");
 
         } catch (DataIntegrityViolationException e) {
             if (e.getCause() instanceof ConstraintViolationException) {

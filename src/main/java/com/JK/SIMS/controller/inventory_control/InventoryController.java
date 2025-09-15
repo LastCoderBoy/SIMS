@@ -1,6 +1,7 @@
 package com.JK.SIMS.controller.inventory_control;
 
 
+import com.JK.SIMS.models.IC_models.salesOrder.BulkShipStockRequestDto;
 import com.JK.SIMS.service.salesOrderService.SoServiceInIc;
 import com.JK.SIMS.service.utilities.SecurityUtils;
 import com.JK.SIMS.exceptionHandler.InvalidTokenException;
@@ -73,19 +74,19 @@ public class InventoryController {
 
 
     // STOCK OUT button
-    @PutMapping("/{orderId}/process-order")
-    public ResponseEntity<?> processOrderRequest(@PathVariable Long orderId,
-                                                   @RequestHeader("Authorization") String token) throws AccessDeniedException {
-        logger.info("IC: processOrderedProduct() calling...");
-        if(SecurityUtils.hasAccess()) {
-            if(token != null && !token.trim().isEmpty()) {
-                String jwtToken = TokenUtils.extractToken(token);
-                ApiResponse response = soServiceInIc.processOrderRequest(orderId, jwtToken);
-                return new ResponseEntity<>(response, HttpStatus.OK);
-            }
-            throw new InvalidTokenException("IC: processOrderedProduct() Invalid Token provided.");
+    @PutMapping("/stocks/out")
+    public ResponseEntity<?> bulkStockOutOrders(@Valid @RequestBody BulkShipStockRequestDto request,
+                                                @RequestHeader("Authorization") String token){
+        logger.info("IC: bulkStockOutOrders() called with {} orders", request.getBulkSoRequestDtos().size());
+        if (!SecurityUtils.hasAccess()) {
+            throw new org.springframework.security.access.AccessDeniedException("IC: bulkStockOutOrders() You cannot perform this operation.");
         }
-        throw new AccessDeniedException("IC: processOrderedProduct() You cannot perform the following operation.");
+        if (token == null || token.trim().isEmpty()) {
+            throw new IllegalArgumentException("IC: bulkStockOutOrders() Invalid Token provided.");
+        }
+        String jwtToken = TokenUtils.extractToken(token);
+        ApiResponse response = soServiceInIc.processOrderRequest(request, jwtToken);
+        return ResponseEntity.ok(response);
     }
 
     // CANCEL ORDER button

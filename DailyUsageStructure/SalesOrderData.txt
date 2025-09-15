@@ -2,6 +2,7 @@ Sales Order Data:
 id | orderReference | destination | customerName | confirmedBy | status | orderDate | estimatedDeliveryDate | deliveryDate | lastUpdate
 
 1 | SO-2025-09-09-001 | Tashkent | John | Thomas | PROCESSING | 2025-09-09 | 2025-09-15 | null | 2025-09-11
+2 | SO-2025-09-09-002 | Texas | Mark | Kevin | PENDING | 2025-09-09 | 2025-09-25 | null | 2025-09-11
 
 Sales Order DTO:
 id | orderReference | destination | customerName | status | orderDate | estimatedDeliveryDate | deliveryDate | lastUpdate | totalAmount
@@ -12,4 +13,5 @@ Order Items:
 id | product_id | quantity | orderPrice | salesOrder_id
 
 1 | 1 | 5 | 149.95 | 1
+2 | 2 | 10 | 199.95 | 1
 

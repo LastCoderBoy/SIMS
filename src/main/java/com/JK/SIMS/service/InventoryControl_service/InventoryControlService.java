@@ -179,24 +179,24 @@ public class InventoryControlService {
 
     // Reserve stock atomically - returns true if successful, false if insufficient stock
     @Transactional
-    public boolean reserveStock(String productId, Integer quantity) {
+    public boolean reserveStock(String productId, Integer requestQuantity) {
         try {
             InventoryData inventory = icRepository.findByProductIdWithLock(productId);
             if (inventory == null) {
                 throw new ResourceNotFoundException("Inventory not found for product: " + productId);
             }
 
-            int availableStock = inventory.getCurrentStock() - inventory.getReservedStock();
-
-            if (availableStock >= quantity) {
-                inventory.setReservedStock(inventory.getReservedStock() + quantity);
+            // Validate the requested requestQuantity
+            int availableStock = getAvailableStock(inventory);
+            if (availableStock >= requestQuantity) {
+                inventory.setReservedStock(inventory.getReservedStock() + requestQuantity);
                 icRepository.save(inventory);
-                logger.debug("IC (reserveStock): Reserved {} units for product {}", quantity, productId);
+                logger.debug("IC (reserveStock): Reserved {} units for product {}", requestQuantity, productId);
                 return true;
             }
 
             logger.warn("IC (reserveStock): Insufficient stock for product {}. Available: {}, Requested: {}",
-                    productId, availableStock, quantity);
+                    productId, availableStock, requestQuantity);
             return false;
 
         } catch (DataAccessException e) {
@@ -206,23 +206,26 @@ public class InventoryControlService {
     }
 
     @Transactional
-    public void fulfillReservation(String productId, int quantity) {
+    public void fulfillReservation(String productId, int approvedQuantity) {
         try {
             InventoryData inventory = icRepository.findByProductIdWithLock(productId);
             if (inventory == null) {
                 throw new ResourceNotFoundException("Inventory not found for product: " + productId);
             }
 
+            if(approvedQuantity > inventory.getReservedStock()){
+                throw new InsufficientStockException("IC (fulfillReservation): Insufficient stock for product " + productId);
+            }
+
             // Deduct from both current stock and reserved stock
-            inventory.setCurrentStock(inventory.getCurrentStock() - quantity);
-            inventory.setReservedStock(inventory.getReservedStock() - quantity);
+            inventory.setCurrentStock(inventory.getCurrentStock() - approvedQuantity);
+            inventory.setReservedStock(inventory.getReservedStock() - approvedQuantity);
 
             // Update status based on the new stock level
             inventoryServiceHelper.updateInventoryStatus(inventory);
-
             icRepository.save(inventory);
-            logger.debug("IC (fulfillReservation): Fulfilled reservation of {} units for product {}", quantity, productId);
 
+            logger.debug("IC (fulfillReservation): Fulfilled reservation of {} units for product {}", approvedQuantity, productId);
         } catch (DataAccessException e) {
             logger.error("IC (fulfillReservation): Database error - {}", e.getMessage());
             throw new DatabaseException("Failed to fulfill reservation", e);
@@ -290,11 +293,7 @@ public class InventoryControlService {
     }
 
     // Get available stock (current - reserved)
-    public int getAvailableStock(String productId) {
-        Optional<InventoryData> inventory = icRepository.findByPmProduct_ProductID(productId);
-        if (inventory.isEmpty()) {
-            return 0;
-        }
-        return inventory.get().getCurrentStock() - inventory.get().getReservedStock();
+    public int getAvailableStock(InventoryData inventory) {
+        return inventory.getCurrentStock() - inventory.getReservedStock();
     }
 }

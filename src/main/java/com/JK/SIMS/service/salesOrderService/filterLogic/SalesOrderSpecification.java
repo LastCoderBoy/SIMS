@@ -11,8 +11,7 @@ public class SalesOrderSpecification {
         return (root, query, criteriaBuilder) ->
                 root.get("status").in(
                         SalesOrderStatus.PENDING,
-                        SalesOrderStatus.PROCESSING,
-                        SalesOrderStatus.PARTIALLY_SHIPPED
+                        SalesOrderStatus.APPROVED
                 );
     }
 

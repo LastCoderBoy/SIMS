@@ -10,6 +10,8 @@ import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderResponseDto;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
 import com.JK.SIMS.models.IC_models.purchaseOrder.ReceiveStockRequestDto;
+import com.JK.SIMS.models.stockMovements.StockMovementReferenceType;
+import com.JK.SIMS.models.stockMovements.StockMovementType;
 import com.JK.SIMS.repository.PO_repo.purchaseOrderSpec.PurchaseOrderSpecification;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
@@ -18,6 +20,7 @@ import com.JK.SIMS.service.InventoryControl_service.InventoryControlService;
 import com.JK.SIMS.service.InventoryControl_service.InventoryServiceHelper;
 import com.JK.SIMS.service.productManagement_service.ProductManagementService;
 import com.JK.SIMS.service.purchaseOrderService.searchLogic.PoStrategy;
+import com.JK.SIMS.service.stockMovementService.StockMovementService;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import jakarta.validation.Valid;
 import org.apache.coyote.BadRequestException;
@@ -50,10 +53,11 @@ public class PoServiceInIc {
     private final GlobalServiceHelper globalServiceHelper;
     private final InventoryControlService inventoryControlService;
     private final ProductManagementService pmService;
+    private final StockMovementService stockMovementService;
     private final InventoryServiceHelper inventoryServiceHelper;
     @Autowired
     public PoServiceInIc(Clock clock, PurchaseOrderRepository purchaseOrderRepository, PurchaseOrderServiceHelper poServiceHelper,
-                         @Qualifier("icPoSearchStrategy") PoStrategy poStrategy, GlobalServiceHelper globalServiceHelper, InventoryControlService inventoryControlService, ProductManagementService pmService, InventoryServiceHelper inventoryServiceHelper) {
+                         @Qualifier("icPoSearchStrategy") PoStrategy poStrategy, GlobalServiceHelper globalServiceHelper, InventoryControlService inventoryControlService, ProductManagementService pmService, StockMovementService stockMovementService, InventoryServiceHelper inventoryServiceHelper) {
         this.clock = clock;
         this.purchaseOrderRepository = purchaseOrderRepository;
         this.poServiceHelper = poServiceHelper;
@@ -61,6 +65,7 @@ public class PoServiceInIc {
         this.globalServiceHelper = globalServiceHelper;
         this.inventoryControlService = inventoryControlService;
         this.pmService = pmService;
+        this.stockMovementService = stockMovementService;
         this.inventoryServiceHelper = inventoryServiceHelper;
     }
 
@@ -98,6 +103,10 @@ public class PoServiceInIc {
             updateOrderWithReceivedStock(order, receiveRequest);
             updateInventoryLevels(order, receiveRequest.getReceivedQuantity());
             finalizeOrderUpdate(order, updatedPerson);
+            stockMovementService.logMovement(
+                    order.getProduct(), StockMovementType.IN,
+                    receiveRequest.getReceivedQuantity(), order.getPONumber(),
+                    StockMovementReferenceType.PURCHASE_ORDER, updatedPerson);
 
             logger.info("IS (receiveIncomingStock): Updated incoming stock order successfully. PO Number: {}", order.getPONumber());
             return new ApiResponse(true, "Incoming stock order updated successfully.");

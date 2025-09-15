@@ -3,7 +3,7 @@ package com.JK.SIMS.controller.supplier_control;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.supplier.SupplierRequest;
 import com.JK.SIMS.models.supplier.SupplierResponse;
-import com.JK.SIMS.service.supplier_service.SupplierService;
+import com.JK.SIMS.service.supplierService.SupplierService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;

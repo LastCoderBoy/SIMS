@@ -37,7 +37,7 @@ public class SalesOrder {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private SalesOrderStatus status; // PENDING, PROCESSING, SHIPPED, COMPLETED, CANCELLED
+    private SalesOrderStatus status; // PENDING, PARTIALLY_APPROVED, PARTIALLY_SHIPPED, APPROVED, SHIPPED, COMPLETED, CANCELLED
 
     @CreationTimestamp
     @Column(updatable = false, name = "order_date")
@@ -76,5 +76,10 @@ public class SalesOrder {
     public void removeOrderItem(OrderItem item) {
         items.remove(item);
         item.setSalesOrder(null);
+    }
+
+    public boolean isFinalized() {
+        return this.status == SalesOrderStatus.COMPLETED || this.status == SalesOrderStatus.CANCELLED
+                || this.status == SalesOrderStatus.SHIPPED || this.status == SalesOrderStatus.APPROVED;
     }
 }
