@@ -1,0 +1,8 @@
+package com.JK.SIMS.service.InventoryServices.poService.searchLogic;
+
+import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderResponseDto;
+import com.JK.SIMS.models.PaginatedResponse;
+
+public interface PoStrategy {
+    PaginatedResponse<PurchaseOrderResponseDto> searchInPos(String text, int page, int size);
+}

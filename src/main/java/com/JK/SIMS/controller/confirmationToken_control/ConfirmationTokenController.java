@@ -1,6 +1,6 @@
 package com.JK.SIMS.controller.confirmationToken_control;
 
-import com.JK.SIMS.service.purchaseOrderService.PurchaseOrderService;
+import com.JK.SIMS.service.orderManagementService.purchaseOrderService.PurchaseOrderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;

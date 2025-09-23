@@ -23,6 +23,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+// TODO: Remove the Component before the Test Case
 @Component
 public class JWTFilter extends OncePerRequestFilter {
     @Autowired

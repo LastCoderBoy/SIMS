@@ -5,7 +5,7 @@ import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
 import com.JK.SIMS.models.IC_models.purchaseOrder.token.ConfirmationToken;
 import com.JK.SIMS.models.IC_models.purchaseOrder.token.ConfirmationTokenStatus;
 import com.JK.SIMS.repository.confirmationTokenRepo.ConfirmationTokenRepository;
-import com.JK.SIMS.service.purchaseOrderService.PurchaseOrderServiceHelper;
+import com.JK.SIMS.service.InventoryServices.poService.PurchaseOrderServiceHelper;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import lombok.AllArgsConstructor;
 import org.jetbrains.annotations.Nullable;

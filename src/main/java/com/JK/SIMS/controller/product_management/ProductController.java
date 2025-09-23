@@ -6,7 +6,7 @@ import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.PM_models.ProductManagementDTO;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
-import com.JK.SIMS.service.productManagement_service.ProductManagementService;
+import com.JK.SIMS.service.productManagementService.ProductManagementService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
