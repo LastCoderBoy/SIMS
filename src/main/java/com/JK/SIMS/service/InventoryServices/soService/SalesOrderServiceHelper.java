@@ -49,8 +49,12 @@ public class SalesOrderServiceHelper {
         }
     }
 
-    public BigDecimal calculateTotalAmount(List<OrderItem> items) {
+    private BigDecimal calculateTotalAmount(List<OrderItem> items) {
         return items.stream().map(OrderItem::getOrderPrice).reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    public Integer totalSalesOrderQuantity(List<OrderItemResponseDto> orderedItems){
+        return orderedItems.stream().mapToInt(OrderItemResponseDto::getQuantity).sum();
     }
 
     private OrderItemResponseDto convertToOrderItemResponseDto(OrderItem item) {

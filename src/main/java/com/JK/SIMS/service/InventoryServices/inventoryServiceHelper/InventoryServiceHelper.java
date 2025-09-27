@@ -6,9 +6,13 @@ import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataDto;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataStatus;
 import com.JK.SIMS.models.IC_models.inventoryData.PendingOrdersResponseDto;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
+import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderResponseDto;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
+import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderResponseDto;
+import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItemResponseDto;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.IC_repo.IC_repository;
+import com.JK.SIMS.service.InventoryServices.soService.SalesOrderServiceHelper;
 import com.JK.SIMS.service.email_service.LowStockScheduler;
 import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
@@ -19,6 +23,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,10 +34,12 @@ public class InventoryServiceHelper {
 
     private final IC_repository icRepository;
     private final LowStockScheduler lowStockAlert;
+    private final SalesOrderServiceHelper salesOrderServiceHelper;
     @Autowired
-    public InventoryServiceHelper(IC_repository icRepository, LowStockScheduler lowStockAlert) {
+    public InventoryServiceHelper(IC_repository icRepository, LowStockScheduler lowStockAlert, SalesOrderServiceHelper salesOrderServiceHelper) {
         this.icRepository = icRepository;
         this.lowStockAlert = lowStockAlert;
+        this.salesOrderServiceHelper = salesOrderServiceHelper;
     }
 
 
@@ -81,6 +88,44 @@ public class InventoryServiceHelper {
                 product.setStatus(InventoryDataStatus.IN_STOCK);
             }
         }
+    }
+
+    public void fillWithPurchaseOrders(List<PendingOrdersResponseDto> combinedPendingOrders,
+                                        List<PurchaseOrderResponseDto> pendingPurchaseOrders){
+        for(PurchaseOrderResponseDto po : pendingPurchaseOrders){
+            PendingOrdersResponseDto pendingOrder = new PendingOrdersResponseDto(
+                    po.getId(),
+                    po.getPoNumber(),
+                    po.getProductName(),
+                    po.getProductCategory().toString(),
+                    "PURCHASE_ORDER",
+                    po.getStatus().toString(),
+                    po.getOrderDate().atStartOfDay(),
+                    po.getExpectedArrivalDate().atStartOfDay(),
+                    po.getTotalPrice(),
+                    po.getSupplierName(),
+                    po.getOrderedQuantity()
+            );
+            combinedPendingOrders.add(pendingOrder);
+        }
+    }
+
+    public void fillWithSalesOrders(List<PendingOrdersResponseDto> combinedPendingOrders, List<SalesOrderResponseDto> pendingSalesOrders){
+        pendingSalesOrders.forEach(so ->
+                combinedPendingOrders.add(new PendingOrdersResponseDto(
+                        so.getId(),
+                        so.getOrderReference(),
+                        null,
+                        null,
+                        "SALES_ORDER",
+                        so.getStatus().toString(),
+                        so.getOrderDate(),
+                        so.getEstimatedDeliveryDate(),
+                        so.getTotalAmount(),
+                        so.getCustomerName(),
+                        salesOrderServiceHelper.totalSalesOrderQuantity(so.getItems())
+                ))
+        );
     }
 
     public PaginatedResponse<InventoryDataDto> transformToPaginatedInventoryDTOResponse(Page<InventoryData> inventoryPage){

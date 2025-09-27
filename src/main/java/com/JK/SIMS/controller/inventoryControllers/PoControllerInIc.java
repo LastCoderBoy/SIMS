@@ -34,9 +34,13 @@ public class PoControllerInIc {
     @GetMapping
     public ResponseEntity<?> getAllPendingPurchaseOrders(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size){
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "product.name") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortDirection
+            ){
         logger.info("IcPo: getAllPendingPurchaseOrders() calling with page {} and size {}", page, size);
-        PaginatedResponse<PurchaseOrderResponseDto> paginatedStockResponse = poServiceInIc.getAllPendingPurchaseOrders(page, size);
+        PaginatedResponse<PurchaseOrderResponseDto> paginatedStockResponse =
+                poServiceInIc.getAllPendingPurchaseOrders(page, size, sortBy, sortDirection);
         return ResponseEntity.ok(paginatedStockResponse);
     }
 

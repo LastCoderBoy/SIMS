@@ -16,7 +16,6 @@ import com.JK.SIMS.repository.PO_repo.purchaseOrderSpec.PurchaseOrderSpecificati
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.PO_repo.PurchaseOrderRepository;
-import com.JK.SIMS.service.InventoryServices.inventoryPageService.InventoryControlService;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
 import com.JK.SIMS.service.productManagementService.ProductManagementService;
@@ -29,7 +28,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -46,6 +44,9 @@ import java.util.Optional;
 
 @Service
 public class PoServiceInIc {
+    private static final String DEFAULT_SORT_BY = "product.name";
+    private static final String DEFAULT_SORT_DIRECTION = "asc";
+
     private static final Logger logger = LoggerFactory.getLogger(PoServiceInIc.class);
     private final Clock clock;
     private final PurchaseOrderRepository purchaseOrderRepository;
@@ -73,9 +74,15 @@ public class PoServiceInIc {
     }
 
     @Transactional(readOnly = true)
-    public PaginatedResponse<PurchaseOrderResponseDto> getAllPendingPurchaseOrders(int page, int size) {
+    public PaginatedResponse<PurchaseOrderResponseDto> getAllPendingPurchaseOrders(int page, int size, String sortBy, String sortDirection) {
         try {
-            Pageable pageable = PageRequest.of(page, size, Sort.by("product.name"));
+            String effectiveSortBy = (sortBy == null || sortBy.trim().isEmpty()) ? DEFAULT_SORT_BY : sortBy;
+            String effectiveSortDirection = (sortDirection == null || sortDirection.trim().isEmpty()) ? DEFAULT_SORT_DIRECTION : sortDirection;
+
+            Sort.Direction direction = effectiveSortDirection.equalsIgnoreCase("desc") ?
+                    Sort.Direction.DESC : Sort.Direction.ASC;
+
+            Pageable pageable = PageRequest.of(page, size, Sort.by(direction, effectiveSortBy));
             Page<PurchaseOrder> entityResponse = purchaseOrderRepository.findAllPendingOrders(pageable);
             PaginatedResponse<PurchaseOrderResponseDto> dtoResponse =
                     poServiceHelper.transformToPaginatedDtoResponse(entityResponse);
@@ -232,7 +239,7 @@ public class PoServiceInIc {
             globalServiceHelper.validatePaginationParameters(page, size);
             if (text == null || text.trim().isEmpty()) {
                 logger.warn("PO (searchInIncomingPurchaseOrders): Search text is null or empty, returning all incoming orders.");
-                return getAllPendingPurchaseOrders(page, size);
+                return getAllPendingPurchaseOrders(page, size, DEFAULT_SORT_BY, DEFAULT_SORT_DIRECTION);
             }
             return poStrategy.searchInPos(text, page, size);
         } catch (Exception e) {

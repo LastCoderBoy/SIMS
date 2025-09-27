@@ -20,12 +20,13 @@ public class PendingOrdersResponseDto {
 
     private Long id;
     private String orderReference; // For SO: orderReference, for PO: poNumber
+    private String productName;
+    private String productCategory;
     private String type; // "SALES_ORDER" or "PURCHASE_ORDER"
     private String status;
     private LocalDateTime orderDate;
     private LocalDateTime estimatedDate; // For SO: estimatedDeliveryDate, for PO: expectedArrivalDate
     private BigDecimal totalAmount; // For SO: totalAmount, for PO: null or calculated value
     private String customerOrSupplierName; // For SO: customerName, for PO: supplierName
-    private List<OrderItemResponseDto> items; // Optional, if you want to show items
-
+    private Integer totalOrderedQuantity;
 }

@@ -21,12 +21,17 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, Lo
             "LOWER(isr.PONumber) LIKE CONCAT('%', :text, '%')")
     Page<PurchaseOrder> searchOrders(String text, Pageable pageable);
 
-    @Query("SELECT isr FROM PurchaseOrder isr WHERE isr.status IN ('DELIVERY_IN_PROCESS', 'PARTIALLY_RECEIVED', 'AWAITING_APPROVAL') AND " +
-            "LOWER(isr.product.name) LIKE CONCAT('%', :text, '%') OR " +
-            "LOWER(isr.supplier.name) LIKE CONCAT('%', :text, '%') OR " +
-            "LOWER(isr.orderedBy) LIKE CONCAT('%', :text, '%') OR " +
-            "LOWER(isr.updatedBy) LIKE CONCAT('%', :text, '%') OR " +
-            "LOWER(isr.PONumber) LIKE CONCAT('%', :text, '%')")
+    @Query("""
+            SELECT isr FROM PurchaseOrder isr
+            WHERE isr.status IN ('DELIVERY_IN_PROCESS', 'PARTIALLY_RECEIVED', 'AWAITING_APPROVAL')
+            AND (
+                LOWER(isr.product.name) LIKE LOWER(CONCAT('%', :text, '%')) OR
+                LOWER(isr.supplier.name) LIKE LOWER(CONCAT('%', :text, '%')) OR
+                LOWER(isr.orderedBy) LIKE LOWER(CONCAT('%', :text, '%')) OR
+                LOWER(isr.updatedBy) LIKE LOWER(CONCAT('%', :text, '%')) OR
+                LOWER(isr.PONumber) LIKE LOWER(CONCAT('%', :text, '%'))
+                )
+            """)
     Page<PurchaseOrder> searchInPendingOrders(String text, Pageable pageable);
 
     @Query(value = "SELECT COUNT(*) FROM purchase_order WHERE status IN ('DELIVERY_IN_PROCESS', 'PARTIALLY_RECEIVED') ", nativeQuery = true)

@@ -37,7 +37,8 @@ public class IcPoSearchStrategy implements PoStrategy {
             if (inputText.isPresent() && !inputText.get().trim().isEmpty()) {
                 logger.info("IcPo (searchProduct): Search text provided. Searching for orders with text '{}'", text);
                 Pageable pageable = PageRequest.of(page, size, Sort.by("product.name"));
-                Page<PurchaseOrder> searchEntityResponse = purchaseOrderRepository.searchInPendingOrders(text.trim().toLowerCase(), pageable);
+                Page<PurchaseOrder> searchEntityResponse =
+                        purchaseOrderRepository.searchInPendingOrders(text.trim().toLowerCase(), pageable);
                 return poServiceHelper.transformToPaginatedDtoResponse(searchEntityResponse);
             }
             return new PaginatedResponse<>();

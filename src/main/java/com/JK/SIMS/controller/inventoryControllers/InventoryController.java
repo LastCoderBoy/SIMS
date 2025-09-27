@@ -1,6 +1,7 @@
 package com.JK.SIMS.controller.inventoryControllers;
 
 
+import com.JK.SIMS.models.IC_models.inventoryData.PendingOrdersResponseDto;
 import com.JK.SIMS.models.IC_models.salesOrder.BulkShipStockRequestDto;
 import com.JK.SIMS.service.InventoryServices.soService.SoServiceInIc;
 import com.JK.SIMS.config.security.SecurityUtils;
@@ -105,16 +106,15 @@ public class InventoryController {
      * @param text search text
      * @return ResponseEntity with search results
      */
-    // TODO: Search in PENDING products, not only in SO
     @GetMapping("/search")
     public ResponseEntity<?> searchOutgoingInPendingProduct(
             @RequestParam(required = false) String text,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size){
         logger.info("IC: searchOutgoingStock() calling...");
-        PaginatedResponse<SalesOrderResponseDto> outgoingStockDTOList =
-                soServiceInIc.searchInOutgoingSalesOrders(text, page, size);
-        return ResponseEntity.ok(outgoingStockDTOList);
+        PaginatedResponse<PendingOrdersResponseDto> pendingOrdersDtos =
+                icService.searchByTextPendingOrders(text, page, size);
+        return ResponseEntity.ok(pendingOrdersDtos);
     }
 
     /**

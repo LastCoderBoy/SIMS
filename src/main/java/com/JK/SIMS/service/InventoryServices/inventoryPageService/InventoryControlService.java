@@ -9,13 +9,17 @@ import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.IC_repo.IC_repository;
 import com.JK.SIMS.service.InventoryServices.damageLossService.DamageLossService;
+import com.JK.SIMS.service.InventoryServices.inventoryPageService.searchLogic.PendingOrdersSearchStrategy;
+import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
 import com.JK.SIMS.service.InventoryServices.poService.PoServiceInIc;
 import com.JK.SIMS.service.InventoryServices.soService.SoServiceInIc;
+import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,13 +38,20 @@ public class InventoryControlService {
     private final SoServiceInIc soServiceInIc;
     private final DamageLossService damageLossService;
     private final PoServiceInIc poServiceInIc;
+    private final GlobalServiceHelper globalServiceHelper;
+    private final InventoryServiceHelper inventoryServiceHelper;
+    private final PendingOrdersSearchStrategy searchPendingStrategy;
+
     @Autowired
     public InventoryControlService(IC_repository icRepository, SoServiceInIc soServiceInIc,
-                                   DamageLossService damageLossService, PoServiceInIc poServiceInIc) {
+                                   DamageLossService damageLossService, PoServiceInIc poServiceInIc, GlobalServiceHelper globalServiceHelper, InventoryServiceHelper inventoryServiceHelper, PendingOrdersSearchStrategy searchPendingStrategy) {
         this.icRepository = icRepository;
         this.soServiceInIc = soServiceInIc;
         this.damageLossService = damageLossService;
         this.poServiceInIc = poServiceInIc;
+        this.globalServiceHelper = globalServiceHelper;
+        this.inventoryServiceHelper = inventoryServiceHelper;
+        this.searchPendingStrategy = searchPendingStrategy;
     }
 
     @Transactional(readOnly = true)
@@ -48,17 +59,7 @@ public class InventoryControlService {
         try {
             InventoryMetrics metrics = icRepository.getInventoryMetrics();
 
-            // SO and PO PENDING orders will be displayed at the end of the page
-            PaginatedResponse<SalesOrderResponseDto> allPendingSalesOrders =
-                    soServiceInIc.getAllWaitingSalesOrders(page, size, "orderDate", "desc");
-
-            PaginatedResponse<PurchaseOrderResponseDto> allPendingPurchaseOrders =
-                    poServiceInIc.getAllPendingPurchaseOrders(page, size);
-
-            List<PendingOrdersResponseDto> allPendingOrderDtos = new ArrayList<>();
-            fillWithSalesOrders(allPendingOrderDtos, allPendingSalesOrders.getContent());
-            fillWithPurchaseOrders(allPendingOrderDtos, allPendingPurchaseOrders.getContent());
-
+            PaginatedResponse<PendingOrdersResponseDto> allPendingOrders = getAllPendingOrders(page, size);
 
             // Create the response object
             InventoryPageResponse inventoryPageResponse = new InventoryPageResponse(
@@ -67,9 +68,9 @@ public class InventoryControlService {
                     poServiceInIc.getTotalValidPoSize(),
                     soServiceInIc.getTotalValidOutgoingStockSize(),
                     damageLossService.getDamageLossMetrics().getTotalReport(),
-                    new PaginatedResponse<>(new PageImpl<>(allPendingOrderDtos))
+                    allPendingOrders
             );
-            logger.info("IC (getInventoryControlPageData): Sending page {} with {} products.", page, allPendingOrderDtos.size());
+            logger.info("IC (getInventoryControlPageData): Sending page {} with {} products.", page, allPendingOrders.getContent().size());
             return inventoryPageResponse;
         } catch (DataAccessException e) {
             logger.error("IC (getInventoryControlPageData): Database access error while retrieving inventory data.", e);
@@ -78,6 +79,25 @@ public class InventoryControlService {
             logger.error("IC (getInventoryControlPageData): Unexpected error occurred while loading IC page data.", e);
             throw new ServiceException("IC (getInventoryControlPageData): Failed to retrieve products", e);
         }
+    }
+
+    @Transactional(readOnly = true)
+    public PaginatedResponse<PendingOrdersResponseDto> getAllPendingOrders(int page, int size) {
+        // Fetch all pending orders (SO and PO)
+        PaginatedResponse<SalesOrderResponseDto> allPendingSalesOrders =
+                soServiceInIc.getAllWaitingSalesOrders(page, size, "orderDate", "desc");
+
+        PaginatedResponse<PurchaseOrderResponseDto> allPendingPurchaseOrders =
+                poServiceInIc.getAllPendingPurchaseOrders(page, size, "product.name", "asc");
+
+        // Combine and sort
+        List<PendingOrdersResponseDto> combinedResults = new ArrayList<>();
+        inventoryServiceHelper.fillWithSalesOrders(combinedResults, allPendingSalesOrders.getContent());
+        inventoryServiceHelper.fillWithPurchaseOrders(combinedResults, allPendingPurchaseOrders.getContent());
+
+        return new PaginatedResponse<>(
+                new PageImpl<>(combinedResults, PageRequest.of(page, size), combinedResults.size())
+        );
     }
 
     @Transactional
@@ -164,41 +184,6 @@ public class InventoryControlService {
         }
     }
 
-    private void fillWithPurchaseOrders(List<PendingOrdersResponseDto> combinedPendingOrders,
-                                        List<PurchaseOrderResponseDto> pendingPurchaseOrders){
-        for(PurchaseOrderResponseDto po : pendingPurchaseOrders){
-            PendingOrdersResponseDto pendingOrder = new PendingOrdersResponseDto(
-                    po.getId(),
-                    po.getPoNumber(),
-                    "PURCHASE_ORDER",
-                    po.getStatus().toString(),
-                    po.getOrderDate().atStartOfDay(),
-                    po.getExpectedArrivalDate().atStartOfDay(),
-                    po.getTotalPrice(),
-                    po.getSupplierName(),
-                    null
-            );
-            combinedPendingOrders.add(pendingOrder);
-        }
-    }
-
-    private void fillWithSalesOrders(List<PendingOrdersResponseDto> combinedPendingOrders, List<SalesOrderResponseDto> pendingSalesOrders){
-        pendingSalesOrders.forEach(so ->
-                combinedPendingOrders.add(new PendingOrdersResponseDto(
-                        so.getId(),
-                        so.getOrderReference(),
-                        "SALES_ORDER",
-                        so.getStatus().toString(),
-                        so.getOrderDate(),
-                        so.getEstimatedDeliveryDate(),
-                        so.getTotalAmount(),
-                        so.getCustomerName(),
-                        so.getItems()
-                ))
-        );
-    }
-
-
     private String generateSKU(String productID, ProductCategories category){
         try {
             if (productID == null || productID.length() < 4) {
@@ -222,5 +207,17 @@ public class InventoryControlService {
                     productID, category, sioobe.getMessage());
             throw new InventoryException("IC: Malformed product ID or category for SKU generation", sioobe);
         }
+    }
+
+    @Transactional(readOnly = true)
+    public PaginatedResponse<PendingOrdersResponseDto> searchByTextPendingOrders(String text, int page, int size) {
+        globalServiceHelper.validatePaginationParameters(page, size);
+        Optional<String> inputText = Optional.ofNullable((text));
+        if(inputText.isPresent() && !inputText.get().trim().isEmpty()){
+            logger.info("IC (searchByTextPendingOrders): Search text provided. Searching for orders with text '{}'", text);
+            return searchPendingStrategy.searchInPendingOrders(text, page, size);
+        }
+        logger.info("IC (searchByTextPendingOrders): No search text provided. Retrieving first page with default size.");
+        return getAllPendingOrders(page, size);
     }
 }
