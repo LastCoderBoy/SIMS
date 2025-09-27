@@ -1,9 +1,11 @@
 package com.JK.SIMS.controller.inventoryControllers;
 
 import com.JK.SIMS.models.ApiResponse;
+import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
 import com.JK.SIMS.models.IC_models.salesOrder.BulkShipStockRequestDto;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderResponseDto;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
+import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryServices.soService.SoServiceInIc;
 import com.JK.SIMS.config.security.SecurityUtils;
@@ -99,15 +101,37 @@ public class SoControllerInIc {
     }
 
     @GetMapping("/filter")
-    public ResponseEntity<?> filterSoProductsByStatus( @RequestParam(required = false) SalesOrderStatus status,
+    public ResponseEntity<?> filterSoProductsByStatus( @RequestParam(required = false) String status,
+                                                       @RequestParam(required = false) String category,
                                                        @RequestParam(required = false) String optionDate,
                                                        @RequestParam(required = false) LocalDate startDate,
                                                        @RequestParam(required = false) LocalDate endDate,
                                                       @RequestParam(defaultValue = "0") int page,
                                                       @RequestParam(defaultValue = "10") int size){
         logger.info("IcSo: filterProductsByStatus() calling...");
+
+        SalesOrderStatus soStatus = null;
+        PurchaseOrderStatus poStatus = null;
+        if (status != null) {
+            try {
+                soStatus = SalesOrderStatus.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                logger.warn("Invalid status value: {}", status);
+            }
+        }
+
+        // Parse category (if provided)
+        ProductCategories productCategory = null;
+        if (category != null) {
+            try {
+                productCategory = ProductCategories.valueOf(category.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                logger.warn("Invalid category value: {}", category);
+            }
+        }
+
         PaginatedResponse<SalesOrderResponseDto> dtoResponse =
-                soServiceInIc.filterSoProducts(status, optionDate, startDate, endDate, page, size);
+                soServiceInIc.filterSoProducts(soStatus, productCategory, optionDate, startDate, endDate, page, size);
         return ResponseEntity.ok(dtoResponse);
     }
 }

@@ -2,7 +2,10 @@ package com.JK.SIMS.controller.inventoryControllers;
 
 
 import com.JK.SIMS.models.IC_models.inventoryData.PendingOrdersResponseDto;
+import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
 import com.JK.SIMS.models.IC_models.salesOrder.BulkShipStockRequestDto;
+import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
+import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.service.InventoryServices.soService.SoServiceInIc;
 import com.JK.SIMS.config.security.SecurityUtils;
 import com.JK.SIMS.exceptionHandler.InvalidTokenException;
@@ -19,11 +22,13 @@ import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.file.AccessDeniedException;
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/v1/products/inventory")
@@ -102,7 +107,7 @@ public class InventoryController {
     }
 
     /**
-     * Search for the PENDING Outgoing Stock Products based on the provided text.
+     * Search for the PENDING Sales and Purchase Orders based on the provided text.
      * @param text search text
      * @return ResponseEntity with search results
      */
@@ -111,31 +116,54 @@ public class InventoryController {
             @RequestParam(required = false) String text,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size){
-        logger.info("IC: searchOutgoingStock() calling...");
+        logger.info("IC: searchOutgoingInPendingProduct() calling...");
         PaginatedResponse<PendingOrdersResponseDto> pendingOrdersDtos =
                 icService.searchByTextPendingOrders(text, page, size);
         return ResponseEntity.ok(pendingOrdersDtos);
     }
 
-    /**
-     * Sort products based on current stock, location, and status.
-     * @param sortBy Field to sort by
-     * @param sortDirection Sort direction (asc/desc)
-     * @param page requested page number (zero-based)
-     * @param size number of items per page
-     * @return ResponseEntity with a filtered product list
-     */
-
-    // TODO: Sort in PENDING products, not only in SO
+    // Filter by Type, Status, Category, Date, Start Date, End Date
     @GetMapping("/filter")
-    public ResponseEntity<?> sortOutgoingProductBy(
-            @RequestParam(defaultValue = "id") String sortBy,
-            @RequestParam(defaultValue = "asc") String sortDirection,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        logger.info("IC: sortProductBy() calling with page {} and size {}...", page, size);
-        PaginatedResponse<SalesOrderResponseDto> sortedDTOs =
-                soServiceInIc.getAllWaitingSalesOrders(page, size, sortBy, sortDirection);
-        return ResponseEntity.ok(sortedDTOs);
+    public ResponseEntity<?> filterPendingOrders(@RequestParam(required = false) String type, // "SALES_ORDER" or "PURCHASE_ORDER"
+                                                 @RequestParam(required = false) String status, // SalesOrderStatus or PurchaseOrderStatus
+                                                 @RequestParam(required = false) String category,
+                                                 @RequestParam(required = false) String dateOption, // "orderDate" or "estimatedDate"
+                                                 @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+                                                 @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+                                                 @RequestParam(defaultValue = "id") String sortBy,
+                                                 @RequestParam(defaultValue = "asc") String sortDirection,
+                                                 @RequestParam(defaultValue = "0") int page,
+                                                 @RequestParam(defaultValue = "10") int size) {
+        // Parse status (handle both SO and PO statuses)
+        SalesOrderStatus soStatus = null;
+        PurchaseOrderStatus poStatus = null;
+        if (status != null) {
+            try {
+                soStatus = SalesOrderStatus.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                try {
+                    poStatus = PurchaseOrderStatus.valueOf(status.toUpperCase());
+                } catch (IllegalArgumentException ex) {
+                    logger.warn("Invalid status value: {}", status);
+                }
+            }
+        }
+
+        // Parse category (if provided)
+        ProductCategories productCategory = null;
+        if (category != null) {
+            try {
+                productCategory = ProductCategories.valueOf(category.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                logger.warn("Invalid category value: {}", category);
+            }
+        }
+
+        // Delegate to service
+        PaginatedResponse<PendingOrdersResponseDto> result =
+                icService.filterPendingOrders(type, soStatus, poStatus, dateOption,
+                        startDate, endDate, productCategory, sortBy, sortDirection, page, size);
+        return ResponseEntity.ok(result);
     }
+
 }

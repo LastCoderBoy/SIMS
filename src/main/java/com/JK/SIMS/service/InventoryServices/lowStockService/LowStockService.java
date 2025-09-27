@@ -91,9 +91,12 @@ public class LowStockService {
         }
     }
 
-    public PaginatedResponse<InventoryDataDto> filterLowStockProducts(ProductCategories category, String sortBy, String sortDirection, int page, int size) {
+    public PaginatedResponse<InventoryDataDto> filterLowStockProducts(ProductCategories category, String sortBy,
+                                                                      String sortDirection, int page, int size) {
         try {
             globalServiceHelper.validatePaginationParameters(page, size);
+
+            logger.info("SortBy: {}, SortDirection: {}", sortBy, sortDirection);
 
             // Parse sort direction
             Sort.Direction direction = sortDirection.equalsIgnoreCase("desc") ?

@@ -3,17 +3,28 @@ package com.JK.SIMS.service.productManagementService;
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
+import com.JK.SIMS.repository.PM_repo.PM_repository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.regex.Pattern;
 
+@Component
 public class PMServiceHelper {
 
     private static final Logger logger = LoggerFactory.getLogger(PMServiceHelper.class);
     private static final Pattern LOCATION_PATTERN = Pattern.compile("^[A-Za-z]\\d{1,2}-\\d{3}$");
 
+    private final PM_repository pmRepository;
+    @Autowired
+    public PMServiceHelper(PM_repository pmRepository) {
+        this.pmRepository = pmRepository;
+    }
 
     /**
      * Validates a product entity by checking all required fields and their formats.
@@ -73,6 +84,15 @@ public class PMServiceHelper {
     protected static void validateLocationFormat(String location) {
         if (!LOCATION_PATTERN.matcher(location).matches()) {
             throw new ValidationException("PM (updateProduct): Invalid location format. Expected format: section-shelf (e.g., A1-101). ");
+        }
+    }
+
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void updateIncomingProductStatusInPm(ProductsForPM orderedProduct) {
+        if (orderedProduct.getStatus() == ProductStatus.ON_ORDER) {
+            orderedProduct.setStatus(ProductStatus.ACTIVE);
+            pmRepository.save(orderedProduct);
         }
     }
 }

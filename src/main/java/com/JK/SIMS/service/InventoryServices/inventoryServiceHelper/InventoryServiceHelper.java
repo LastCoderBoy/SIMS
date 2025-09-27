@@ -11,6 +11,7 @@ import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderResponseDto;
 import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItemResponseDto;
 import com.JK.SIMS.models.PaginatedResponse;
+import com.JK.SIMS.models.stockMovements.StockMovementReferenceType;
 import com.JK.SIMS.repository.IC_repo.IC_repository;
 import com.JK.SIMS.service.InventoryServices.soService.SalesOrderServiceHelper;
 import com.JK.SIMS.service.email_service.LowStockScheduler;
@@ -98,7 +99,7 @@ public class InventoryServiceHelper {
                     po.getPoNumber(),
                     po.getProductName(),
                     po.getProductCategory().toString(),
-                    "PURCHASE_ORDER",
+                    StockMovementReferenceType.PURCHASE_ORDER.toString(),
                     po.getStatus().toString(),
                     po.getOrderDate().atStartOfDay(),
                     po.getExpectedArrivalDate().atStartOfDay(),
@@ -117,7 +118,7 @@ public class InventoryServiceHelper {
                         so.getOrderReference(),
                         null,
                         null,
-                        "SALES_ORDER",
+                        StockMovementReferenceType.SALES_ORDER.toString(),
                         so.getStatus().toString(),
                         so.getOrderDate(),
                         so.getEstimatedDeliveryDate(),

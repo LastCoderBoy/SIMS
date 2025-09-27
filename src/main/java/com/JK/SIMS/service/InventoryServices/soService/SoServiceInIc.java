@@ -10,6 +10,7 @@ import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderResponseDto;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItem;
+import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.outgoingStockRepo.SalesOrderRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.InventoryControlService;
@@ -194,20 +195,29 @@ public class SoServiceInIc {
             throw new ServiceException("Failed to calculate average fulfill time", e);
         }
     }
+
     @Transactional(readOnly = true)
-    public PaginatedResponse<SalesOrderResponseDto> filterSoProducts(SalesOrderStatus status, String optionDate, LocalDate startDate, LocalDate endDate, int page, int size) {
+    public PaginatedResponse<SalesOrderResponseDto> filterSoProducts(SalesOrderStatus status, ProductCategories category, String optionDate,
+                                                                     LocalDate startDate, LocalDate endDate, int page, int size) {
         try{
             globalServiceHelper.validatePaginationParameters(page, size);
             // Always filtered by the allowed statuses
             Specification<SalesOrder> specification = Specification.where(
                     SalesOrderSpecification.byWaitingStatus()
             );
+
             // Filtering by status if provided
             if(status != null){
-                if(status == SalesOrderStatus.PENDING || status == SalesOrderStatus.APPROVED){
-                    specification = specification.and(SalesOrderSpecification.byStatus(status));
-                }
+                specification = specification.and(
+                        SalesOrderSpecification.byStatus(status));
             }
+
+            // Filtering by category if provided
+            if (category != null) {
+                specification = specification.and(
+                        SalesOrderSpecification.hasProductCategory(category));
+            }
+
             // Filtering by dates
             if(optionDate != null && !optionDate.isEmpty()){
                 if (startDate == null || endDate == null) {
@@ -219,11 +229,13 @@ public class SoServiceInIc {
                 String option = optionDate.toLowerCase().trim();
                 specification = specification.and(SalesOrderSpecification.byDatesBetween(option, startDate, endDate));
             }
+
             // Database call and conversion to DTO
             Pageable pageable = PageRequest.of(page, size);
             Page<SalesOrder> entityResponse = salesOrderRepository.findAll(specification, pageable);
             Page<SalesOrderResponseDto> dtoResponse = entityResponse.map(salesOrderServiceHelper::convertToOrderResponseDto);
             return new PaginatedResponse<>(dtoResponse);
+
         } catch (IllegalArgumentException ie) {
             logger.error("OS (filterSoProductsByStatus): Invalid pagination parameters: {}", ie.getMessage());
             throw ie;

@@ -12,13 +12,13 @@ import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
 import com.JK.SIMS.models.IC_models.purchaseOrder.ReceiveStockRequestDto;
 import com.JK.SIMS.models.stockMovements.StockMovementReferenceType;
 import com.JK.SIMS.models.stockMovements.StockMovementType;
-import com.JK.SIMS.repository.PO_repo.purchaseOrderSpec.PurchaseOrderSpecification;
+import com.JK.SIMS.service.InventoryServices.poService.filterLogic.PurchaseOrderSpecification;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.PO_repo.PurchaseOrderRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
-import com.JK.SIMS.service.productManagementService.ProductManagementService;
+import com.JK.SIMS.service.productManagementService.PMServiceHelper;
 import com.JK.SIMS.service.InventoryServices.poService.searchLogic.PoStrategy;
 import com.JK.SIMS.service.stockMovementService.StockMovementService;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
@@ -54,20 +54,20 @@ public class PoServiceInIc {
     private final PurchaseOrderServiceHelper poServiceHelper;
     private final PoStrategy poStrategy;
     private final GlobalServiceHelper globalServiceHelper;
-    private final ProductManagementService pmService;
+    private final PMServiceHelper pmServiceHelper;
     private final StockManagementLogic stockManagementLogic;
     private final StockMovementService stockMovementService; // Used to log the stock movement
     private final InventoryServiceHelper inventoryServiceHelper;
     @Autowired
     public PoServiceInIc(Clock clock, PurchaseOrderRepository purchaseOrderRepository, PurchaseOrderServiceHelper poServiceHelper,
                          @Qualifier("icPoSearchStrategy") PoStrategy poStrategy, GlobalServiceHelper globalServiceHelper,
-                         ProductManagementService pmService, StockManagementLogic stockManagementLogic, StockMovementService stockMovementService, InventoryServiceHelper inventoryServiceHelper) {
+                         PMServiceHelper pmServiceHelper, StockManagementLogic stockManagementLogic, StockMovementService stockMovementService, InventoryServiceHelper inventoryServiceHelper) {
         this.clock = clock;
         this.purchaseOrderRepository = purchaseOrderRepository;
         this.poServiceHelper = poServiceHelper;
         this.poStrategy = poStrategy;
         this.globalServiceHelper = globalServiceHelper;
-        this.pmService = pmService;
+        this.pmServiceHelper = pmServiceHelper;
         this.stockManagementLogic = stockManagementLogic;
         this.stockMovementService = stockMovementService;
         this.inventoryServiceHelper = inventoryServiceHelper;
@@ -182,7 +182,7 @@ public class PoServiceInIc {
     private void updateOrderStatus(PurchaseOrder order) {
         if (order.getReceivedQuantity() >= order.getOrderedQuantity()) {
             order.setStatus(PurchaseOrderStatus.RECEIVED);
-            pmService.updateIncomingProductStatusInPm(order.getProduct());
+            pmServiceHelper.updateIncomingProductStatusInPm(order.getProduct());
         } else if (order.getReceivedQuantity() > 0) {
             order.setStatus(PurchaseOrderStatus.PARTIALLY_RECEIVED);
         }
@@ -206,7 +206,7 @@ public class PoServiceInIc {
             purchaseOrder.setUpdatedBy(user);
 
             // Return back the Product Management section into the previous state
-            pmService.updateIncomingProductStatusInPm(purchaseOrder.getProduct());
+            pmServiceHelper.updateIncomingProductStatusInPm(purchaseOrder.getProduct());
 
             // Return back the Inventory Control into the previous state
             Optional<InventoryData> inventoryProductOpt =

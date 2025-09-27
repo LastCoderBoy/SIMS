@@ -53,7 +53,7 @@ public class ProductManagementService {
     private final JWTService jwtService;
 
     @Autowired
-    public ProductManagementService(PM_repository pmRepository, @Lazy InventoryControlService icService, InventoryServiceHelper inventoryServiceHelper, JWTService jwtService) {
+    public ProductManagementService(PM_repository pmRepository, InventoryControlService icService, InventoryServiceHelper inventoryServiceHelper, JWTService jwtService) {
         this.pmRepository = pmRepository;
         this.icService = icService;
         this.inventoryServiceHelper = inventoryServiceHelper;
@@ -350,8 +350,10 @@ public class ProductManagementService {
             logger.error("PM (filterProducts): Invalid filter value: {}", iae.getMessage());
             throw new ValidationException("PM (filterProducts): Invalid filter value");
         } catch (DataAccessException da) {
+            logger.error("PM (filterProducts): Database error: {}", da.getMessage());
             throw new DatabaseException("PM (filterProducts): Database error", da);
         } catch (Exception e) {
+            logger.error("PM (filterProducts): Failed to filter products: {}", e.getMessage());
             throw new ServiceException("PM (filterProducts): Failed to filter products", e);
         }
     }
@@ -394,14 +396,6 @@ public class ProductManagementService {
             logger.error("PM (saveProduct): Unexpected error while saving product: {}",
                     e.getMessage());
             throw new ServiceException("Failed to save product", e);
-        }
-    }
-
-    @Transactional(propagation = Propagation.MANDATORY)
-    public void updateIncomingProductStatusInPm(ProductsForPM orderedProduct) {
-        if (orderedProduct.getStatus() == ProductStatus.ON_ORDER) {
-            orderedProduct.setStatus(ProductStatus.ACTIVE);
-            pmRepository.save(orderedProduct);
         }
     }
 

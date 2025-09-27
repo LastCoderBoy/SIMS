@@ -167,7 +167,7 @@ public class PurchaseOrderService {
                 updateConfirmationToken(confirmationToken, ConfirmationTokenStatus.CANCELLED);
 
                 // Change the status from PLANNING -> ACTIVE
-                pmService.updateIncomingProductStatusInPm(order.getProduct());
+//                pmService.updateIncomingProductStatusInPm(order.getProduct());
 
                 logger.info("IS (cancelPurchaseOrder): SalesOrder cancelled by supplier. PO Number: {}", order.getPONumber());
                 return buildConfirmationPage("SalesOrder " + order.getPONumber() + " has been successfully cancelled!", "alert-success");

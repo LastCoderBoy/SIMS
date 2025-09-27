@@ -3,7 +3,9 @@ package com.JK.SIMS.service.InventoryServices.inventoryPageService;
 import com.JK.SIMS.exceptionHandler.*;
 import com.JK.SIMS.models.IC_models.inventoryData.*;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderResponseDto;
+import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderResponseDto;
+import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
@@ -24,7 +26,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
@@ -211,13 +215,90 @@ public class InventoryControlService {
 
     @Transactional(readOnly = true)
     public PaginatedResponse<PendingOrdersResponseDto> searchByTextPendingOrders(String text, int page, int size) {
-        globalServiceHelper.validatePaginationParameters(page, size);
-        Optional<String> inputText = Optional.ofNullable((text));
-        if(inputText.isPresent() && !inputText.get().trim().isEmpty()){
-            logger.info("IC (searchByTextPendingOrders): Search text provided. Searching for orders with text '{}'", text);
-            return searchPendingStrategy.searchInPendingOrders(text, page, size);
+        try {
+            globalServiceHelper.validatePaginationParameters(page, size);
+            Optional<String> inputText = Optional.ofNullable((text));
+            if (inputText.isPresent() && !inputText.get().trim().isEmpty()) {
+                logger.info("IC (searchByTextPendingOrders): Search text provided. Searching for orders with text '{}'", text);
+                return searchPendingStrategy.searchInPendingOrders(text, page, size);
+            }
+            logger.info("IC (searchByTextPendingOrders): No search text provided. Retrieving first page with default size.");
+            return getAllPendingOrders(page, size);
+        } catch (IllegalArgumentException e) {
+            logger.error("IC (searchByTextPendingOrders): Invalid pagination parameters: {}", e.getMessage());
+            throw new ValidationException("Invalid pagination parameters");
+        } catch (DataAccessException e) {
+            logger.error("IC (searchByTextPendingOrders): Database error while searching orders: {}", e.getMessage());
+            throw new DatabaseException("Failed to search orders", e);
+        } catch (Exception e) {
+            logger.error("IC (searchByTextPendingOrders): Unexpected error while searching orders: {}", e.getMessage());
+            throw new ServiceException("Failed to search orders", e);
         }
-        logger.info("IC (searchByTextPendingOrders): No search text provided. Retrieving first page with default size.");
-        return getAllPendingOrders(page, size);
     }
+
+    @Transactional(readOnly = true)
+    public PaginatedResponse<PendingOrdersResponseDto> filterPendingOrders( String type, SalesOrderStatus soStatus, PurchaseOrderStatus poStatus,
+                                                                            String dateOption, LocalDate startDate, LocalDate endDate, ProductCategories category,
+                                                                            String sortBy, String sortDirection, int page, int size) {
+
+        List<PendingOrdersResponseDto> combinedResults = new ArrayList<>();
+
+        if (type == null && soStatus == null && poStatus == null && category == null && dateOption == null) {
+            // Fetch all pending Sales Orders
+            PaginatedResponse<SalesOrderResponseDto> salesOrders =
+                    soServiceInIc.getAllWaitingSalesOrders(page, size, sortBy, sortDirection);
+            inventoryServiceHelper.fillWithSalesOrders(combinedResults, salesOrders.getContent());
+
+            // Fetch all pending Purchase Orders
+            PaginatedResponse<PurchaseOrderResponseDto> purchaseOrders =
+                    poServiceInIc.getAllPendingPurchaseOrders(page, size, sortBy, sortDirection);
+            inventoryServiceHelper.fillWithPurchaseOrders(combinedResults, purchaseOrders.getContent());
+        }
+
+
+        // Handle Sales Orders
+        boolean isSalesOrderType = "SALES_ORDER".equalsIgnoreCase(type);
+        boolean hasSalesOrderFilters = soStatus != null || category != null || dateOption != null;
+
+        if (isSalesOrderType || hasSalesOrderFilters) {
+            if (isSalesOrderType && !hasSalesOrderFilters) {
+                // Fetch all Sales Orders (no filters)
+                PaginatedResponse<SalesOrderResponseDto> allSalesOrders =
+                        soServiceInIc.getAllWaitingSalesOrders(page, size, sortBy, sortDirection);
+                inventoryServiceHelper.fillWithSalesOrders(combinedResults, allSalesOrders.getContent());
+            } else {
+                // Fetch filtered Sales Orders
+                PaginatedResponse<SalesOrderResponseDto> salesOrders =
+                        soServiceInIc.filterSoProducts(soStatus, category, dateOption, startDate, endDate, page, size);
+                inventoryServiceHelper.fillWithSalesOrders(combinedResults, salesOrders.getContent());
+            }
+        }
+
+        // Handle Purchase Orders
+        boolean isPurchaseOrderType = "PURCHASE_ORDER".equalsIgnoreCase(type);
+        boolean hasPurchaseOrderFilters = poStatus != null || category != null || dateOption != null;
+
+        if (isPurchaseOrderType || hasPurchaseOrderFilters) {
+            if (isPurchaseOrderType && !hasPurchaseOrderFilters) {
+                // Fetch all Purchase Orders (no filters)
+                PaginatedResponse<PurchaseOrderResponseDto> allPurchaseOrders =
+                        poServiceInIc.getAllPendingPurchaseOrders(page, size, sortBy, sortDirection);
+                inventoryServiceHelper.fillWithPurchaseOrders(combinedResults, allPurchaseOrders.getContent());
+            } else {
+                // Fetch filtered Purchase Orders
+                PaginatedResponse<PurchaseOrderResponseDto> purchaseOrders =
+                        poServiceInIc.filterIncomingPurchaseOrders(poStatus, category, sortBy, sortDirection, page, size);
+                inventoryServiceHelper.fillWithPurchaseOrders(combinedResults, purchaseOrders.getContent());
+            }
+        }
+
+        // Sort combined results
+        combinedResults.sort(Comparator.comparing(PendingOrdersResponseDto::getOrderDate).reversed());
+
+        return new PaginatedResponse<>(
+                new PageImpl<>(combinedResults, PageRequest.of(page, size), combinedResults.size())
+        );
+    }
+
+
 }
