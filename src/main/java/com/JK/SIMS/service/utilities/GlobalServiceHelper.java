@@ -1,7 +1,7 @@
 package com.JK.SIMS.service.utilities;
 
 import com.JK.SIMS.models.PM_models.ProductStatus;
-import com.JK.SIMS.service.userManagement_service.JWTService;
+import com.JK.SIMS.config.security.JWTService;
 import org.apache.coyote.BadRequestException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;

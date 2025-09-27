@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Data
@@ -21,6 +22,7 @@ public class PurchaseOrderResponseDto {
     private Integer receivedQuantity;
     private String productName;
     private ProductCategories productCategory;
+    private BigDecimal totalPrice;
     private String supplierName;
     private String orderedBy;
     private String updatedBy;
@@ -38,8 +40,13 @@ public class PurchaseOrderResponseDto {
         this.productCategory = purchaseOrder.getProduct() != null && purchaseOrder.getProduct().getCategory() != null
                 ? purchaseOrder.getProduct().getCategory()
                 : null;
+        this.totalPrice = calculateTotalPrice(purchaseOrder);
         this.supplierName = purchaseOrder.getSupplier() != null ? purchaseOrder.getSupplier().getName() : "N/A";
         this.orderedBy = purchaseOrder.getOrderedBy();
         this.updatedBy = purchaseOrder.getUpdatedBy();
+    }
+
+    private BigDecimal calculateTotalPrice(PurchaseOrder purchaseOrder){
+        return purchaseOrder.getProduct().getPrice().multiply(new BigDecimal(purchaseOrder.getOrderedQuantity()));
     }
 }

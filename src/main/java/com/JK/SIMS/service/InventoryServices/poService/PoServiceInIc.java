@@ -17,6 +17,7 @@ import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.PO_repo.PurchaseOrderRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.InventoryControlService;
+import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
 import com.JK.SIMS.service.productManagementService.ProductManagementService;
 import com.JK.SIMS.service.InventoryServices.poService.searchLogic.PoStrategy;
@@ -52,21 +53,21 @@ public class PoServiceInIc {
     private final PurchaseOrderServiceHelper poServiceHelper;
     private final PoStrategy poStrategy;
     private final GlobalServiceHelper globalServiceHelper;
-    private final InventoryControlService inventoryControlService;
     private final ProductManagementService pmService;
-    private final StockMovementService stockMovementService;
+    private final StockManagementLogic stockManagementLogic;
+    private final StockMovementService stockMovementService; // Used to log the stock movement
     private final InventoryServiceHelper inventoryServiceHelper;
     @Autowired
     public PoServiceInIc(Clock clock, PurchaseOrderRepository purchaseOrderRepository, PurchaseOrderServiceHelper poServiceHelper,
                          @Qualifier("icPoSearchStrategy") PoStrategy poStrategy, GlobalServiceHelper globalServiceHelper,
-                         @Lazy InventoryControlService inventoryControlService, ProductManagementService pmService, StockMovementService stockMovementService, InventoryServiceHelper inventoryServiceHelper) {
+                         ProductManagementService pmService, StockManagementLogic stockManagementLogic, StockMovementService stockMovementService, InventoryServiceHelper inventoryServiceHelper) {
         this.clock = clock;
         this.purchaseOrderRepository = purchaseOrderRepository;
         this.poServiceHelper = poServiceHelper;
         this.poStrategy = poStrategy;
         this.globalServiceHelper = globalServiceHelper;
-        this.inventoryControlService = inventoryControlService;
         this.pmService = pmService;
+        this.stockManagementLogic = stockManagementLogic;
         this.stockMovementService = stockMovementService;
         this.inventoryServiceHelper = inventoryServiceHelper;
     }
@@ -151,13 +152,13 @@ public class PoServiceInIc {
         }
         try {
             Optional<InventoryData> inventoryProductOpt =
-                    inventoryControlService.getInventoryProductByProductId(order.getProduct().getProductID());
+                    inventoryServiceHelper.getInventoryProductByProductId(order.getProduct().getProductID());
             if(inventoryProductOpt.isPresent()){
                 InventoryData inventoryProduct = inventoryProductOpt.get();
                 int newStockLevel = inventoryProduct.getCurrentStock() + receivedQuantity;
 
                 // The service method to update stock levels with proper error handling
-                inventoryControlService.updateStockLevels(inventoryProduct,
+                stockManagementLogic.updateStockLevels(inventoryProduct,
                         Optional.of(newStockLevel),
                         Optional.empty());
             }
@@ -202,7 +203,7 @@ public class PoServiceInIc {
 
             // Return back the Inventory Control into the previous state
             Optional<InventoryData> inventoryProductOpt =
-                    inventoryControlService.getInventoryProductByProductId(purchaseOrder.getProduct().getProductID());
+                    inventoryServiceHelper.getInventoryProductByProductId(purchaseOrder.getProduct().getProductID());
             inventoryProductOpt.ifPresent(inventoryServiceHelper::updateInventoryStatus);
 
             purchaseOrderRepository.save(purchaseOrder);

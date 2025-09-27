@@ -10,7 +10,10 @@ import org.slf4j.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Optional;
 
 @Component
 public class StockManagementLogic {
@@ -99,6 +102,20 @@ public class StockManagementLogic {
             logger.error("IC (releaseReservation): Database error - {}", e.getMessage());
             throw new DatabaseException("Failed to release reservation", e);
         }
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void updateStockLevels(InventoryData existingProduct, Optional<Integer> newStockLevel, Optional<Integer> newMinLevel ) {
+        // Update current stock if provided
+        newStockLevel.ifPresent(existingProduct::setCurrentStock);
+
+        // Update minimum level if provided
+        newMinLevel.ifPresent(existingProduct::setMinLevel);
+
+        //Update the status based on the latest update
+        inventoryServiceHelper.updateInventoryStatus(existingProduct);
+
+        icRepository.save(existingProduct);
     }
 
     // Get available stock (current - reserved)

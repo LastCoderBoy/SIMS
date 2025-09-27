@@ -1,6 +1,6 @@
 package com.JK.SIMS.controller.inventoryControllers;
 
-import com.JK.SIMS.service.utilities.SecurityUtils;
+import com.JK.SIMS.config.security.SecurityUtils;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataDto;

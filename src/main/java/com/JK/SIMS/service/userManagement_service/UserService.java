@@ -1,5 +1,6 @@
 package com.JK.SIMS.service.userManagement_service;
 
+import com.JK.SIMS.config.security.JWTService;
 import com.JK.SIMS.exceptionHandler.*;
 import com.JK.SIMS.models.UM_models.*;
 import com.JK.SIMS.repository.UM_repo.BlackListTokenRepository;

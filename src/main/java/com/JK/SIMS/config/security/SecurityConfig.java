@@ -1,6 +1,6 @@
-package com.JK.SIMS.config;
+package com.JK.SIMS.config.security;
 
-import com.JK.SIMS.config.secFilter.JWTFilter;
+import com.JK.SIMS.config.security.secFilter.JWTFilter;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.service.userManagement_service.UserDetailsServiceImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;

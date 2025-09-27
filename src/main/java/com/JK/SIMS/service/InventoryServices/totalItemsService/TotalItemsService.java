@@ -7,7 +7,7 @@ import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataDto;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataStatus;
-import com.JK.SIMS.service.InventoryServices.inventoryPageService.InventoryControlService;
+import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
 import com.JK.SIMS.service.InventoryServices.totalItemsService.filterLogic.InventorySpecification;
 import com.JK.SIMS.models.PM_models.ProductCategories;
@@ -47,16 +47,17 @@ public class TotalItemsService {
 
     private final GlobalServiceHelper globalServiceHelper;
     private final InventoryServiceHelper inventoryServiceHelper;
-    private final InventoryControlService icService;
     private final ProductManagementService pmService;
+    private final StockManagementLogic stockManagementLogic;
 
     private final IC_repository icRepository; // We are working with the Inventory Products so that's why we need this repository
     @Autowired
-    public TotalItemsService(GlobalServiceHelper globalServiceHelper, InventoryServiceHelper inventoryServiceHelper, InventoryControlService icService, ProductManagementService pmService, IC_repository icRepository) {
+    public TotalItemsService(GlobalServiceHelper globalServiceHelper, InventoryServiceHelper inventoryServiceHelper,
+                             ProductManagementService pmService, StockManagementLogic stockManagementLogic, IC_repository icRepository) {
         this.globalServiceHelper = globalServiceHelper;
         this.inventoryServiceHelper = inventoryServiceHelper;
-        this.icService = icService;
         this.pmService = pmService;
+        this.stockManagementLogic = stockManagementLogic;
         this.icRepository = icRepository;
     }
 
@@ -72,7 +73,7 @@ public class TotalItemsService {
             Sort sort = Sort.by(direction, sortBy);
             Pageable pageable = PageRequest.of(page, size, sort);
             Page<InventoryData> inventoryPage = icRepository.findAll(pageable);
-            return inventoryServiceHelper.transformToPaginatedDTOResponse(inventoryPage);
+            return inventoryServiceHelper.transformToPaginatedInventoryDTOResponse(inventoryPage);
         } catch (DataAccessException da){
             logger.error("TotalItems (getInventoryDataDTOList): Failed to retrieve products due to database error: {}", da.getMessage(), da);
             throw new DatabaseException("TotalItems (getInventoryDataDTOList): Failed to retrieve products due to database error", da);
@@ -90,26 +91,26 @@ public class TotalItemsService {
             validateUpdateRequest(newInventoryData);
 
             // Find and validate the existing product
-            InventoryData existingProduct = icService.getInventoryDataBySku(sku);
+            InventoryData existingProduct = inventoryServiceHelper.getInventoryDataBySku(sku);
 
             // Update stock levels
-            icService.updateStockLevels(existingProduct,
+            stockManagementLogic.updateStockLevels(existingProduct,
                     Optional.ofNullable(newInventoryData.getCurrentStock()),
                     Optional.ofNullable(newInventoryData.getMinLevel()));
 
-            logger.info("IC (updateProduct): Product with SKU {} updated successfully", sku);
+            logger.info("IcTotalItems (updateProduct): Product with SKU {} updated successfully", sku);
             return new ApiResponse(true, sku + " is updated successfully");
 
         } catch (DataAccessException da) {
-            logger.error("IC (updateProduct): Database error while updating SKU {}: {}",
+            logger.error("IcTotalItems (updateProduct): Database error while updating SKU {}: {}",
                     sku, da.getMessage());
             throw new DatabaseException("IC (updateProduct): Database error", da);
         } catch (BadRequestException | ValidationException e) {
             throw e;
         } catch (Exception ex) {
-            logger.error("IC (updateProduct): Unexpected error while updating SKU {}: {}",
+            logger.error("IcTotalItems (updateProduct): Unexpected error while updating SKU {}: {}",
                     sku, ex.getMessage(), ex);
-            throw new ServiceException("IC (updateProduct): Internal Service error", ex);
+            throw new ServiceException("IcTotalItems (updateProduct): Internal Service error", ex);
         }
     }
 
@@ -122,7 +123,7 @@ public class TotalItemsService {
                 Pageable pageable = PageRequest.of(page, size, Sort.by(DEFAULT_SORT_BY).ascending());
                 Page<InventoryData> inventoryData = icRepository.searchProducts(inputText.get().trim().toLowerCase(), pageable);
                 logger.info("TotalItems (searchProduct): {} products retrieved.", inventoryData.getContent().size());
-                return inventoryServiceHelper.transformToPaginatedDTOResponse(inventoryData) ;
+                return inventoryServiceHelper.transformToPaginatedInventoryDTOResponse(inventoryData) ;
             }
             logger.info("TotalItems (searchProduct): No search text provided. Retrieving first page with default size.");
             return getPaginatedInventoryDto(DEFAULT_SORT_BY, DEFAULT_SORT_DIRECTION, page,size);
@@ -181,7 +182,7 @@ public class TotalItemsService {
             }
 
             logger.info("TotalItems (filterProducts): {} products retrieved.", resultPage.getContent().size());
-            return inventoryServiceHelper.transformToPaginatedDTOResponse(resultPage);
+            return inventoryServiceHelper.transformToPaginatedInventoryDTOResponse(resultPage);
         } catch (IllegalArgumentException iae) {
             throw new ValidationException("TotalItems (filterProducts): Invalid filterBy value: " + iae.getMessage());
         } catch (DataAccessException da) {
@@ -255,7 +256,7 @@ public class TotalItemsService {
             List<InventoryData> inventoryList = icRepository.findAll(sort);
 
             // Convert to DTOs
-            return inventoryList.stream().map(inventoryServiceHelper::convertToDTO).toList();
+            return inventoryList.stream().map(inventoryServiceHelper::convertToInventoryDTO).toList();
         } catch (DataAccessException da) {
             logger.error("TotalItems (getAllInventoryData): Failed to retrieve products due to database error: {}", da.getMessage(), da);
             throw new DatabaseException("TotalItems (getAllInventoryData): Failed to retrieve products due to database error", da);

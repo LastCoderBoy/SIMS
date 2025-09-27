@@ -8,13 +8,13 @@ import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
 import com.JK.SIMS.models.IC_models.damage_loss.*;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.IC_repo.DamageLossRepository;
-import com.JK.SIMS.service.InventoryServices.inventoryPageService.InventoryControlService;
-import com.JK.SIMS.service.userManagement_service.JWTService;
+import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
+import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
+import com.JK.SIMS.config.security.JWTService;
 import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -35,18 +35,20 @@ public class DamageLossService {
 
     private static final Logger logger  = LoggerFactory.getLogger(DamageLossService.class);
     private final JWTService jWTService;
-    private final InventoryControlService inventoryControlService;
+    private final StockManagementLogic stockManagementLogic;
     private final Clock clock;
+    private final InventoryServiceHelper inventoryServiceHelper;
 
     private final DamageLossRepository damageLoss_repository;
 
     @Autowired
     public DamageLossService(DamageLossRepository damageLoss_repository, JWTService jWTService,
-                             @Lazy InventoryControlService inventoryControlService, Clock clock){
+                             StockManagementLogic stockManagementLogic, Clock clock, InventoryServiceHelper inventoryServiceHelper){
         this.damageLoss_repository = damageLoss_repository;
         this.jWTService = jWTService;
-        this.inventoryControlService = inventoryControlService;
+        this.stockManagementLogic = stockManagementLogic;
         this.clock = clock;
+        this.inventoryServiceHelper = inventoryServiceHelper;
     }
 
     @Transactional(readOnly = true)
@@ -73,7 +75,7 @@ public class DamageLossService {
             validateDamageLossDto(dtoRequest);
 
             InventoryData inventoryProduct =
-                    inventoryControlService.getInventoryDataBySku(dtoRequest.sku());
+                    inventoryServiceHelper.getInventoryDataBySku(dtoRequest.sku());
             validateStockInput(inventoryProduct, dtoRequest.quantityLost());
 
             String username = jWTService.extractUsername(jwtToken);
@@ -82,7 +84,7 @@ public class DamageLossService {
 
             // Update the Inventory Stock level and the status
             int remainingStock = inventoryProduct.getCurrentStock() - dtoRequest.quantityLost();
-            inventoryControlService.updateStockLevels(
+            stockManagementLogic.updateStockLevels(
                     inventoryProduct, Optional.of(remainingStock), Optional.empty());
         } catch (DataAccessException de) {
             throw new DatabaseException("DL (addDamageLoss): Database error while saving damage/loss record", de);
@@ -280,7 +282,7 @@ public class DamageLossService {
         }
 
         int updatedStock = product.getCurrentStock() + quantityToRestore;
-        inventoryControlService.updateStockLevels(product, Optional.of(updatedStock), Optional.empty());
+        stockManagementLogic.updateStockLevels(product, Optional.of(updatedStock), Optional.empty());
 
         logger.info("DL (restoreStockLevel): Restored {} units to SKU {}. New stock: {}",
                 quantityToRestore, product.getSKU(), updatedStock);

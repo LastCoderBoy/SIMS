@@ -3,7 +3,7 @@ package com.JK.SIMS.controller.inventoryControllers;
 
 import com.JK.SIMS.models.IC_models.salesOrder.BulkShipStockRequestDto;
 import com.JK.SIMS.service.InventoryServices.soService.SoServiceInIc;
-import com.JK.SIMS.service.utilities.SecurityUtils;
+import com.JK.SIMS.config.security.SecurityUtils;
 import com.JK.SIMS.exceptionHandler.InvalidTokenException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryPageResponse;
@@ -12,7 +12,7 @@ import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderResponseDto;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.InventoryControlService;
 import com.JK.SIMS.service.InventoryServices.poService.PoServiceInIc;
-import com.JK.SIMS.service.utilities.TokenUtils;
+import com.JK.SIMS.config.security.TokenUtils;
 import jakarta.validation.Valid;
 import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
@@ -105,6 +105,7 @@ public class InventoryController {
      * @param text search text
      * @return ResponseEntity with search results
      */
+    // TODO: Search in PENDING products, not only in SO
     @GetMapping("/search")
     public ResponseEntity<?> searchOutgoingInPendingProduct(
             @RequestParam(required = false) String text,
@@ -124,6 +125,8 @@ public class InventoryController {
      * @param size number of items per page
      * @return ResponseEntity with a filtered product list
      */
+
+    // TODO: Sort in PENDING products, not only in SO
     @GetMapping("/filter")
     public ResponseEntity<?> sortOutgoingProductBy(
             @RequestParam(defaultValue = "id") String sortBy,

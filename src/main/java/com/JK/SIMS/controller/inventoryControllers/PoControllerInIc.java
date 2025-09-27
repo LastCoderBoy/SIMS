@@ -1,6 +1,6 @@
 package com.JK.SIMS.controller.inventoryControllers;
 
-import com.JK.SIMS.service.utilities.SecurityUtils;
+import com.JK.SIMS.config.security.SecurityUtils;
 import com.JK.SIMS.exceptionHandler.InvalidTokenException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderResponseDto;
@@ -9,7 +9,7 @@ import com.JK.SIMS.models.IC_models.purchaseOrder.ReceiveStockRequestDto;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryServices.poService.PoServiceInIc;
-import com.JK.SIMS.service.utilities.TokenUtils;
+import com.JK.SIMS.config.security.TokenUtils;
 import jakarta.validation.Valid;
 import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;

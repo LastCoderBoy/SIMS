@@ -20,5 +20,5 @@ public class InventoryPageResponse {
 
     private Long damageLossSize;
 
-    private PaginatedResponse<SalesOrderResponseDto> allPendingOrders;
+    private PaginatedResponse<PendingOrdersResponseDto> allPendingOrders;
 }

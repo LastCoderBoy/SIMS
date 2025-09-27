@@ -57,7 +57,7 @@ public class LowStockService {
             Sort sort = Sort.by(direction, sortBy);
             Pageable pageable = PageRequest.of(page, size, sort);
             Page<InventoryData> inventoryPage = icRepository.getLowStockItems(pageable);
-            return inventoryServiceHelper.transformToPaginatedDTOResponse(inventoryPage);
+            return inventoryServiceHelper.transformToPaginatedInventoryDTOResponse(inventoryPage);
         }catch (DataAccessException da){
             logger.error("LowStockService (getAllPaginatedLowStockRecords): Failed to retrieve products due to database error: {}", da.getMessage(), da);
             throw new DatabaseException("LowStockService (getAllPaginatedLowStockRecords): Failed to retrieve products due to database error", da);
@@ -78,7 +78,7 @@ public class LowStockService {
                         icRepository.searchInLowStockProducts(inputText.get().trim().toLowerCase(), pageable);
 
                 logger.info("LowStockService (searchProduct): {} products retrieved.", inventoryData.getContent().size());
-                return inventoryServiceHelper.transformToPaginatedDTOResponse(inventoryData) ;
+                return inventoryServiceHelper.transformToPaginatedInventoryDTOResponse(inventoryData) ;
             }
             logger.info("LowStockService (searchProduct): No search text provided. Retrieving first page with default size.");
             return getAllPaginatedLowStockRecords(DEFAULT_SORT_BY, DEFAULT_SORT_DIRECTION, page,size);
@@ -106,7 +106,7 @@ public class LowStockService {
             Page<InventoryData> resultPage = icRepository.getLowStockItemsByCategory(category, pageable);
 
             logger.info("TotalItems (filterProducts): {} products retrieved.", resultPage.getContent().size());
-            return inventoryServiceHelper.transformToPaginatedDTOResponse(resultPage);
+            return inventoryServiceHelper.transformToPaginatedInventoryDTOResponse(resultPage);
         } catch (IllegalArgumentException iae) {
             throw new ValidationException("TotalItems (filterProducts): Invalid filterBy value: " + iae.getMessage());
         } catch (DataAccessException da) {
@@ -137,7 +137,7 @@ public class LowStockService {
             List<InventoryData> inventoryList = icRepository.getLowStockItems(sort);
 
             // Convert to DTOs
-            return inventoryList.stream().map(inventoryServiceHelper::convertToDTO).toList();
+            return inventoryList.stream().map(inventoryServiceHelper::convertToInventoryDTO).toList();
         } catch (DataAccessException da) {
             logger.error("TotalItems (getAllInventoryData): Failed to retrieve products due to database error: {}", da.getMessage(), da);
             throw new DatabaseException("TotalItems (getAllInventoryData): Failed to retrieve products due to database error", da);

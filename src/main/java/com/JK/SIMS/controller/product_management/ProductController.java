@@ -1,12 +1,13 @@
 package com.JK.SIMS.controller.product_management;
 
-import com.JK.SIMS.service.utilities.SecurityUtils;
+import com.JK.SIMS.config.security.SecurityUtils;
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.PM_models.ProductManagementDTO;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.productManagementService.ProductManagementService;
+import com.JK.SIMS.config.security.TokenUtils;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
@@ -68,13 +69,18 @@ public class ProductController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteProduct(@PathVariable String id) throws BadRequestException, AccessDeniedException {
+    public ResponseEntity<?> deleteProduct(@PathVariable String id,
+                                           @RequestHeader("Authorization") String token) throws BadRequestException, AccessDeniedException {
         if(SecurityUtils.hasAccess()){
             if (id == null || id.trim().isEmpty()) {
                 throw new ValidationException("PM: Product ID cannot be null");
             }
-            logger.info("PM: deleteProduct() calling...");
-            return pmService.deleteProduct(id);
+            if(token != null && !token.trim().isEmpty()) {
+                String jwtToken = TokenUtils.extractToken(token);
+                logger.info("PM: deleteProduct() calling...");
+                ApiResponse response = pmService.deleteProduct(id, jwtToken);
+                return new ResponseEntity<>(response, HttpStatus.NO_CONTENT);
+            }
         }
         throw new AccessDeniedException("PM deleteProduct(): You do not have access to perform that operation.");
 

@@ -4,25 +4,34 @@ import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataDto;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataStatus;
+import com.JK.SIMS.models.IC_models.inventoryData.PendingOrdersResponseDto;
+import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
+import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
 import com.JK.SIMS.models.PaginatedResponse;
+import com.JK.SIMS.repository.IC_repo.IC_repository;
 import com.JK.SIMS.service.email_service.LowStockScheduler;
+import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Component
 public class InventoryServiceHelper {
 
     private static final Logger logger = LoggerFactory.getLogger(InventoryServiceHelper.class);
 
+    private final IC_repository icRepository;
     private final LowStockScheduler lowStockAlert;
     @Autowired
-    public InventoryServiceHelper(LowStockScheduler lowStockAlert) {
+    public InventoryServiceHelper(IC_repository icRepository, LowStockScheduler lowStockAlert) {
+        this.icRepository = icRepository;
         this.lowStockAlert = lowStockAlert;
     }
 
@@ -51,6 +60,18 @@ public class InventoryServiceHelper {
         }
     }
 
+    @Transactional(readOnly = true)
+    public InventoryData getInventoryDataBySku(String sku) throws BadRequestException {
+        return icRepository.findBySKU(sku)
+                .orElseThrow(() -> new BadRequestException(
+                        "IC (updateProduct): No product with SKU " + sku + " found"));
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<InventoryData> getInventoryProductByProductId(String productId) {
+        return icRepository.findByPmProduct_ProductID(productId);
+    }
+
     public void updateInventoryStatus(InventoryData product) {
         if(product.getStatus() != InventoryDataStatus.INVALID) {
             if (product.getCurrentStock() <= product.getMinLevel()) {
@@ -62,17 +83,17 @@ public class InventoryServiceHelper {
         }
     }
 
-    public PaginatedResponse<InventoryDataDto> transformToPaginatedDTOResponse(Page<InventoryData> inventoryPage){
+    public PaginatedResponse<InventoryDataDto> transformToPaginatedInventoryDTOResponse(Page<InventoryData> inventoryPage){
         PaginatedResponse<InventoryDataDto> dtoResponse = new PaginatedResponse<>();
         dtoResponse.setContent(inventoryPage.getContent().stream()
-                                                        .map(this::convertToDTO).toList());
+                                                        .map(this::convertToInventoryDTO).toList());
         dtoResponse.setTotalPages(inventoryPage.getTotalPages());
         dtoResponse.setTotalElements(inventoryPage.getTotalElements());
         logger.info("TotalItems (getInventoryDataDTOList): {} products retrieved.", inventoryPage.getContent().size());
         return dtoResponse;
     }
 
-    public InventoryDataDto convertToDTO(InventoryData inventoryData) {
+    public InventoryDataDto convertToInventoryDTO(InventoryData inventoryData) {
         InventoryDataDto dto = new InventoryDataDto();
         // Set product fields
         dto.setProductID(inventoryData.getPmProduct().getProductID());

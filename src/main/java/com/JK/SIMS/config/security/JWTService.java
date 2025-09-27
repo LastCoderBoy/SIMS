@@ -1,4 +1,4 @@
-package com.JK.SIMS.service.userManagement_service;
+package com.JK.SIMS.config.security;
 
 
 import com.JK.SIMS.repository.UM_repo.BlackListTokenRepository;

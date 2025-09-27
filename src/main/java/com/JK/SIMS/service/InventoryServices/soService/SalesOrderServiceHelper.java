@@ -27,9 +27,7 @@ public class SalesOrderServiceHelper {
                     .collect(Collectors.toList());
 
             // Calculate total amount and total items
-            BigDecimal totalAmount = salesOrder.getItems().stream()
-                    .map(OrderItem::getOrderPrice)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal totalAmount = calculateTotalAmount(salesOrder.getItems());
 
             return new SalesOrderResponseDto(
                     salesOrder.getId(),
@@ -49,6 +47,10 @@ public class SalesOrderServiceHelper {
                     salesOrder.getId(), e.getMessage());
             throw new ServiceException("Failed to convert salesOrder to response DTO", e);
         }
+    }
+
+    public BigDecimal calculateTotalAmount(List<OrderItem> items) {
+        return items.stream().map(OrderItem::getOrderPrice).reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     private OrderItemResponseDto convertToOrderItemResponseDto(OrderItem item) {

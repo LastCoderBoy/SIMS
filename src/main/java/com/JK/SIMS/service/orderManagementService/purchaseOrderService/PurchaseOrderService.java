@@ -14,6 +14,7 @@ import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.supplier.Supplier;
 import com.JK.SIMS.repository.PO_repo.PurchaseOrderRepository;
+import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
 import com.JK.SIMS.service.InventoryServices.poService.PurchaseOrderServiceHelper;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.InventoryControlService;
@@ -59,12 +60,13 @@ public class PurchaseOrderService {
     private final EmailService emailService;
     private final ProductManagementService pmService;
     private final InventoryControlService inventoryControlService;
+    private final InventoryServiceHelper inventoryServiceHelper;
     private final ConfirmationTokenService confirmationTokenService;
     private final PurchaseOrderServiceHelper poServiceHelper;
     @Autowired
     public PurchaseOrderService(Clock clock, PurchaseOrderRepository purchaseOrderRepository, GlobalServiceHelper globalServiceHelper,
                                 SupplierService supplierService, EmailService emailService, ProductManagementService pmService,
-                                @Lazy InventoryControlService inventoryControlService, ConfirmationTokenService confirmationTokenService, PurchaseOrderServiceHelper poServiceHelper) {
+                                InventoryControlService inventoryControlService, InventoryServiceHelper inventoryServiceHelper, ConfirmationTokenService confirmationTokenService, PurchaseOrderServiceHelper poServiceHelper) {
         this.clock = clock;
         this.purchaseOrderRepository = purchaseOrderRepository;
         this.globalServiceHelper = globalServiceHelper;
@@ -72,6 +74,7 @@ public class PurchaseOrderService {
         this.emailService = emailService;
         this.pmService = pmService;
         this.inventoryControlService = inventoryControlService;
+        this.inventoryServiceHelper = inventoryServiceHelper;
         this.confirmationTokenService = confirmationTokenService;
         this.poServiceHelper = poServiceHelper;
     }
@@ -197,7 +200,7 @@ public class PurchaseOrderService {
 
     private void handleInventoryStatusUpdates(ProductsForPM orderedProduct) {
         Optional<InventoryData> inventoryProductOpt =
-                inventoryControlService.getInventoryProductByProductId(orderedProduct.getProductID());
+                inventoryServiceHelper.getInventoryProductByProductId(orderedProduct.getProductID());
 
         if (orderedProduct.getStatus() == ProductStatus.PLANNING) {
             handlePlanningStatusUpdate(orderedProduct, inventoryProductOpt);

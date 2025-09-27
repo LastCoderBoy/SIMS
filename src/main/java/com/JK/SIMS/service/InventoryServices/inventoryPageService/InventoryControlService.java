@@ -1,29 +1,27 @@
 package com.JK.SIMS.service.InventoryServices.inventoryPageService;
 
 import com.JK.SIMS.exceptionHandler.*;
-import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
-import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataStatus;
-import com.JK.SIMS.models.IC_models.inventoryData.InventoryMetrics;
-import com.JK.SIMS.models.IC_models.inventoryData.InventoryPageResponse;
+import com.JK.SIMS.models.IC_models.inventoryData.*;
+import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderResponseDto;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderResponseDto;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.IC_repo.IC_repository;
-import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
 import com.JK.SIMS.service.InventoryServices.damageLossService.DamageLossService;
 import com.JK.SIMS.service.InventoryServices.poService.PoServiceInIc;
 import com.JK.SIMS.service.InventoryServices.soService.SoServiceInIc;
-import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataAccessException;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import static com.JK.SIMS.service.utilities.GlobalServiceHelper.amongInvalidStatus;
@@ -36,16 +34,13 @@ public class InventoryControlService {
     private final SoServiceInIc soServiceInIc;
     private final DamageLossService damageLossService;
     private final PoServiceInIc poServiceInIc;
-    private final InventoryServiceHelper inventoryServiceHelper;
     @Autowired
-    public InventoryControlService(IC_repository icRepository,
-                                   @Lazy SoServiceInIc soServiceInIc, DamageLossService damageLossService,
-                                   @Lazy PoServiceInIc poServiceInIc, InventoryServiceHelper inventoryServiceHelper) {
+    public InventoryControlService(IC_repository icRepository, SoServiceInIc soServiceInIc,
+                                   DamageLossService damageLossService, PoServiceInIc poServiceInIc) {
         this.icRepository = icRepository;
         this.soServiceInIc = soServiceInIc;
         this.damageLossService = damageLossService;
         this.poServiceInIc = poServiceInIc;
-        this.inventoryServiceHelper = inventoryServiceHelper;
     }
 
     @Transactional(readOnly = true)
@@ -53,11 +48,17 @@ public class InventoryControlService {
         try {
             InventoryMetrics metrics = icRepository.getInventoryMetrics();
 
-            //TODO: Display Incoming(PO) order as well at the end of the page.
-
-            // OUTGOING(SO) PENDING orders will be displayed at the end of the page
-            PaginatedResponse<SalesOrderResponseDto> allPendingOrderDtos =
+            // SO and PO PENDING orders will be displayed at the end of the page
+            PaginatedResponse<SalesOrderResponseDto> allPendingSalesOrders =
                     soServiceInIc.getAllWaitingSalesOrders(page, size, "orderDate", "desc");
+
+            PaginatedResponse<PurchaseOrderResponseDto> allPendingPurchaseOrders =
+                    poServiceInIc.getAllPendingPurchaseOrders(page, size);
+
+            List<PendingOrdersResponseDto> allPendingOrderDtos = new ArrayList<>();
+            fillWithSalesOrders(allPendingOrderDtos, allPendingSalesOrders.getContent());
+            fillWithPurchaseOrders(allPendingOrderDtos, allPendingPurchaseOrders.getContent());
+
 
             // Create the response object
             InventoryPageResponse inventoryPageResponse = new InventoryPageResponse(
@@ -66,9 +67,9 @@ public class InventoryControlService {
                     poServiceInIc.getTotalValidPoSize(),
                     soServiceInIc.getTotalValidOutgoingStockSize(),
                     damageLossService.getDamageLossMetrics().getTotalReport(),
-                    allPendingOrderDtos
+                    new PaginatedResponse<>(new PageImpl<>(allPendingOrderDtos))
             );
-            logger.info("IC (getInventoryControlPageData): Sending page {} with {} products.", page, allPendingOrderDtos.getContent().size());
+            logger.info("IC (getInventoryControlPageData): Sending page {} with {} products.", page, allPendingOrderDtos.size());
             return inventoryPageResponse;
         } catch (DataAccessException e) {
             logger.error("IC (getInventoryControlPageData): Database access error while retrieving inventory data.", e);
@@ -116,33 +117,6 @@ public class InventoryControlService {
         }
     }
 
-    // Helper methods.
-    @Transactional(readOnly = true)
-    public InventoryData getInventoryDataBySku(String sku) throws BadRequestException {
-        return icRepository.findBySKU(sku)
-                .orElseThrow(() -> new BadRequestException(
-                        "IC (updateProduct): No product with SKU " + sku + " found"));
-    }
-
-    @Transactional(readOnly = true)
-    public Optional<InventoryData> getInventoryProductByProductId(String productId) {
-        return icRepository.findByPmProduct_ProductID(productId);
-    }
-
-    @Transactional(propagation = Propagation.MANDATORY)
-    public void updateStockLevels(InventoryData existingProduct, Optional<Integer> newStockLevel, Optional<Integer> newMinLevel ) {
-        // Update current stock if provided
-        newStockLevel.ifPresent(existingProduct::setCurrentStock);
-
-        // Update minimum level if provided
-        newMinLevel.ifPresent(existingProduct::setMinLevel);
-
-        //Update the status based on the latest update
-        inventoryServiceHelper.updateInventoryStatus(existingProduct);
-
-        icRepository.save(existingProduct);
-    }
-
     // Helper method for internal use
     @Transactional(propagation = Propagation.MANDATORY)
     public void saveInventoryProduct(InventoryData inventoryData) {
@@ -188,6 +162,40 @@ public class InventoryControlService {
                 throw new ServiceException("IC(updateInventoryStatus): Error updating inventory status", e);
             }
         }
+    }
+
+    private void fillWithPurchaseOrders(List<PendingOrdersResponseDto> combinedPendingOrders,
+                                        List<PurchaseOrderResponseDto> pendingPurchaseOrders){
+        for(PurchaseOrderResponseDto po : pendingPurchaseOrders){
+            PendingOrdersResponseDto pendingOrder = new PendingOrdersResponseDto(
+                    po.getId(),
+                    po.getPoNumber(),
+                    "PURCHASE_ORDER",
+                    po.getStatus().toString(),
+                    po.getOrderDate().atStartOfDay(),
+                    po.getExpectedArrivalDate().atStartOfDay(),
+                    po.getTotalPrice(),
+                    po.getSupplierName(),
+                    null
+            );
+            combinedPendingOrders.add(pendingOrder);
+        }
+    }
+
+    private void fillWithSalesOrders(List<PendingOrdersResponseDto> combinedPendingOrders, List<SalesOrderResponseDto> pendingSalesOrders){
+        pendingSalesOrders.forEach(so ->
+                combinedPendingOrders.add(new PendingOrdersResponseDto(
+                        so.getId(),
+                        so.getOrderReference(),
+                        "SALES_ORDER",
+                        so.getStatus().toString(),
+                        so.getOrderDate(),
+                        so.getEstimatedDeliveryDate(),
+                        so.getTotalAmount(),
+                        so.getCustomerName(),
+                        so.getItems()
+                ))
+        );
     }
 
 

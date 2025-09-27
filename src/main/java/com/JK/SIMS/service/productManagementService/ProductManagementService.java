@@ -1,5 +1,6 @@
 package com.JK.SIMS.service.productManagementService;
 
+import com.JK.SIMS.config.security.JWTService;
 import com.JK.SIMS.exceptionHandler.DatabaseException;
 import com.JK.SIMS.exceptionHandler.ResourceNotFoundException;
 import com.JK.SIMS.exceptionHandler.ServiceException;
@@ -14,6 +15,7 @@ import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.PM_repo.PM_repository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.InventoryControlService;
+import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
 import com.JK.SIMS.service.utilities.ExcelReporterHelper;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.coyote.BadRequestException;
@@ -47,11 +49,15 @@ public class ProductManagementService {
 
     private final PM_repository pmRepository;
     private final InventoryControlService icService;
+    private final InventoryServiceHelper inventoryServiceHelper;
+    private final JWTService jwtService;
 
     @Autowired
-    public ProductManagementService(PM_repository pmRepository, @Lazy InventoryControlService icService) {
+    public ProductManagementService(PM_repository pmRepository, @Lazy InventoryControlService icService, InventoryServiceHelper inventoryServiceHelper, JWTService jwtService) {
         this.pmRepository = pmRepository;
         this.icService = icService;
+        this.inventoryServiceHelper = inventoryServiceHelper;
+        this.jwtService = jwtService;
     }
 
     /**
@@ -136,15 +142,19 @@ public class ProductManagementService {
      * @throws ServiceException if any other error occurs during deletion
      */
     @Transactional
-    public ResponseEntity<?> deleteProduct(String id) throws BadRequestException {
+    public ApiResponse deleteProduct(String id, String jwtToken) throws BadRequestException {
         try {
             Optional<ProductsForPM> productNeedsToBeDeleted = pmRepository.findById(id);
+            String username = jwtService.extractUsername(jwtToken);
             if (productNeedsToBeDeleted.isPresent()) {
-                icService.deleteByProductId(id);
+                icService.deleteByProductId(id); // First delete it from the Inventory as they have a connection with each other.
                 pmRepository.delete(productNeedsToBeDeleted.get());
                 logger.info("PM (deleteProduct): Product with ID {} is deleted", id);
-                return ResponseEntity.ok("Product with ID " + id + " is deleted successfully!");
+                logger.info("PM (deleteProduct): Product with ID {} is deleted successfully by {}.", id, username);
+                return new ApiResponse(true, "Product with ID " + id + " deleted successfully!");
             }
+            logger.info("PM (deleteProduct): Attempt for deletion product with ID {} by {} is failed.", id, username);
+            logger.info("PM (deleteProduct): Product with ID {} not found", id);
             throw new BadRequestException("PM (deleteProduct): Product with ID " + id + " not found");
         } catch (BadRequestException e) {
             throw e;
@@ -195,6 +205,61 @@ public class ProductManagementService {
         } catch (Exception e) {
             logger.error("PM (updateProduct): Internal error: {}", e.getMessage());
             throw new ServiceException("PM (updateProduct): Internal error " + productId, e);
+        }
+    }
+
+
+    private void updateProductFields(ProductsForPM currentProduct, ProductsForPM newProduct) {
+        if (newProduct.getName() != null) {
+            currentProduct.setName(newProduct.getName());
+        }
+        if (newProduct.getCategory() != null) {
+            currentProduct.setCategory(newProduct.getCategory());
+        }
+        if (newProduct.getPrice() != null) {
+            currentProduct.setPrice(newProduct.getPrice());
+        }
+    }
+
+    private void updateProductAndInventoryStatus(ProductsForPM currentProduct, ProductsForPM newProduct, String productId) {
+        if (newProduct.getStatus() != null && !newProduct.getStatus().equals(currentProduct.getStatus())) {
+            Optional<InventoryData> productInIcOpt =
+                    inventoryServiceHelper.getInventoryProductByProductId(productId);
+            ProductStatus previousStatus = currentProduct.getStatus();
+
+            if (validateStatusBeforeAdding(currentProduct, newProduct)) {
+                currentProduct.setStatus(newProduct.getStatus());
+                handleStatusChange(currentProduct, newProduct, previousStatus, productInIcOpt);
+            } else {
+                currentProduct.setStatus(newProduct.getStatus());
+                if (amongInvalidStatus(newProduct.getStatus())) {
+                    icService.updateInventoryStatus(productInIcOpt, InventoryDataStatus.INVALID);
+                }
+            }
+        }
+    }
+
+    private void handleStatusChange(ProductsForPM currentProduct, ProductsForPM newProduct, ProductStatus previousStatus, Optional<InventoryData> productInIcOpt) {
+        if (newProduct.getStatus().equals(ProductStatus.ACTIVE) || newProduct.getStatus().equals(ProductStatus.ON_ORDER)) {
+            if (previousStatus.equals(ProductStatus.ARCHIVED)) {
+                // the status is changing from ARCHIVED -> ACTIVE, ON_ORDER
+                if (productInIcOpt.isEmpty()) {
+                    icService.addProduct(currentProduct, false);
+                }
+            } else {
+                // Which means the status is changing from PLANNING -> ACTIVE or ON_ORDER
+                icService.addProduct(currentProduct, false);
+            }
+        } else {
+            // No need to add to IC, if the product is present in the IC change to INVALID status or else skip it
+            icService.updateInventoryStatus(productInIcOpt, InventoryDataStatus.INVALID);
+        }
+    }
+
+    private void updateProductLocation(ProductsForPM currentProduct, ProductsForPM newProduct) {
+        if (newProduct.getLocation() != null) {
+            validateLocationFormat(newProduct.getLocation());
+            currentProduct.setLocation(newProduct.getLocation());
         }
     }
 
@@ -337,60 +402,6 @@ public class ProductManagementService {
         if (orderedProduct.getStatus() == ProductStatus.ON_ORDER) {
             orderedProduct.setStatus(ProductStatus.ACTIVE);
             pmRepository.save(orderedProduct);
-        }
-    }
-
-    private void updateProductFields(ProductsForPM currentProduct, ProductsForPM newProduct) {
-        if (newProduct.getName() != null) {
-            currentProduct.setName(newProduct.getName());
-        }
-        if (newProduct.getCategory() != null) {
-            currentProduct.setCategory(newProduct.getCategory());
-        }
-        if (newProduct.getPrice() != null) {
-            currentProduct.setPrice(newProduct.getPrice());
-        }
-    }
-
-    private void updateProductAndInventoryStatus(ProductsForPM currentProduct, ProductsForPM newProduct, String productId) {
-        if (newProduct.getStatus() != null && !newProduct.getStatus().equals(currentProduct.getStatus())) {
-            Optional<InventoryData> productInIcOpt =
-                    icService.getInventoryProductByProductId(productId);
-            ProductStatus previousStatus = currentProduct.getStatus();
-
-            if (validateStatusBeforeAdding(currentProduct, newProduct)) {
-                currentProduct.setStatus(newProduct.getStatus());
-                handleStatusChange(currentProduct, newProduct, previousStatus, productInIcOpt);
-            } else {
-                currentProduct.setStatus(newProduct.getStatus());
-                if (amongInvalidStatus(newProduct.getStatus())) {
-                    icService.updateInventoryStatus(productInIcOpt, InventoryDataStatus.INVALID);
-                }
-            }
-        }
-    }
-
-    private void handleStatusChange(ProductsForPM currentProduct, ProductsForPM newProduct, ProductStatus previousStatus, Optional<InventoryData> productInIcOpt) {
-        if (newProduct.getStatus().equals(ProductStatus.ACTIVE) || newProduct.getStatus().equals(ProductStatus.ON_ORDER)) {
-            if (previousStatus.equals(ProductStatus.ARCHIVED)) {
-                // the status is changing from ACTIVE, ON_ORDER -> ARCHIVED
-                if (productInIcOpt.isEmpty()) {
-                    icService.addProduct(currentProduct, false);
-                }
-            } else {
-                // Which means the status is changing from PLANNING -> ACTIVE or ON_ORDER
-                icService.addProduct(currentProduct, false);
-            }
-        } else {
-            // No need to add to IC, if the product is present in the IC change to INVALID status or else skip it
-            icService.updateInventoryStatus(productInIcOpt, InventoryDataStatus.INVALID);
-        }
-    }
-
-    private void updateProductLocation(ProductsForPM currentProduct, ProductsForPM newProduct) {
-        if (newProduct.getLocation() != null) {
-            validateLocationFormat(newProduct.getLocation());
-            currentProduct.setLocation(newProduct.getLocation());
         }
     }
 

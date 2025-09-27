@@ -28,8 +28,6 @@ public interface PM_repository extends JpaRepository<ProductsForPM, String> {
 
 
     @Query("SELECT p FROM ProductsForPM p WHERE " +
-            "LOWER(p.productID) LIKE %:filter% OR " +
-            "LOWER(p.name) LIKE %:filter% OR " +
             "LOWER(p.location) LIKE %:filter% OR " +
             "LOWER(p.category) LIKE %:filter% OR " +
             "LOWER(p.status) LIKE %:filter%")
