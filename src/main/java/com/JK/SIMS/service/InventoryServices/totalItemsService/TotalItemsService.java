@@ -15,6 +15,7 @@ import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.IC_repo.IC_repository;
+import com.JK.SIMS.service.productManagementService.PMServiceHelper;
 import com.JK.SIMS.service.productManagementService.ProductManagementService;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import jakarta.servlet.http.HttpServletResponse;
@@ -47,16 +48,16 @@ public class TotalItemsService {
 
     private final GlobalServiceHelper globalServiceHelper;
     private final InventoryServiceHelper inventoryServiceHelper;
-    private final ProductManagementService pmService;
+    private final PMServiceHelper pmServiceHelper;
     private final StockManagementLogic stockManagementLogic;
 
     private final IC_repository icRepository; // We are working with the Inventory Products so that's why we need this repository
     @Autowired
     public TotalItemsService(GlobalServiceHelper globalServiceHelper, InventoryServiceHelper inventoryServiceHelper,
-                             ProductManagementService pmService, StockManagementLogic stockManagementLogic, IC_repository icRepository) {
+                             PMServiceHelper pmServiceHelper, StockManagementLogic stockManagementLogic, IC_repository icRepository) {
         this.globalServiceHelper = globalServiceHelper;
         this.inventoryServiceHelper = inventoryServiceHelper;
-        this.pmService = pmService;
+        this.pmServiceHelper = pmServiceHelper;
         this.stockManagementLogic = stockManagementLogic;
         this.icRepository = icRepository;
     }
@@ -216,7 +217,7 @@ public class TotalItemsService {
                         productInPM.getStatus().equals(ProductStatus.PLANNING) ||
                         productInPM.getStatus().equals(ProductStatus.ON_ORDER) ) {
                     productInPM.setStatus(ProductStatus.ARCHIVED);
-                    pmService.saveProduct(productInPM);
+                    pmServiceHelper.saveProduct(productInPM);
                 }
                 icRepository.deleteBySKU(sku);
 

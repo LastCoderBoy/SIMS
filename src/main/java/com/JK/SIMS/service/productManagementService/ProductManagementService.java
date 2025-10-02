@@ -25,22 +25,19 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
 
-import static com.JK.SIMS.service.utilities.GlobalServiceHelper.amongInvalidStatus;
 import static com.JK.SIMS.service.productManagementService.PMServiceHelper.*;
+import static com.JK.SIMS.service.utilities.GlobalServiceHelper.amongInvalidStatus;
 
 @Service
 public class ProductManagementService {
@@ -373,30 +370,6 @@ public class ProductManagementService {
         populateDataRows(sheet, allProducts);
         logger.info("PM (GeneratePmReport): Retrieved {} products from database for report generation.)", allProducts.size());
         ExcelReporterHelper.writeWorkbookToResponse(response, workbook);
-    }
-
-    // Helper method for internal use
-    @Transactional(readOnly = true)
-    public ProductsForPM findProductById(String productId) {
-        return pmRepository.findById(productId)
-                .orElseThrow(() -> new ResourceNotFoundException("PM (findProductById): Product with ID " + productId + " not found"));
-    }
-
-    @Transactional(propagation = Propagation.MANDATORY)
-    public void saveProduct(ProductsForPM product) {
-        try {
-            pmRepository.save(product);
-            logger.info("PM (saveProduct): Successfully saved/updated product with ID {}",
-                    product.getProductID());
-        } catch (DataAccessException da) {
-            logger.error("PM (saveProduct): Database error while saving product: {}",
-                    da.getMessage());
-            throw new DatabaseException("Failed to save product", da);
-        } catch (Exception e) {
-            logger.error("PM (saveProduct): Unexpected error while saving product: {}",
-                    e.getMessage());
-            throw new ServiceException("Failed to save product", e);
-        }
     }
 
     private void createHeaderRow(XSSFSheet sheet) {

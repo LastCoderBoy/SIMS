@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.file.AccessDeniedException;
@@ -25,9 +26,12 @@ public class ProductController {
 
     private static final Logger logger = LoggerFactory.getLogger(ProductController.class);
     private final ProductManagementService pmService;
+    private final SecurityUtils securityUtils;
+
     @Autowired
-    public ProductController(ProductManagementService pmService) {
+    public ProductController(ProductManagementService pmService, SecurityUtils securityUtils) {
         this.pmService = pmService;
+        this.securityUtils = securityUtils;
     }
 
     @GetMapping
@@ -42,48 +46,42 @@ public class ProductController {
     }
 
     @PostMapping
+    @PreAuthorize("@securityUtils.hasAccess()")
     public ResponseEntity<?> addProduct(@RequestBody ProductsForPM newProduct) throws AccessDeniedException {
-        if(SecurityUtils.hasAccess()) {
-            if (newProduct == null) {
-                throw new ValidationException("PM: Product data cannot be null");
-            }
-            //Only the Admins and Managers can add new products.
-            logger.info("PM: addProduct() calling...");
-            ApiResponse response = pmService.addProduct(newProduct);
-            return new ResponseEntity<>(response, HttpStatus.CREATED);
+        if (newProduct == null) {
+            throw new ValidationException("PM: Product data cannot be null");
         }
-        throw new AccessDeniedException("PM addProduct(): You do not have access to perform that operation.");
+        //Only the Admins and Managers can add new products.
+        logger.info("PM: addProduct() calling...");
+        ApiResponse response = pmService.addProduct(newProduct);
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("@securityUtils.hasAccess()")
     public ResponseEntity<?> updateProduct(@PathVariable String id, @RequestBody ProductsForPM newProduct) throws BadRequestException, AccessDeniedException {
-        if(SecurityUtils.hasAccess()) {
-            if (id == null || newProduct == null || id.trim().isEmpty()) {
-                throw new BadRequestException("PM (updateProduct): Product ID or New product cannot be null");
-            }
-            logger.info("PM: updateProduct() calling...");
-            ApiResponse response = pmService.updateProduct(id.toUpperCase(), newProduct);
-            return ResponseEntity.ok(response);
+        if (id == null || newProduct == null || id.trim().isEmpty()) {
+            throw new BadRequestException("PM (updateProduct): Product ID or New product cannot be null");
         }
-        throw new AccessDeniedException("PM updateProduct(): You do not have access to perform that operation.");
+        logger.info("PM: updateProduct() calling...");
+        ApiResponse response = pmService.updateProduct(id.toUpperCase(), newProduct);
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("@securityUtils.hasAccess()")
     public ResponseEntity<?> deleteProduct(@PathVariable String id,
                                            @RequestHeader("Authorization") String token) throws BadRequestException, AccessDeniedException {
-        if(SecurityUtils.hasAccess()){
-            if (id == null || id.trim().isEmpty()) {
-                throw new ValidationException("PM: Product ID cannot be null");
-            }
-            if(token != null && !token.trim().isEmpty()) {
-                String jwtToken = TokenUtils.extractToken(token);
-                logger.info("PM: deleteProduct() calling...");
-                ApiResponse response = pmService.deleteProduct(id, jwtToken);
-                return new ResponseEntity<>(response, HttpStatus.NO_CONTENT);
-            }
+        if (id == null || id.trim().isEmpty()) {
+            throw new ValidationException("PM: Product ID cannot be null");
         }
-        throw new AccessDeniedException("PM deleteProduct(): You do not have access to perform that operation.");
-
+        if(token != null && !token.trim().isEmpty()) {
+            String jwtToken = TokenUtils.extractToken(token);
+            logger.info("PM: deleteProduct() calling...");
+            ApiResponse response = pmService.deleteProduct(id, jwtToken);
+            return new ResponseEntity<>(response, HttpStatus.NO_CONTENT);
+        }
+        throw new AccessDeniedException("PM: deleteProduct() Invalid Token provided.");
     }
 
     @GetMapping("/search")

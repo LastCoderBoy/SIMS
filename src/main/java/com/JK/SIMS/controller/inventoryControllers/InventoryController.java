@@ -7,12 +7,10 @@ import com.JK.SIMS.models.IC_models.salesOrder.BulkShipStockRequestDto;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.service.InventoryServices.soService.SoServiceInIc;
-import com.JK.SIMS.config.security.SecurityUtils;
 import com.JK.SIMS.exceptionHandler.InvalidTokenException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryPageResponse;
-import com.JK.SIMS.models.IC_models.purchaseOrder.ReceiveStockRequestDto;
-import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderResponseDto;
+import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.ReceiveStockRequestDto;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.InventoryControlService;
 import com.JK.SIMS.service.InventoryServices.poService.PoServiceInIc;
@@ -25,6 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.file.AccessDeniedException;
@@ -58,30 +57,26 @@ public class InventoryController {
 
     // STOCK IN button
     @PutMapping("/{orderId}/receive")
+    @PreAuthorize("@securityUtils.hasAccess()")
     public ResponseEntity<?> receiveIncomingStockOrder(@Valid @RequestBody ReceiveStockRequestDto receiveRequest,
                                                        @PathVariable Long orderId,
                                                        @RequestHeader("Authorization") String token) throws BadRequestException, AccessDeniedException {
         logger.info("IC: receiveIncomingStockOrder() calling...");
-        if(SecurityUtils.hasAccess()) {
-            if(token != null && !token.trim().isEmpty()) {
-                String jwtToken = TokenUtils.extractToken(token);
-                ApiResponse response =  poServiceInIc.receivePurchaseOrder(orderId, receiveRequest, jwtToken);
-                return new ResponseEntity<>(response, HttpStatus.OK);
-            }
-            throw new InvalidTokenException("IC: receiveIncomingStockOrder() Invalid Token provided.");
+        if(token != null && !token.trim().isEmpty()) {
+            String jwtToken = TokenUtils.extractToken(token);
+            ApiResponse response =  poServiceInIc.receivePurchaseOrder(orderId, receiveRequest, jwtToken);
+            return new ResponseEntity<>(response, HttpStatus.OK);
         }
-        throw new AccessDeniedException("IC: receiveIncomingStockOrder() You cannot perform the following operation.");
+        throw new InvalidTokenException("IC: receiveIncomingStockOrder() Invalid Token provided.");
     }
 
 
     // STOCK OUT button
     @PutMapping("/stocks/out")
+    @PreAuthorize("@securityUtils.hasAccess()")
     public ResponseEntity<?> bulkStockOutOrders(@Valid @RequestBody BulkShipStockRequestDto request,
                                                 @RequestHeader("Authorization") String token){
         logger.info("IC: bulkStockOutOrders() called with {} orders", request.getBulkSoRequestDtos().size());
-        if (!SecurityUtils.hasAccess()) {
-            throw new org.springframework.security.access.AccessDeniedException("IC: bulkStockOutOrders() You cannot perform this operation.");
-        }
         if (token == null || token.trim().isEmpty()) {
             throw new IllegalArgumentException("IC: bulkStockOutOrders() Invalid Token provided.");
         }
@@ -92,18 +87,16 @@ public class InventoryController {
 
     // CANCEL ORDER button
     @PutMapping("/{orderId}/cancel-order")
+    @PreAuthorize("@securityUtils.hasAccess()")
     public ResponseEntity<?> cancelOutgoingStockOrder(@PathVariable Long orderId,
                                                       @RequestHeader("Authorization") String token) throws AccessDeniedException {
         logger.info("IC: cancelOutgoingStockOrder() calling...");
-        if(SecurityUtils.hasAccess()) {
-            if(token != null && !token.trim().isEmpty()) {
-                String jwtToken = TokenUtils.extractToken(token);
-                ApiResponse response = soServiceInIc.cancelSalesOrder(orderId, jwtToken);
-                return new ResponseEntity<>(response, HttpStatus.OK);
-            }
-            throw new InvalidTokenException("IC: cancelOutgoingStockOrder() Invalid Token provided.");
+        if(token != null && !token.trim().isEmpty()) {
+            String jwtToken = TokenUtils.extractToken(token);
+            ApiResponse response = soServiceInIc.cancelSalesOrder(orderId, jwtToken);
+            return new ResponseEntity<>(response, HttpStatus.OK);
         }
-        throw new AccessDeniedException("IC: cancelOutgoingStockOrder() You cannot perform the following operation.");
+        throw new InvalidTokenException("IC: cancelOutgoingStockOrder() Invalid Token provided.");
     }
 
     /**

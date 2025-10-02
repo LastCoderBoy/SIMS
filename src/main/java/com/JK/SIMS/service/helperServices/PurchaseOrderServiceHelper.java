@@ -1,8 +1,9 @@
-package com.JK.SIMS.service.InventoryServices.poService;
+package com.JK.SIMS.service.helperServices;
 
 import com.JK.SIMS.exceptionHandler.ResourceNotFoundException;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
-import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderResponseDto;
+import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderResponseDto;
+import com.JK.SIMS.models.IC_models.purchaseOrder.views.PurchaseOrderViews;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.PO_repo.PurchaseOrderRepository;
 import lombok.AllArgsConstructor;
@@ -39,10 +40,6 @@ public class PurchaseOrderServiceHelper {
         return new PurchaseOrderResponseDto(order);
     }
 
-    public Page<PurchaseOrderResponseDto> convertToDto(Page<PurchaseOrder> poEntityPage){
-        return poEntityPage.map(this::convertToDto);
-    }
-
     @Transactional(readOnly = true)
     public PurchaseOrder getPurchaseOrderById(Long orderId) {
         return purchaseOrderRepository.findById(orderId)
@@ -50,7 +47,7 @@ public class PurchaseOrderServiceHelper {
     }
 
 
-    // Helper method to build a simple HTML response page for the supplier after clicking a link
+    // Method to build an HTML response page for the supplier after clicking a link
     public static String buildConfirmationPage(String message, String alertClass) {
         return "<html>"
                 + "<head><title>Purchase Order Confirmation</title>"

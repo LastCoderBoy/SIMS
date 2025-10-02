@@ -96,7 +96,7 @@ public class DamageLossService {
     }
 
     @Transactional
-    public ApiResponse updateDamageLossProduct(Integer id, DamageLossDTORequest request) throws BadRequestException {
+    public ApiResponse<DamageLoss> updateDamageLossProduct(Integer id, DamageLossDTORequest request) throws BadRequestException {
         try {
             DamageLoss report = getDamageLossById(id);
             if (request == null || isRequestEmpty(request)) {
@@ -143,7 +143,7 @@ public class DamageLossService {
 
             logger.info("DL (updateDamageLossProduct): Successfully updated damage/loss report for SKU: {}",
                     report.getIcProduct().getSKU());
-            return new ApiResponse(true, report.getIcProduct().getSKU() + " SKU is updated successfully.");
+            return new ApiResponse<>(true, report.getIcProduct().getSKU() + " SKU is updated successfully.");
 
         } catch (DataAccessException e) {
             throw new DatabaseException("Failed to update damage/loss report due to database error", e);
@@ -155,14 +155,14 @@ public class DamageLossService {
     }
 
     @Transactional
-    public ApiResponse deleteDamageLossReport(Integer id) {
+    public ApiResponse<String> deleteDamageLossReport(Integer id) {
         try {
             DamageLoss report = getDamageLossById(id);
             restoreStockLevel(report.getIcProduct(), report.getQuantityLost());
             damageLoss_repository.delete(report);
 
             logger.info("DL (delete): Deleted damage/loss report and restored inventory for SKU {}", report.getIcProduct().getSKU());
-            return new ApiResponse(true, "Report deleted and stock restored for SKU: " + report.getIcProduct().getSKU());
+            return new ApiResponse<>(true, "Report deleted and stock restored for SKU: " + report.getIcProduct().getSKU());
         } catch (Exception e) {
             throw new ServiceException("DL (delete): Error while deleting report", e);
         }

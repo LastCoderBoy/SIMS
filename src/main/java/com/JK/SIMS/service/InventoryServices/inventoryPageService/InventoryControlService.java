@@ -2,7 +2,7 @@ package com.JK.SIMS.service.InventoryServices.inventoryPageService;
 
 import com.JK.SIMS.exceptionHandler.*;
 import com.JK.SIMS.models.IC_models.inventoryData.*;
-import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderResponseDto;
+import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderResponseDto;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderResponseDto;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;

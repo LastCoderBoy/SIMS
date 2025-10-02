@@ -1,6 +1,6 @@
 package com.JK.SIMS.service.InventoryServices.poService.searchLogic;
 
-import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderResponseDto;
+import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderResponseDto;
 import com.JK.SIMS.models.PaginatedResponse;
 
 public interface PoStrategy {

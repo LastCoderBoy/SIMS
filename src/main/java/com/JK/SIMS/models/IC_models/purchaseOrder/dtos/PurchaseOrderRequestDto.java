@@ -1,4 +1,4 @@
-package com.JK.SIMS.models.IC_models.purchaseOrder;
+package com.JK.SIMS.models.IC_models.purchaseOrder.dtos;
 
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
@@ -21,7 +21,6 @@ public class PurchaseOrderRequestDto {
     @NotNull(message = "Supplier ID is required")
     private Long supplierId;
 
-    @NotNull(message = "Expected arrival date is required")
     @FutureOrPresent(message = "Arrival date must be today or in the future")
     private LocalDate expectedArrivalDate;
 

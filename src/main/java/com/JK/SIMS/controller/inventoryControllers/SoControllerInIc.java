@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -61,12 +62,10 @@ public class SoControllerInIc {
     // Only High Roles can process the order
     // Stock OUT button in the SO section
     @PutMapping("/stocks/out")
+    @PreAuthorize("@securityUtils.hasAccess()")
     public ResponseEntity<?> bulkStockOutOrders(@Valid @RequestBody BulkShipStockRequestDto request,
                                                 @RequestHeader("Authorization") String token){
         logger.info("IcSo: bulkStockOutOrders() called with {} orders", request.getBulkSoRequestDtos().size());
-        if (!SecurityUtils.hasAccess()) {
-            throw new AccessDeniedException("IcSo: bulkStockOutOrders() You cannot perform this operation.");
-        }
         if (token == null || token.trim().isEmpty()) {
             throw new IllegalArgumentException("IcSo: bulkStockOutOrders() Invalid Token provided.");
         }
@@ -77,17 +76,15 @@ public class SoControllerInIc {
 
 
     @PutMapping("/{orderId}/cancel")
+    @PreAuthorize("@securityUtils.hasAccess()")
     public ResponseEntity<?> cancelSalesOrder(@PathVariable Long orderId, @RequestHeader("Authorization") String token){
         logger.info("IcSo: cancelSalesOrder() calling...");
-        if(SecurityUtils.hasAccess()) {
-            if(token != null && !token.trim().isEmpty()) {
-                String jwtToken = TokenUtils.extractToken(token);
-                ApiResponse apiResponse = soServiceInIc.cancelSalesOrder(orderId, jwtToken);
-                return ResponseEntity.ok(apiResponse);
-            }
-            throw new IllegalArgumentException("IcSo: cancelSalesOrder() Invalid Token provided.");
+        if(token != null && !token.trim().isEmpty()) {
+            String jwtToken = TokenUtils.extractToken(token);
+            ApiResponse apiResponse = soServiceInIc.cancelSalesOrder(orderId, jwtToken);
+            return ResponseEntity.ok(apiResponse);
         }
-        throw new AccessDeniedException("IcSo: cancelSalesOrder() You cannot perform the following operation.");
+        throw new IllegalArgumentException("IcSo: cancelSalesOrder() Invalid Token provided.");
     }
 
     // Search by Product Name, Category, Order Reference, Destination

@@ -1,4 +1,4 @@
-package com.JK.SIMS.models.IC_models.purchaseOrder.token;
+package com.JK.SIMS.models.IC_models.purchaseOrder.confirmationToken;
 
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
 import jakarta.persistence.*;
@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 @Entity
 @Data
 @NoArgsConstructor
+@Table(name = "confirmation_token")
 public class ConfirmationToken {
 
     @Id

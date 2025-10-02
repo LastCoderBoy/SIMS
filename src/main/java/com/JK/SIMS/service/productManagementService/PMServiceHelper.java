@@ -1,5 +1,8 @@
 package com.JK.SIMS.service.productManagementService;
 
+import com.JK.SIMS.exceptionHandler.DatabaseException;
+import com.JK.SIMS.exceptionHandler.ResourceNotFoundException;
+import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
@@ -7,6 +10,7 @@ import com.JK.SIMS.repository.PM_repo.PM_repository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -93,6 +97,29 @@ public class PMServiceHelper {
         if (orderedProduct.getStatus() == ProductStatus.ON_ORDER) {
             orderedProduct.setStatus(ProductStatus.ACTIVE);
             pmRepository.save(orderedProduct);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public ProductsForPM findProductById(String productId) {
+        return pmRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("PM (findProductById): Product with ID " + productId + " not found"));
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void saveProduct(ProductsForPM product) {
+        try {
+            pmRepository.save(product);
+            logger.info("PM (saveProduct): Successfully saved/updated product with ID {}",
+                    product.getProductID());
+        } catch (DataAccessException da) {
+            logger.error("PM (saveProduct): Database error while saving product: {}",
+                    da.getMessage());
+            throw new DatabaseException("Failed to save product", da);
+        } catch (Exception e) {
+            logger.error("PM (saveProduct): Unexpected error while saving product: {}",
+                    e.getMessage());
+            throw new ServiceException("Failed to save product", e);
         }
     }
 }

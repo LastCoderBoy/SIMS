@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.file.AccessDeniedException;
@@ -40,40 +41,34 @@ public class DamageLossController {
     }
 
     @PostMapping
+    @PreAuthorize("@securityUtils.hasAccess()")
     public ResponseEntity<?> addDamageLoss(
             @RequestBody DamageLossDTORequest dtoRequest,
             @RequestHeader("Authorization") String token) throws AccessDeniedException {
         // Only the Admin or Managers can add Damage/Loss report
-        if(SecurityUtils.hasAccess()){
-            if(token != null && !token.trim().isEmpty()) {
-                String jwtToken = TokenUtils.extractToken(token);
-                damageLossService.addDamageLoss(dtoRequest, jwtToken);
-                logger.info("DL (addDamageLoss): {} sku report is created successfully.", dtoRequest.sku());
-                return new ResponseEntity<>(
-                        new ApiResponse(true, dtoRequest.sku() + " sku report is created successfully"),
-                        HttpStatus.CREATED);
-            }
-            throw new InvalidTokenException("DL (addDamageLoss): Invalid Token provided.");
+        if(token != null && !token.trim().isEmpty()) {
+            String jwtToken = TokenUtils.extractToken(token);
+            damageLossService.addDamageLoss(dtoRequest, jwtToken);
+            logger.info("DL (addDamageLoss): {} sku report is created successfully.", dtoRequest.sku());
+            return new ResponseEntity<>(
+                    new ApiResponse(true, dtoRequest.sku() + " sku report is created successfully"),
+                    HttpStatus.CREATED);
         }
-        throw new AccessDeniedException("DL (addDamageLoss): No access for the current user.");
+        throw new InvalidTokenException("DL (addDamageLoss): Invalid Token provided.");
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("@securityUtils.hasAccess()")
     public ResponseEntity<?> updateDamageLossProduct(@PathVariable Integer id, @RequestBody DamageLossDTORequest request) throws BadRequestException, AccessDeniedException {
-        if(SecurityUtils.hasAccess()) {
-            ApiResponse response = damageLossService.updateDamageLossProduct(id, request);
-            return ResponseEntity.ok(response);
-        }
-        throw new AccessDeniedException("DL (update): You cannot perform the following operation.");
+        ApiResponse response = damageLossService.updateDamageLossProduct(id, request);
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("@securityUtils.hasAccess()")
     public ResponseEntity<?> deleteDamageLossReport(@PathVariable Integer id) throws AccessDeniedException {
-        if (SecurityUtils.hasAccess()) {
-            ApiResponse response = damageLossService.deleteDamageLossReport(id);
-            return ResponseEntity.ok(response);
-        }
-        throw new AccessDeniedException("DL (delete): No access for the current user.");
+        ApiResponse<String> response = damageLossService.deleteDamageLossReport(id);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/search")

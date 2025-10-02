@@ -1,6 +1,10 @@
-package com.JK.SIMS.models.IC_models.purchaseOrder;
+package com.JK.SIMS.models.IC_models.purchaseOrder.dtos;
 
+import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
+import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
+import com.JK.SIMS.models.IC_models.purchaseOrder.views.PurchaseOrderViews;
 import com.JK.SIMS.models.PM_models.ProductCategories;
+import com.fasterxml.jackson.annotation.JsonView;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -46,7 +50,7 @@ public class PurchaseOrderResponseDto {
         this.updatedBy = purchaseOrder.getUpdatedBy();
     }
 
-    private BigDecimal calculateTotalPrice(PurchaseOrder purchaseOrder){
+    public BigDecimal calculateTotalPrice(PurchaseOrder purchaseOrder){
         return purchaseOrder.getProduct().getPrice().multiply(new BigDecimal(purchaseOrder.getOrderedQuantity()));
     }
 }

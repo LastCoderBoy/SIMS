@@ -1,5 +1,6 @@
 package com.JK.SIMS.service.InventoryServices.soService;
 
+import com.JK.SIMS.config.security.SecurityUtils;
 import com.JK.SIMS.exceptionHandler.DatabaseException;
 import com.JK.SIMS.exceptionHandler.ResourceNotFoundException;
 import com.JK.SIMS.exceptionHandler.ServiceException;
@@ -13,7 +14,6 @@ import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItem;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.outgoingStockRepo.SalesOrderRepository;
-import com.JK.SIMS.service.InventoryServices.inventoryPageService.InventoryControlService;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
 import com.JK.SIMS.service.InventoryServices.soService.filterLogic.SalesOrderSpecification;
 import com.JK.SIMS.service.InventoryServices.soService.processSalesOrder.StockOutProcessor;
@@ -25,7 +25,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -42,6 +41,7 @@ public class SoServiceInIc {
 
     private static final Logger logger = LoggerFactory.getLogger(SoServiceInIc.class);
 
+    private final SecurityUtils securityUtils;
     private final SalesOrderServiceHelper salesOrderServiceHelper;
     private final GlobalServiceHelper globalServiceHelper;
     private final StockManagementLogic stockManagementLogic;
@@ -50,9 +50,10 @@ public class SoServiceInIc {
 
     private final SalesOrderRepository salesOrderRepository;
     @Autowired
-    public SoServiceInIc(SalesOrderServiceHelper salesOrderServiceHelper, GlobalServiceHelper globalServiceHelper,
+    public SoServiceInIc(SecurityUtils securityUtils, SalesOrderServiceHelper salesOrderServiceHelper, GlobalServiceHelper globalServiceHelper,
                          StockManagementLogic stockManagementLogic, @Qualifier("icSoSearchStrategy") SoStrategy searchStrategy,
                          StockOutProcessor stockOutProcessor, SalesOrderRepository salesOrderRepository) {
+        this.securityUtils = securityUtils;
         this.salesOrderServiceHelper = salesOrderServiceHelper;
         this.globalServiceHelper = globalServiceHelper;
         this.stockManagementLogic = stockManagementLogic;
@@ -107,7 +108,7 @@ public class SoServiceInIc {
     @Transactional
     public ApiResponse processOrderRequest(BulkShipStockRequestDto requestDto, String jwtToken){
         try {
-            String confirmedPerson = globalServiceHelper.validateAndExtractUser(jwtToken);
+            String confirmedPerson = securityUtils.validateAndExtractUsername(jwtToken);
             return stockOutProcessor.processStockOut(requestDto, confirmedPerson);
         } catch (Exception e) {
             logger.error("OS (processOrderedProduct): Error processing order - {}", e.getMessage());
@@ -119,7 +120,7 @@ public class SoServiceInIc {
     @Transactional
     public ApiResponse cancelSalesOrder(Long orderId, String jwtToken) {
         try {
-            String cancelledBy = globalServiceHelper.validateAndExtractUser(jwtToken);
+            String cancelledBy = securityUtils.validateAndExtractUsername(jwtToken);
             SalesOrder salesOrder = getSalesOrderById(orderId);
 
             if (salesOrder.getStatus() == SalesOrderStatus.PENDING || salesOrder.getStatus() == SalesOrderStatus.PARTIALLY_APPROVED

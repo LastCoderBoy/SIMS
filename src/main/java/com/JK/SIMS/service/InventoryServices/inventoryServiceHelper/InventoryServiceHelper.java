@@ -5,11 +5,8 @@ import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataDto;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataStatus;
 import com.JK.SIMS.models.IC_models.inventoryData.PendingOrdersResponseDto;
-import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
-import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderResponseDto;
-import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
+import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderResponseDto;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderResponseDto;
-import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItemResponseDto;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.stockMovements.StockMovementReferenceType;
 import com.JK.SIMS.repository.IC_repo.IC_repository;
@@ -24,7 +21,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 

@@ -1,11 +1,10 @@
 package com.JK.SIMS.controller.inventoryControllers;
 
-import com.JK.SIMS.config.security.SecurityUtils;
 import com.JK.SIMS.exceptionHandler.InvalidTokenException;
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderResponseDto;
+import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderResponseDto;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
-import com.JK.SIMS.models.IC_models.purchaseOrder.ReceiveStockRequestDto;
+import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.ReceiveStockRequestDto;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryServices.poService.PoServiceInIc;
@@ -18,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -77,35 +77,31 @@ public class PoControllerInIc {
 
     // Stock IN button in the PO section | High Roles can only accept the order
     @PutMapping("/{orderId}/receive")
+    @PreAuthorize("@securityUtils.hasAccess()")
     public ResponseEntity<?> receivePurchaseOrder(@Valid @RequestBody ReceiveStockRequestDto receiveRequest,
                                                        @PathVariable Long orderId,
                                                        @RequestHeader("Authorization") String token) throws BadRequestException, AccessDeniedException {
         logger.info("IcPo receivePurchaseOrder() calling...");
-        if(SecurityUtils.hasAccess()) {
-            if(token != null && !token.trim().isEmpty()) {
-                String jwtToken = TokenUtils.extractToken(token);
-                ApiResponse response =  poServiceInIc.receivePurchaseOrder(orderId, receiveRequest, jwtToken);
-                return new ResponseEntity<>(response, HttpStatus.OK);
-            }
-            throw new InvalidTokenException("IcPo: receivePurchaseOrder() Invalid Token provided.");
+        if(token != null && !token.trim().isEmpty()) {
+            String jwtToken = TokenUtils.extractToken(token);
+            ApiResponse<Void> response =  poServiceInIc.receivePurchaseOrder(orderId, receiveRequest, jwtToken);
+            return new ResponseEntity<>(response, HttpStatus.OK);
         }
-        throw new AccessDeniedException("IcPo: receivePurchaseOrder() You cannot perform the following operation.");
+        throw new InvalidTokenException("IcPo: receivePurchaseOrder() Invalid Token provided.");
     }
 
     // Cancel button in the PO section.
     @PutMapping("/{orderId}/cancel")
+    @PreAuthorize("@securityUtils.hasAccess()")
     public ResponseEntity<?> cancelPurchaseOrderInternal(@PathVariable Long orderId,
                                                          @RequestHeader("Authorization") String token) throws AccessDeniedException, BadRequestException {
         logger.info("IcPo cancelPurchaseOrderInternal() calling...");
-        if(SecurityUtils.hasAccess()) {
-            if(token != null && !token.trim().isEmpty()) {
-                String jwtToken = TokenUtils.extractToken(token);
-                ApiResponse response = poServiceInIc.cancelPurchaseOrderInternal(orderId, jwtToken);
-                return new ResponseEntity<>(response, HttpStatus.OK);
-            }
-            throw new InvalidTokenException("IcPo: cancelPurchaseOrderInternal() Invalid Token provided.");
+        if(token != null && !token.trim().isEmpty()) {
+            String jwtToken = TokenUtils.extractToken(token);
+            ApiResponse response = poServiceInIc.cancelPurchaseOrderInternal(orderId, jwtToken);
+            return new ResponseEntity<>(response, HttpStatus.OK);
         }
-        throw new AccessDeniedException("IcPo: cancelPurchaseOrderInternal() You cannot perform the following operation.");
+        throw new InvalidTokenException("IcPo: cancelPurchaseOrderInternal() Invalid Token provided.");
     }
 
     //TODO:

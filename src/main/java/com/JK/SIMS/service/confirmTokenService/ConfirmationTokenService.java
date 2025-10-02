@@ -2,21 +2,24 @@ package com.JK.SIMS.service.confirmTokenService;
 
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
-import com.JK.SIMS.models.IC_models.purchaseOrder.token.ConfirmationToken;
-import com.JK.SIMS.models.IC_models.purchaseOrder.token.ConfirmationTokenStatus;
+import com.JK.SIMS.models.IC_models.purchaseOrder.confirmationToken.ConfirmationToken;
+import com.JK.SIMS.models.IC_models.purchaseOrder.confirmationToken.ConfirmationTokenStatus;
 import com.JK.SIMS.repository.confirmationTokenRepo.ConfirmationTokenRepository;
-import com.JK.SIMS.service.InventoryServices.poService.PurchaseOrderServiceHelper;
+import com.JK.SIMS.service.helperServices.PurchaseOrderServiceHelper;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import lombok.AllArgsConstructor;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -26,7 +29,7 @@ public class ConfirmationTokenService {
     private static final Logger logger = LoggerFactory.getLogger(ConfirmationTokenService.class);
 
     private final ConfirmationTokenRepository tokenRepository;
-    private final PurchaseOrderServiceHelper purchaseOrderServiceHelper;
+    private final PurchaseOrderServiceHelper poServiceHelper;
     private final Clock clock;
 
     @Transactional
@@ -41,6 +44,7 @@ public class ConfirmationTokenService {
         return tokenRepository.save(confirmationToken);
     }
 
+    // Deletes the expired tokens from the database
     @Transactional
     public void expireTokens() {
         List<ConfirmationToken> expiredTokens = tokenRepository.findAllByExpiresAtBeforeAndClickedAtIsNull(LocalDateTime.now());
@@ -49,7 +53,7 @@ public class ConfirmationTokenService {
             PurchaseOrder order = token.getOrder();
             order.setStatus(PurchaseOrderStatus.FAILED);
 
-            purchaseOrderServiceHelper.saveIncomingStock(order);
+            poServiceHelper.saveIncomingStock(order);
             tokenRepository.delete(token);
             logger.info("Deleted {} Expired Confirmation Token", expiredTokens.size());
         }
@@ -65,14 +69,58 @@ public class ConfirmationTokenService {
         return confirmationToken;
     }
 
+    @Transactional(readOnly = true)
     public ConfirmationToken getConfirmationToken(String token) {
         return tokenRepository.findByToken(token).orElse(null);
     }
 
-    public void saveConfirmationToken(ConfirmationToken confirmationToken){
-        tokenRepository.save(confirmationToken);
-        logger.info("Token saved successfully: {}", confirmationToken.getToken());
+//    @Transactional
+//    public void saveConfirmationToken(ConfirmationToken confirmationToken){
+//        tokenRepository.save(confirmationToken);
+//        logger.info("Token saved successfully: {}", confirmationToken.getToken());
+//    }
+
+
+    @Transactional
+    public void updateConfirmationToken(ConfirmationToken token, ConfirmationTokenStatus status) {
+        token.setClickedAt(GlobalServiceHelper.now(clock));
+        token.setStatus(status);
+        logger.info("Token saved successfully: {}", token);
+        tokenRepository.save(token);
     }
+    
+
+    public Map<String, String> getConfirmationStatus(String token) {
+        ConfirmationToken confirmationToken = tokenRepository.findByToken(token).orElse(null);
+        if (confirmationToken == null) {
+            return buildStatusMap("Invalid token.", "alert-danger");
+        }
+        switch (confirmationToken.getStatus()) {
+            case CONFIRMED:
+                return buildStatusMap(
+                        "Order " + confirmationToken.getOrder().getPONumber() + " confirmed successfully.",
+                        "alert-success");
+            case CANCELLED:
+                return buildStatusMap(
+                        "Order " + confirmationToken.getOrder().getPONumber() + " cancelled successfully.",
+                        "alert-warning");
+            case PENDING:
+                if (confirmationToken.getExpiresAt().isBefore(LocalDateTime.now())) {
+                    return buildStatusMap("Token expired.", "alert-danger");
+                }
+                return buildStatusMap("Token pending confirmation.", "alert-info");
+            default:
+                return buildStatusMap("Unknown status.", "alert-danger");
+        }
+    }
+
+    private Map<String, String> buildStatusMap(String message, String alertClass) {
+        Map<String, String> data = new HashMap<>();
+        data.put("message", message);
+        data.put("alertClass", alertClass);
+        return data;
+    }
+
 
     private String generateConfirmationToken(){
         return UUID.randomUUID().toString();

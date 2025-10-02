@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.file.AccessDeniedException;
@@ -73,17 +74,15 @@ public class TotalItemsController {
     }
 
     @DeleteMapping("/{sku}")
+    @PreAuthorize("@securityUtils.hasAccess()")
     public ResponseEntity<?> deleteProduct(@PathVariable String sku) throws BadRequestException, AccessDeniedException {
-        if(SecurityUtils.hasAccess()) {
-            if(sku == null || sku.trim().isEmpty()){
-                throw new BadRequestException("IC: deleteProduct() SKU cannot be empty");
-            }
-            logger.info("IC: deleteProduct() calling...");
-
-            ApiResponse response = totalItemsService.deleteProduct(sku);
-            return ResponseEntity.ok(response);
+        if(sku == null || sku.trim().isEmpty()){
+            throw new BadRequestException("IC: deleteProduct() SKU cannot be empty");
         }
-        throw new AccessDeniedException("IC: deleteProduct() You cannot perform the following operation.");
+        logger.info("IC: deleteProduct() calling...");
+
+        ApiResponse response = totalItemsService.deleteProduct(sku);
+        return ResponseEntity.ok(response);
     }
 
     // Export to Excel

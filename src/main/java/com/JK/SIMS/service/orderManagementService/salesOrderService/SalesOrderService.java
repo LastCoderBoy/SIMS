@@ -13,6 +13,7 @@ import com.JK.SIMS.repository.outgoingStockRepo.SalesOrderRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.InventoryControlService;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
 import com.JK.SIMS.service.InventoryServices.soService.SalesOrderServiceHelper;
+import com.JK.SIMS.service.productManagementService.PMServiceHelper;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import com.JK.SIMS.service.productManagementService.ProductManagementService;
 import jakarta.validation.ConstraintViolationException;
@@ -44,17 +45,17 @@ public class SalesOrderService {
     private final GlobalServiceHelper globalServiceHelper;
     private final SalesOrderRepository salesOrderRepository;
     private final OrderItemRepository orderItemRepository;
-    private final ProductManagementService pmService;
+    private final PMServiceHelper pmServiceHelper;
     private final StockManagementLogic stockManagementLogic;
     private final SalesOrderServiceHelper salesOrderServiceHelper;
     @Autowired
     public SalesOrderService(GlobalServiceHelper globalServiceHelper, SalesOrderRepository salesOrderRepository,
-                             OrderItemRepository orderItemRepository, ProductManagementService pmService,
+                             OrderItemRepository orderItemRepository, PMServiceHelper pmServiceHelper,
                              StockManagementLogic stockManagementLogic, SalesOrderServiceHelper salesOrderServiceHelper) {
         this.globalServiceHelper = globalServiceHelper;
         this.salesOrderRepository = salesOrderRepository;
         this.orderItemRepository = orderItemRepository;
-        this.pmService = pmService;
+        this.pmServiceHelper = pmServiceHelper;
         this.stockManagementLogic = stockManagementLogic;
         this.salesOrderServiceHelper = salesOrderServiceHelper;
     }
@@ -70,7 +71,7 @@ public class SalesOrderService {
 
             // Process each item with stock reservation
             for (OrderItemDto itemDto : salesOrderRequestDto.getItems()) {
-                ProductsForPM product = pmService.findProductById(itemDto.getProductId());
+                ProductsForPM product = pmServiceHelper.findProductById(itemDto.getProductId());
 
                 // Validate Product Status
                 if (product.getStatus() != ProductStatus.ACTIVE && product.getStatus() != ProductStatus.ON_ORDER) {

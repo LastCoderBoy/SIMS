@@ -1,5 +1,6 @@
 package com.JK.SIMS.service.InventoryServices.poService;
 
+import com.JK.SIMS.config.security.SecurityUtils;
 import com.JK.SIMS.exceptionHandler.DatabaseException;
 import com.JK.SIMS.exceptionHandler.ResourceNotFoundException;
 import com.JK.SIMS.exceptionHandler.ServiceException;
@@ -7,9 +8,9 @@ import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
-import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderResponseDto;
+import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderResponseDto;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
-import com.JK.SIMS.models.IC_models.purchaseOrder.ReceiveStockRequestDto;
+import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.ReceiveStockRequestDto;
 import com.JK.SIMS.models.stockMovements.StockMovementReferenceType;
 import com.JK.SIMS.models.stockMovements.StockMovementType;
 import com.JK.SIMS.service.InventoryServices.poService.filterLogic.PurchaseOrderSpecification;
@@ -18,6 +19,7 @@ import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.PO_repo.PurchaseOrderRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
+import com.JK.SIMS.service.helperServices.PurchaseOrderServiceHelper;
 import com.JK.SIMS.service.productManagementService.PMServiceHelper;
 import com.JK.SIMS.service.InventoryServices.poService.searchLogic.PoStrategy;
 import com.JK.SIMS.service.stockMovementService.StockMovementService;
@@ -46,11 +48,12 @@ import java.util.Optional;
 public class PoServiceInIc {
     private static final String DEFAULT_SORT_BY = "product.name";
     private static final String DEFAULT_SORT_DIRECTION = "asc";
-
     private static final Logger logger = LoggerFactory.getLogger(PoServiceInIc.class);
     private final Clock clock;
+
     private final PurchaseOrderRepository purchaseOrderRepository;
 
+    private final SecurityUtils securityUtils;
     private final PurchaseOrderServiceHelper poServiceHelper;
     private final PoStrategy poStrategy;
     private final GlobalServiceHelper globalServiceHelper;
@@ -59,11 +62,12 @@ public class PoServiceInIc {
     private final StockMovementService stockMovementService; // Used to log the stock movement
     private final InventoryServiceHelper inventoryServiceHelper;
     @Autowired
-    public PoServiceInIc(Clock clock, PurchaseOrderRepository purchaseOrderRepository, PurchaseOrderServiceHelper poServiceHelper,
+    public PoServiceInIc(Clock clock, PurchaseOrderRepository purchaseOrderRepository, SecurityUtils securityUtils, PurchaseOrderServiceHelper poServiceHelper,
                          @Qualifier("icPoSearchStrategy") PoStrategy poStrategy, GlobalServiceHelper globalServiceHelper,
                          PMServiceHelper pmServiceHelper, StockManagementLogic stockManagementLogic, StockMovementService stockMovementService, InventoryServiceHelper inventoryServiceHelper) {
         this.clock = clock;
         this.purchaseOrderRepository = purchaseOrderRepository;
+        this.securityUtils = securityUtils;
         this.poServiceHelper = poServiceHelper;
         this.poStrategy = poStrategy;
         this.globalServiceHelper = globalServiceHelper;
@@ -99,9 +103,9 @@ public class PoServiceInIc {
 
     // STOCK IN button logic.
     @Transactional
-    public ApiResponse receivePurchaseOrder(Long orderId, @Valid ReceiveStockRequestDto receiveRequest, String jwtToken) throws BadRequestException {
+    public ApiResponse<Void> receivePurchaseOrder(Long orderId, @Valid ReceiveStockRequestDto receiveRequest, String jwtToken) throws BadRequestException {
         try {
-            String updatedPerson = globalServiceHelper.validateAndExtractUser(jwtToken);
+            String updatedPerson = securityUtils.validateAndExtractUsername(jwtToken);
             validateOrderId(orderId); // check against null, throws an exception
 
             PurchaseOrder order = poServiceHelper.getPurchaseOrderById(orderId);
@@ -119,7 +123,7 @@ public class PoServiceInIc {
                     StockMovementReferenceType.PURCHASE_ORDER, updatedPerson);
 
             logger.info("IS (receiveIncomingStock): Updated incoming stock order successfully. PO Number: {}", order.getPONumber());
-            return new ApiResponse(true, "Incoming stock order updated successfully.");
+            return new ApiResponse<>(true, "Incoming stock order updated successfully.");
 
         } catch (NumberFormatException e) {
             throw new ValidationException("IS (receiveIncomingStock): Invalid order ID format");
@@ -153,6 +157,16 @@ public class PoServiceInIc {
         updateOrderStatus(order);
     }
 
+    private void updateOrderStatus(PurchaseOrder order) {
+        if (order.getReceivedQuantity() >= order.getOrderedQuantity()) {
+            order.setStatus(PurchaseOrderStatus.RECEIVED);
+            pmServiceHelper.updateIncomingProductStatusInPm(order.getProduct());
+        } else if (order.getReceivedQuantity() > 0) {
+            order.setStatus(PurchaseOrderStatus.PARTIALLY_RECEIVED);
+        }
+        // If no quantity received, status remains unchanged
+    }
+
     private void updateInventoryLevels(PurchaseOrder order, int receivedQuantity) {
         if (receivedQuantity <= 0) {
             return; // No inventory update needed
@@ -179,21 +193,11 @@ public class PoServiceInIc {
         purchaseOrderRepository.save(order);
     }
 
-    private void updateOrderStatus(PurchaseOrder order) {
-        if (order.getReceivedQuantity() >= order.getOrderedQuantity()) {
-            order.setStatus(PurchaseOrderStatus.RECEIVED);
-            pmServiceHelper.updateIncomingProductStatusInPm(order.getProduct());
-        } else if (order.getReceivedQuantity() > 0) {
-            order.setStatus(PurchaseOrderStatus.PARTIALLY_RECEIVED);
-        }
-        // If no quantity received, status remains unchanged
-    }
-
     @Transactional
-    public ApiResponse cancelPurchaseOrderInternal(Long orderId, String jwtToken) throws BadRequestException {
+    public ApiResponse<Void> cancelPurchaseOrderInternal(Long orderId, String jwtToken) throws BadRequestException {
         try {
             validateOrderId(orderId); // check against null, throws an exception
-            String user = globalServiceHelper.validateAndExtractUser(jwtToken);
+            String user = securityUtils.validateAndExtractUsername(jwtToken);
 
             PurchaseOrder purchaseOrder = poServiceHelper.getPurchaseOrderById(orderId);
 
@@ -215,7 +219,7 @@ public class PoServiceInIc {
 
             purchaseOrderRepository.save(purchaseOrder);
             logger.info("PO (cancelPurchaseOrderInternal): SalesOrder cancelled successfully. PO Number: {}", purchaseOrder.getPONumber());
-            return new ApiResponse(true, "The order cancelled successfully.");
+            return new ApiResponse<>(true, "The order cancelled successfully.");
         } catch (DataAccessException e) {
             logger.error("PO (cancelPurchaseOrderInternal): Database error while cancelling order", e);
             throw new DatabaseException("PO (cancelPurchaseOrderInternal): Failed to cancel order due to database error");

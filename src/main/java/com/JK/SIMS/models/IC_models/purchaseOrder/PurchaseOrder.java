@@ -39,7 +39,7 @@ public class PurchaseOrder {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private PurchaseOrderStatus status; // DELIVERY_IN_PROCESS, RECEIVED, PARTIALLY_RECEIVED, CANCELLED, FAILED
+    private PurchaseOrderStatus status; // AWAITING_APPROVAL, DELIVERY_IN_PROCESS, RECEIVED, PARTIALLY_RECEIVED, CANCELLED, FAILED
 
     @Column(nullable = false, name = "order_date")
     private LocalDate orderDate;

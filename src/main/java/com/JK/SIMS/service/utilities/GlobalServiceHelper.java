@@ -31,14 +31,6 @@ public class GlobalServiceHelper {
         return LocalDateTime.now(clock).truncatedTo(ChronoUnit.SECONDS);
     }
 
-    public String validateAndExtractUser(String jwtToken) throws BadRequestException {
-        String username = jwtService.extractUsername(jwtToken);
-        if (username == null || username.isEmpty()) {
-            throw new BadRequestException("Invalid JWT token: Cannot determine user.");
-        }
-        return username;
-    }
-
     public void validatePaginationParameters(int page, int size) {
         if (page < 0) {
             throw new IllegalArgumentException("Page number cannot be negative");

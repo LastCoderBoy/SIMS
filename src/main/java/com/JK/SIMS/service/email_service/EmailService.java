@@ -1,7 +1,7 @@
 package com.JK.SIMS.service.email_service;
 
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
-import com.JK.SIMS.models.IC_models.purchaseOrder.token.ConfirmationToken;
+import com.JK.SIMS.models.IC_models.purchaseOrder.confirmationToken.ConfirmationToken;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
@@ -60,7 +60,10 @@ public class EmailService {
             helper.setFrom(sender, "SIMS Inventory System");
             helper.setTo(supplierEmail);
             helper.setSubject("Purchase Order Request: " + order.getPONumber() + " - " + order.getProduct().getName());
-            helper.setText(buildOrderRequestHtml(order, confirmationToken), true); // `true` indicates HTML content
+            helper.setText(
+                    buildOrderRequestHtml(order, confirmationToken),
+                    true
+            );
 
             mailSender.send(message);
             logger.info("Purchase order request email sent successfully to {} for PO Number: {}", supplierEmail, order.getPONumber());
@@ -70,11 +73,7 @@ public class EmailService {
         }
     }
 
-    /**
-     * Builds the HTML content for the purchase order request email.
-     * @param order The PurchaseOrder entity containing order details.
-     * @return HTML string for the email body.
-     */
+
     private String buildOrderRequestHtml(PurchaseOrder order, ConfirmationToken confirmationToken) {
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
@@ -83,17 +82,16 @@ public class EmailService {
         String poNumber = order.getPONumber();
         Integer orderedQuantity = order.getOrderedQuantity();
         LocalDate orderDate = order.getOrderDate();
-        LocalDate expectedArrivalDate = order.getExpectedArrivalDate();
         String notes = order.getNotes() != null && !order.getNotes().isEmpty() ? order.getNotes() : "N/A";
         String supplierName = order.getSupplier() != null ? order.getSupplier().getName() : "Unknown Supplier";
         String token = confirmationToken.getToken();
 
-        String confirmUrl = String.format("%s/api/v1/SIMS/confirm?token=%s",
+        String confirmUrl = String.format("%s/HTML/email/confirmationForm.html?token=%s",
                 backendBaseUrl, token);
         String cancelUrl = String.format("%s/api/v1/SIMS/cancel?token=%s",
                 backendBaseUrl, token);
 
-        // TODO: create a separate HTML page and return it
+        // TODO: create a separate HTML page and return it (later)
 
         return "<html>"
                 + "<head>"
@@ -123,7 +121,6 @@ public class EmailService {
                 + "<table class='detail-table'>"
                 + "<tr><th>PO Number:</th><td>" + poNumber + "</td></tr>"
                 + "<tr><th>Purchase Order Date:</th><td>" + orderDate.format(dateFormatter) + "</td></tr>"
-                + "<tr><th>Expected Arrival:</th><td>" + expectedArrivalDate.format(dateFormatter) + "</td></tr>"
                 + "<tr><th>Product Name:</th><td>" + productName + "</td></tr>"
                 + "<tr><th>Product Category:</th><td>" + productCategory + "</td></tr>"
                 + "<tr><th>Ordered Quantity:</th><td>" + orderedQuantity + "</td></tr>"

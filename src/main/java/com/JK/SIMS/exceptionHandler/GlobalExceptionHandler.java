@@ -3,9 +3,7 @@ package com.JK.SIMS.exceptionHandler;
 import com.JK.SIMS.models.ApiResponse;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
-import jakarta.persistence.EntityNotFoundException;
 import org.apache.coyote.BadRequestException;
-import org.hibernate.service.NullServiceException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -16,6 +14,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.nio.file.AccessDeniedException;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -32,16 +31,28 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(InventoryException.class)
-    public ResponseEntity<String> handleInventoryException(InventoryException ex) {
+    public ResponseEntity<ErrorObject> handleInventoryException(InventoryException ex) {
         logger.warn("{}Inventory operation failed: {}", LOG_PREFIX, ex.getMessage());
-        return new ResponseEntity<>(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        ErrorObject errorObject = new ErrorObject(
+                HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                ex.getMessage(),
+                new Date()
+        );
+
+        return new ResponseEntity<>(errorObject, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @ExceptionHandler(JwtAuthenticationException.class)
-    public ResponseEntity<?> handleJwtAuthenticationException(JwtAuthenticationException ex) {
+    public ResponseEntity<ErrorObject> handleJwtAuthenticationException(JwtAuthenticationException ex) {
         logger.warn("JWT Authentication error: {}", ex.getMessage());
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(new ApiResponse(false, "Failed to perform the requested operation"));
+
+        ErrorObject errorObject = new ErrorObject(
+                HttpStatus.UNAUTHORIZED.value(),
+                ex.getMessage(),
+                new Date()
+        );
+
+        return new ResponseEntity<>(errorObject, HttpStatus.UNAUTHORIZED);
     }
 
     @ExceptionHandler(ExpiredJwtException.class)
@@ -68,42 +79,58 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ValidationException.class)
     public ResponseEntity<?> handleValidationException(ValidationException ex) {
         logger.warn("{}Validation error: {}", LOG_PREFIX, ex.getMessage());
-        Map<String, Object> response = new HashMap<>();
-        response.put("success", false);
-        response.put("message", "Validation failed");
-        response.put("errors", ex.getErrors());
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(response);
-
+        ErrorObject errorObject = new ErrorObject(
+                HttpStatus.BAD_REQUEST.value(),
+                ex.getMessage(),
+                new Date()
+        );
+        return new ResponseEntity<>(errorObject, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(DatabaseException.class)
     public ResponseEntity<?> handleDatabaseException(DatabaseException ex) {
         logger.error("Database error: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ApiResponse(false, "Database error occurred"));
+                .body(new ApiResponse<>(false, "Database error occurred"));
     }
 
     @ExceptionHandler(ServiceException.class)
-    public ResponseEntity<?> handleServiceException(ServiceException ex) {
+    public ResponseEntity<ErrorObject> handleServiceException(ServiceException ex) {
         logger.error("Service error: {}", ex.getMessage());
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ApiResponse(false, "An unexpected error occurred"));
+
+        ErrorObject errorObject = new ErrorObject(
+                HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                ex.getMessage(),
+                new Date()
+        );
+
+        return new ResponseEntity<>(errorObject, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @ExceptionHandler(AuthenticationFailedException.class)
     public ResponseEntity<?> handleAuthenticationFailedException(AuthenticationFailedException ex) {
         logger.warn("Authentication failed: {}", ex.getMessage());
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(new ApiResponse(false, "Invalid Credentials!"));
+
+        ErrorObject errorObject = new ErrorObject(
+                HttpStatus.UNAUTHORIZED.value(),
+                ex.getMessage(),
+                new Date()
+        );
+
+        return new ResponseEntity<>(errorObject, HttpStatus.UNAUTHORIZED);
     }
 
     @ExceptionHandler(InvalidTokenException.class)
     public ResponseEntity<?> handleInvalidTokenException(InvalidTokenException ex) {
         logger.warn("Invalid token: {}", ex.getMessage());
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ApiResponse(false, "Failed to perform the requested operation."));
+
+        ErrorObject errorObject = new ErrorObject(
+                HttpStatus.BAD_REQUEST.value(),
+                ex.getMessage(),
+                new Date()
+        );
+
+        return new ResponseEntity<>(errorObject, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(PasswordValidationException.class)
@@ -114,10 +141,16 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<?> handleResourceNotFoundException(ResourceNotFoundException ex) {
+    public ResponseEntity<ErrorObject> handleResourceNotFoundException(ResourceNotFoundException ex) {
         logger.warn("Resource not found: {}", ex.getMessage());
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(new ApiResponse(false, ex.getMessage()));
+
+        ErrorObject errorObject = new ErrorObject(
+                HttpStatus.NOT_FOUND.value(),
+                ex.getMessage(),
+                new Date()
+        );
+
+        return new ResponseEntity<>(errorObject, HttpStatus.NOT_FOUND);
     }
 
     @ExceptionHandler(BadRequestException.class)
@@ -148,9 +181,15 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(InsufficientStockException.class)
-    public ResponseEntity<ApiResponse> handleInsufficientStockException(InsufficientStockException ex) {
+    public ResponseEntity<ErrorObject> handleInsufficientStockException(InsufficientStockException ex) {
         logger.warn("Insufficient stock exception: {}", ex.getMessage());
-        ApiResponse response = new ApiResponse(false, ex.getMessage());
-        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+
+        ErrorObject errorObject = new ErrorObject(
+                HttpStatus.BAD_REQUEST.value(),
+                ex.getMessage(),
+                new Date()
+        );
+
+        return new ResponseEntity<>(errorObject, HttpStatus.BAD_REQUEST);
     }
 }
