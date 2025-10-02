@@ -3,7 +3,7 @@ package com.JK.SIMS.service.helperServices;
 import com.JK.SIMS.exceptionHandler.ResourceNotFoundException;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderResponseDto;
-import com.JK.SIMS.models.IC_models.purchaseOrder.views.PurchaseOrderViews;
+import com.JK.SIMS.models.IC_models.purchaseOrder.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.PO_repo.PurchaseOrderRepository;
 import lombok.AllArgsConstructor;
@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 
 @Component
@@ -40,10 +41,24 @@ public class PurchaseOrderServiceHelper {
         return new PurchaseOrderResponseDto(order);
     }
 
+    public SummaryPurchaseOrderView convertToSummaryView(PurchaseOrder order){
+        return new SummaryPurchaseOrderView(order);
+    }
+
+    public PaginatedResponse<SummaryPurchaseOrderView> transformToPaginatedSummaryView(Page<PurchaseOrder> poEntityPage){
+        Page<SummaryPurchaseOrderView> paginatedResponse = poEntityPage.map(this::convertToSummaryView);
+        return new PaginatedResponse<>(paginatedResponse);
+    }
+
     @Transactional(readOnly = true)
     public PurchaseOrder getPurchaseOrderById(Long orderId) {
         return purchaseOrderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("PoHelper (getPurchaseOrderById): No incoming stock order found for ID: " + orderId));
+    }
+
+
+    public static BigDecimal calculateTotalPrice(PurchaseOrder purchaseOrder){
+        return purchaseOrder.getProduct().getPrice().multiply(new BigDecimal(purchaseOrder.getOrderedQuantity()));
     }
 
 

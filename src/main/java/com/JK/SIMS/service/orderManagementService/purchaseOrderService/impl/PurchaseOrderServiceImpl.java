@@ -13,6 +13,7 @@ import com.JK.SIMS.models.IC_models.purchaseOrder.confirmationToken.Confirmation
 import com.JK.SIMS.models.IC_models.purchaseOrder.confirmationToken.ConfirmationTokenStatus;
 import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderRequestDto;
 import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderResponseDto;
+import com.JK.SIMS.models.IC_models.purchaseOrder.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
@@ -112,7 +113,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public PaginatedResponse<PurchaseOrderResponseDto> getAllPurchaseOrders(int page, int size, String sortBy, String sortDirection) {
+    public PaginatedResponse<SummaryPurchaseOrderView> getAllPurchaseOrders(int page, int size, String sortBy, String sortDirection) {
         try {
             Sort sort = sortDirection.equalsIgnoreCase("desc")
                     ? Sort.by(sortBy).descending()
@@ -121,7 +122,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             // Retrieve the data and return the paginated response
             Page<PurchaseOrder> entityResponse = purchaseOrderRepository.findAll(pageable);
             logger.info("OM-PO (getAllPurchaseOrders): Returning {} paginated data", entityResponse.getContent().size());
-            return poServiceHelper.transformToPaginatedDtoResponse(entityResponse);
+            return poServiceHelper.transformToPaginatedSummaryView(entityResponse);
         } catch (DataAccessException da) {
             logger.error("OM-PO (getAllPurchaseOrders): Database error occurred: {}", da.getMessage(), da);
             throw new DatabaseException("OM-PO (getAllPurchaseOrders): Database error", da);
