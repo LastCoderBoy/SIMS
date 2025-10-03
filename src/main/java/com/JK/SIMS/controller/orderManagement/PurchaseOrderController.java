@@ -6,6 +6,7 @@ import com.JK.SIMS.exceptionHandler.InvalidTokenException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderRequestDto;
 import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderResponseDto;
+import com.JK.SIMS.models.IC_models.purchaseOrder.views.DetailsPurchaseOrderView;
 import com.JK.SIMS.models.IC_models.purchaseOrder.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryServices.poService.PoServiceInIc;
@@ -38,24 +39,19 @@ public class PurchaseOrderController {
     public ResponseEntity<?> getAllSummaryPurchaseOrders(@RequestParam(defaultValue = "0") int page,
                                                   @RequestParam(defaultValue = "10") int size,
                                                   @RequestParam(defaultValue = "asc") String sortDirection,
-                                                  @RequestParam(defaultValue = "orderDate") String sortBy){
+                                                  @RequestParam(defaultValue = "product.name") String sortBy){
         logger.info("OM-PO: getAllPurchaseOrders() calling...");
         PaginatedResponse<SummaryPurchaseOrderView> pageResponse =
                 purchaseOrderService.getAllPurchaseOrders(page, size, sortBy, sortDirection);
         return ResponseEntity.ok(pageResponse);
     }
 
-//    @GetMapping("/details")
-//    @JsonView(PurchaseOrderViews.Details.class) // Default View
-//    public ResponseEntity<?> getDetailsForOrder(@RequestParam(defaultValue = "0") int page,
-//                                                  @RequestParam(defaultValue = "10") int size,
-//                                                  @RequestParam(defaultValue = "asc") String sortDirection,
-//                                                  @RequestParam(defaultValue = "orderDate") String sortBy){
-//        logger.info("OM-PO: getDetailsForOrder() calling...");
-//        PaginatedResponse<PurchaseOrderResponseDto> pageResponse =
-//                purchaseOrderService.getAllPurchaseOrders(page, size, sortBy, sortDirection);
-//        return ResponseEntity.ok(pageResponse);
-//    }
+    @GetMapping("/{orderId}")
+    public ResponseEntity<?> getDetailsForOrderId(@PathVariable Long orderId){
+        logger.info("OM-PO: getDetailsForOrderId() calling for ID: {}", orderId);
+        DetailsPurchaseOrderView detailsForPurchaseOrder = purchaseOrderService.getDetailsForOrderId(orderId);
+        return ResponseEntity.ok(detailsForPurchaseOrder);
+    }
 
     @PostMapping("/create")
     @PreAuthorize("@securityUtils.hasAccess()")

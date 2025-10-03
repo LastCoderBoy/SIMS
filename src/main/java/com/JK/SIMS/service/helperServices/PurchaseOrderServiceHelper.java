@@ -53,7 +53,7 @@ public class PurchaseOrderServiceHelper {
     @Transactional(readOnly = true)
     public PurchaseOrder getPurchaseOrderById(Long orderId) {
         return purchaseOrderRepository.findById(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException("PoHelper (getPurchaseOrderById): No incoming stock order found for ID: " + orderId));
+                .orElseThrow(() -> new ResourceNotFoundException("PurchaseOrderServiceHelper (getPurchaseOrderById): No incoming stock order found for ID: " + orderId));
     }
 
 

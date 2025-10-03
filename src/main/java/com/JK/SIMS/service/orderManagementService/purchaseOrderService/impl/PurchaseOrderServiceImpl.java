@@ -12,7 +12,7 @@ import com.JK.SIMS.models.IC_models.purchaseOrder.*;
 import com.JK.SIMS.models.IC_models.purchaseOrder.confirmationToken.ConfirmationToken;
 import com.JK.SIMS.models.IC_models.purchaseOrder.confirmationToken.ConfirmationTokenStatus;
 import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderRequestDto;
-import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderResponseDto;
+import com.JK.SIMS.models.IC_models.purchaseOrder.views.DetailsPurchaseOrderView;
 import com.JK.SIMS.models.IC_models.purchaseOrder.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
@@ -71,11 +71,11 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     private final InventoryControlService inventoryControlService;
     private final InventoryServiceHelper inventoryServiceHelper;
     private final ConfirmationTokenService confirmationTokenService;
-    private final PurchaseOrderServiceHelper poServiceHelper;
+    private final PurchaseOrderServiceHelper purchaseOrderServiceHelper;
     @Autowired
     public PurchaseOrderServiceImpl(Clock clock, PurchaseOrderRepository purchaseOrderRepository, SecurityUtils securityUtils, GlobalServiceHelper globalServiceHelper,
                                     SupplierService supplierService, EmailService emailService, PMServiceHelper pmServiceHelper,
-                                    InventoryControlService inventoryControlService, InventoryServiceHelper inventoryServiceHelper, ConfirmationTokenService confirmationTokenService, PurchaseOrderServiceHelper poServiceHelper) {
+                                    InventoryControlService inventoryControlService, InventoryServiceHelper inventoryServiceHelper, ConfirmationTokenService confirmationTokenService, PurchaseOrderServiceHelper purchaseOrderServiceHelper) {
         this.clock = clock;
         this.purchaseOrderRepository = purchaseOrderRepository;
         this.securityUtils = securityUtils;
@@ -86,7 +86,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         this.inventoryControlService = inventoryControlService;
         this.inventoryServiceHelper = inventoryServiceHelper;
         this.confirmationTokenService = confirmationTokenService;
-        this.poServiceHelper = poServiceHelper;
+        this.purchaseOrderServiceHelper = purchaseOrderServiceHelper;
     }
 
     @Override
@@ -100,14 +100,17 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             logger.info("IS (createPurchaseOrder): Product ordered successfully. PO Number: {}", order.getPONumber());
             return new ApiResponse<>(true, "Order created successfully. PO Number: " + order.getPONumber(), stockRequest);
         } catch (DataIntegrityViolationException de) {
-            throw new DatabaseException("IS (createPurchaseOrder): Failed to create incoming stock due to PO Number collision. Please try again.");
+            logger.error("OM-PO (createPurchaseOrder): Failed to create incoming stock due to PO Number collision. Please try again. : {}", de.getMessage(), de);
+            throw new DatabaseException("Failed to create incoming stock due to PO Number collision. Please try again.");
         } catch (ConstraintViolationException ve) {
-            throw new ValidationException("IS (createPurchaseOrder): Invalid purchase order request: " + ve.getMessage());
+            logger.error("OM-PO (createPurchaseOrder): Invalid purchase order request: {}", ve.getMessage());
+            throw new ValidationException("Invalid purchase order request: " + ve.getMessage());
         } catch (Exception e) {
             if (e instanceof ResourceNotFoundException || e instanceof ValidationException || e instanceof BadRequestException) {
                 throw e;
             }
-            throw new ServiceException("IS (createPurchaseOrder): Failed to create purchase order: " + e.getMessage());
+            logger.error("OM-PO (createPurchaseOrder): Unexpected error while creating purchase order", e);
+            throw new ServiceException("Failed to create purchase order: " + e.getMessage());
         }
     }
 
@@ -122,13 +125,35 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             // Retrieve the data and return the paginated response
             Page<PurchaseOrder> entityResponse = purchaseOrderRepository.findAll(pageable);
             logger.info("OM-PO (getAllPurchaseOrders): Returning {} paginated data", entityResponse.getContent().size());
-            return poServiceHelper.transformToPaginatedSummaryView(entityResponse);
+            return purchaseOrderServiceHelper.transformToPaginatedSummaryView(entityResponse);
         } catch (DataAccessException da) {
             logger.error("OM-PO (getAllPurchaseOrders): Database error occurred: {}", da.getMessage(), da);
-            throw new DatabaseException("OM-PO (getAllPurchaseOrders): Database error", da);
+            throw new DatabaseException("Database error", da);
         } catch (PropertyReferenceException e) {
             logger.error("OM-PO (getAllPurchaseOrders): Invalid sort field provided: {}", e.getMessage(), e);
-            throw new ValidationException("OM-PO (getAllPurchaseOrders): Invalid sort field provided: " + e.getMessage());
+            throw new ValidationException("Invalid sort field provided: " + e.getMessage());
+        } catch (Exception e) {
+            logger.error("OM-PO (getAllPurchaseOrders): Unexpected error occurred: {}", e.getMessage(), e);
+            throw new ServiceException("Internal Service Error occurred:", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DetailsPurchaseOrderView getDetailsForOrderId(Long orderId) throws ResourceNotFoundException {
+        try {
+            PurchaseOrder purchaseOrder = purchaseOrderServiceHelper.getPurchaseOrderById(orderId);
+            logger.info("OM-PO (getDetailsForOrderId): Returning details for PO ID: {}", orderId);
+            return new DetailsPurchaseOrderView(purchaseOrder);
+        } catch (DataAccessException da) {
+            logger.error("OM-PO (getDetailsForOrderId): Database error occurred: {}", da.getMessage(), da);
+            throw new DatabaseException("Database error", da);
+        } catch (ResourceNotFoundException e) {
+            logger.error("OM-PO (getDetailsForOrderId): Order ID {} not found: {}", orderId, e.getMessage(), e);
+            throw new ResourceNotFoundException("Order ID " + orderId + " not found", e);
+        } catch (Exception e) {
+            logger.error("OM-PO (getDetailsForOrderId): Unexpected error occurred: {}", e.getMessage(), e);
+            throw new ServiceException("Internal Service Error occurred:", e);
         }
     }
 
@@ -137,7 +162,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
 //        try {
 //            Pageable pageable = PageRequest.of(page, size, Sort.by("product.name"));
 //            Page<PurchaseOrder> entityResponse = purchaseOrderRepository.findAll(pageable);
-//            PaginatedResponse<PurchaseOrderResponseDto> dtoResponse = poServiceHelper.transformToPaginatedDtoResponse(entityResponse);
+//            PaginatedResponse<PurchaseOrderResponseDto> dtoResponse = purchaseOrderServiceHelper.transformToPaginatedDtoResponse(entityResponse);
 //            logger.info("IS (getAllIncomingStock): Returning {} paginated data", dtoResponse.getContent().size());
 //            return dtoResponse;
 //        }catch (DataAccessException da){
