@@ -142,6 +142,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     @Transactional(readOnly = true)
     public DetailsPurchaseOrderView getDetailsForOrderId(Long orderId) throws ResourceNotFoundException {
         try {
+            purchaseOrderServiceHelper.validateOrderId(orderId);
             PurchaseOrder purchaseOrder = purchaseOrderServiceHelper.getPurchaseOrderById(orderId);
             logger.info("OM-PO (getDetailsForOrderId): Returning details for PO ID: {}", orderId);
             return new DetailsPurchaseOrderView(purchaseOrder);
@@ -151,26 +152,14 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         } catch (ResourceNotFoundException e) {
             logger.error("OM-PO (getDetailsForOrderId): Order ID {} not found: {}", orderId, e.getMessage(), e);
             throw new ResourceNotFoundException("Order ID " + orderId + " not found", e);
+        } catch (IllegalArgumentException e) {
+            logger.error("OM-PO (getDetailsForOrderId): Invalid order ID provided: {}", e.getMessage(), e);
+            throw new ValidationException("Invalid order ID provided: " + e.getMessage());
         } catch (Exception e) {
             logger.error("OM-PO (getDetailsForOrderId): Unexpected error occurred: {}", e.getMessage(), e);
             throw new ServiceException("Internal Service Error occurred:", e);
         }
     }
-
-//    @Transactional(readOnly = true)
-//    public PaginatedResponse<PurchaseOrderResponseDto> getAllIncomingStockRecords(int page, int size) {
-//        try {
-//            Pageable pageable = PageRequest.of(page, size, Sort.by("product.name"));
-//            Page<PurchaseOrder> entityResponse = purchaseOrderRepository.findAll(pageable);
-//            PaginatedResponse<PurchaseOrderResponseDto> dtoResponse = purchaseOrderServiceHelper.transformToPaginatedDtoResponse(entityResponse);
-//            logger.info("IS (getAllIncomingStock): Returning {} paginated data", dtoResponse.getContent().size());
-//            return dtoResponse;
-//        }catch (DataAccessException da){
-//            throw new DatabaseException("IS (getAllIncomingStock): Database error", da);
-//        }catch (Exception e){
-//            throw new ServiceException("IS (getAllIncomingStock): Service error occurred", e);
-//        }
-//    }
 
     // Method for the Email Confirmation
     @Transactional

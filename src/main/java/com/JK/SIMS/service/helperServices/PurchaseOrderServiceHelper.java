@@ -56,6 +56,11 @@ public class PurchaseOrderServiceHelper {
                 .orElseThrow(() -> new ResourceNotFoundException("PurchaseOrderServiceHelper (getPurchaseOrderById): No incoming stock order found for ID: " + orderId));
     }
 
+    public void validateOrderId(Long orderId) {
+        if (orderId == null) {
+            throw new IllegalArgumentException("PO (validateOrderId): PurchaseOrder ID cannot be null");
+        }
+    }
 
     public static BigDecimal calculateTotalPrice(PurchaseOrder purchaseOrder){
         return purchaseOrder.getProduct().getPrice().multiply(new BigDecimal(purchaseOrder.getOrderedQuantity()));

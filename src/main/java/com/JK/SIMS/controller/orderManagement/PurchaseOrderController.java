@@ -5,7 +5,6 @@ import com.JK.SIMS.config.security.TokenUtils;
 import com.JK.SIMS.exceptionHandler.InvalidTokenException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderRequestDto;
-import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderResponseDto;
 import com.JK.SIMS.models.IC_models.purchaseOrder.views.DetailsPurchaseOrderView;
 import com.JK.SIMS.models.IC_models.purchaseOrder.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.models.PaginatedResponse;
@@ -72,9 +71,11 @@ public class PurchaseOrderController {
     public ResponseEntity<?> cancelIncomingStockInternal(@PathVariable Long orderId, @RequestHeader("Authorization") String token) throws BadRequestException, AccessDeniedException {
         if(token != null && !token.trim().isEmpty()) {
             String jwtToken = TokenUtils.extractToken(token);
-            ApiResponse response = poServiceInIc.cancelPurchaseOrderInternal(orderId, jwtToken);
+            ApiResponse<Void> response = poServiceInIc.cancelPurchaseOrderInternal(orderId, jwtToken);
+            logger.info("OM-PO: cancelIncomingStockInternal() called for ID: {} is cancelled successfully.", orderId);
             return ResponseEntity.ok(response);
         }
-        throw new InvalidTokenException("OM-PO: cancelIncomingStockInternal() Invalid Token provided.");
+        logger.error("OM-PO: cancelIncomingStockInternal() Invalid Token provided. {}", token);
+        throw new InvalidTokenException("Invalid Token provided. Please re-login.");
     }
 }

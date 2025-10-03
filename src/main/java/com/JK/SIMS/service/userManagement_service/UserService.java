@@ -63,7 +63,8 @@ public class UserService {
             throw new BadCredentialsException("Invalid credentials");
         }
         catch (BadCredentialsException e) {
-            throw new AuthenticationFailedException("UM (verify): Invalid credentials ", e);
+            logger.warn("UM (verify): Invalid credentials for user: {}", loginRequest.getLogin());
+            throw new AuthenticationFailedException("Invalid credentials ", e);
         }
         catch (Exception e) {
             logger.error("Unexpected authentication error for user: {}. Reason: {}", loginRequest.getLogin(), e.getMessage(), e);

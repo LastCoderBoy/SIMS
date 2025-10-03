@@ -106,7 +106,7 @@ public class PoServiceInIc {
     public ApiResponse<Void> receivePurchaseOrder(Long orderId, @Valid ReceiveStockRequestDto receiveRequest, String jwtToken) throws BadRequestException {
         try {
             String updatedPerson = securityUtils.validateAndExtractUsername(jwtToken);
-            validateOrderId(orderId); // check against null, throws an exception
+            poServiceHelper.validateOrderId(orderId); // check against null, throws an exception
 
             PurchaseOrder order = poServiceHelper.getPurchaseOrderById(orderId);
 
@@ -196,7 +196,7 @@ public class PoServiceInIc {
     @Transactional
     public ApiResponse<Void> cancelPurchaseOrderInternal(Long orderId, String jwtToken) throws BadRequestException {
         try {
-            validateOrderId(orderId); // check against null, throws an exception
+            poServiceHelper.validateOrderId(orderId); // check against null, throws an exception
             String user = securityUtils.validateAndExtractUsername(jwtToken);
 
             PurchaseOrder purchaseOrder = poServiceHelper.getPurchaseOrderById(orderId);
@@ -222,13 +222,13 @@ public class PoServiceInIc {
             return new ApiResponse<>(true, "The order cancelled successfully.");
         } catch (DataAccessException e) {
             logger.error("PO (cancelPurchaseOrderInternal): Database error while cancelling order", e);
-            throw new DatabaseException("PO (cancelPurchaseOrderInternal): Failed to cancel order due to database error");
+            throw new DatabaseException("Failed to cancel order due to database error:" + e.getMessage());
         } catch (Exception e) {
             if (e instanceof ResourceNotFoundException || e instanceof ValidationException || e instanceof BadRequestException) {
                 throw e;
             }
             logger.error("PO (cancelPurchaseOrderInternal): Unexpected error while cancelling order", e);
-            throw new ServiceException("PO (cancelPurchaseOrderInternal): Failed to cancel order: " + e.getMessage());
+            throw new ServiceException("Failed to cancel order: " + e.getMessage());
         }
     }
 
@@ -277,12 +277,6 @@ public class PoServiceInIc {
         } catch (Exception e) {
             logger.error("PO (filterIncomingPurchaseOrders): Error filtering orders - {}", e.getMessage());
             throw new ServiceException("Failed to filter orders", e);
-        }
-    }
-
-    private void validateOrderId(Long orderId) {
-        if (orderId == null) {
-            throw new IllegalArgumentException("IS (validateOrderId): SalesOrder ID cannot be null");
         }
     }
 
