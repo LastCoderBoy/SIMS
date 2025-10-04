@@ -1,10 +1,9 @@
-package com.JK.SIMS.service.InventoryServices.poService.searchLogic;
+package com.JK.SIMS.service.purchaseOrderSearchLogic;
 
 import com.JK.SIMS.exceptionHandler.DatabaseException;
 import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
-import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderResponseDto;
 import com.JK.SIMS.models.IC_models.purchaseOrder.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.PO_repo.PurchaseOrderRepository;
@@ -21,7 +20,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
-public class OmPoSearchStrategy implements PoStrategy {
+public class OmPoSearchStrategy implements PoSearchStrategy {
     private static final Logger logger = LoggerFactory.getLogger(OmPoSearchStrategy.class);
 
     private final PurchaseOrderRepository purchaseOrderRepository;

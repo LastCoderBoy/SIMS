@@ -1,9 +1,8 @@
-package com.JK.SIMS.service.InventoryServices.poService.searchLogic;
+package com.JK.SIMS.service.purchaseOrderSearchLogic;
 
-import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderResponseDto;
 import com.JK.SIMS.models.IC_models.purchaseOrder.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.models.PaginatedResponse;
 
-public interface PoStrategy {
+public interface PoSearchStrategy {
     PaginatedResponse<SummaryPurchaseOrderView> searchInPos(String text, int page, int size, String sortBy, String sortDirection);
 }

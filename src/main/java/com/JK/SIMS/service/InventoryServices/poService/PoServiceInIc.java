@@ -14,7 +14,7 @@ import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.ReceiveStockRequestDto;
 import com.JK.SIMS.models.IC_models.purchaseOrder.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.models.stockMovements.StockMovementReferenceType;
 import com.JK.SIMS.models.stockMovements.StockMovementType;
-import com.JK.SIMS.service.InventoryServices.poService.filterLogic.PurchaseOrderSpecification;
+import com.JK.SIMS.service.purchaseOrderFilterLogic.PoFilterStrategy;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.PO_repo.PurchaseOrderRepository;
@@ -22,7 +22,7 @@ import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagemen
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
 import com.JK.SIMS.service.helperServices.PurchaseOrderServiceHelper;
 import com.JK.SIMS.service.productManagementService.PMServiceHelper;
-import com.JK.SIMS.service.InventoryServices.poService.searchLogic.PoStrategy;
+import com.JK.SIMS.service.purchaseOrderSearchLogic.PoSearchStrategy;
 import com.JK.SIMS.service.stockMovementService.StockMovementService;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import jakarta.validation.Valid;
@@ -36,7 +36,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,7 +55,8 @@ public class PoServiceInIc {
 
     private final SecurityUtils securityUtils;
     private final PurchaseOrderServiceHelper poServiceHelper;
-    private final PoStrategy poStrategy;
+    private final PoSearchStrategy poSearchStrategy;
+    private final PoFilterStrategy poFilterStrategy;
     private final GlobalServiceHelper globalServiceHelper;
     private final PMServiceHelper pmServiceHelper;
     private final StockManagementLogic stockManagementLogic;
@@ -64,13 +64,15 @@ public class PoServiceInIc {
     private final InventoryServiceHelper inventoryServiceHelper;
     @Autowired
     public PoServiceInIc(Clock clock, PurchaseOrderRepository purchaseOrderRepository, SecurityUtils securityUtils, PurchaseOrderServiceHelper poServiceHelper,
-                         @Qualifier("icPoSearchStrategy") PoStrategy poStrategy, GlobalServiceHelper globalServiceHelper,
-                         PMServiceHelper pmServiceHelper, StockManagementLogic stockManagementLogic, StockMovementService stockMovementService, InventoryServiceHelper inventoryServiceHelper) {
+                         @Qualifier("icPoSearchStrategy") PoSearchStrategy poSearchStrategy, GlobalServiceHelper globalServiceHelper,
+                         @Qualifier("pendingPoFilterStrategy") PoFilterStrategy poFilterStrategy, PMServiceHelper pmServiceHelper,
+                         StockManagementLogic stockManagementLogic, StockMovementService stockMovementService, InventoryServiceHelper inventoryServiceHelper) {
         this.clock = clock;
         this.purchaseOrderRepository = purchaseOrderRepository;
         this.securityUtils = securityUtils;
         this.poServiceHelper = poServiceHelper;
-        this.poStrategy = poStrategy;
+        this.poSearchStrategy = poSearchStrategy;
+        this.poFilterStrategy = poFilterStrategy;
         this.globalServiceHelper = globalServiceHelper;
         this.pmServiceHelper = pmServiceHelper;
         this.stockManagementLogic = stockManagementLogic;
@@ -246,7 +248,7 @@ public class PoServiceInIc {
                 logger.warn("PO (searchInIncomingPurchaseOrders): Search text is null or empty, returning all incoming orders.");
                 return getAllPendingPurchaseOrders(page, size, DEFAULT_SORT_BY, DEFAULT_SORT_DIRECTION);
             }
-            return poStrategy.searchInPos(text, page, size, sortBy, sortDirection);
+            return poSearchStrategy.searchInPos(text, page, size, sortBy, sortDirection);
         } catch (Exception e) {
             logger.error("PO (searchInIncomingPurchaseOrders): Error searching orders - {}", e.getMessage());
             throw new ServiceException("Failed to search orders", e);
@@ -261,20 +263,11 @@ public class PoServiceInIc {
             Sort.Direction direction = sortDirection.equalsIgnoreCase("desc") ?
                     Sort.Direction.DESC : Sort.Direction.ASC;
 
-            // Create sort
+            // Create Pageable with the Sort
             Sort sort = Sort.by(direction, sortBy);
             Pageable pageable = PageRequest.of(page, size, sort);
 
-            Specification<PurchaseOrder> spec = Specification.where(PurchaseOrderSpecification.isPending());
-
-            if (status != null) {
-                spec = spec.and(PurchaseOrderSpecification.hasStatus(status));
-            }
-            if (category != null) {
-                spec = spec.and(PurchaseOrderSpecification.hasProductCategory(category));
-            }
-            Page<PurchaseOrder> filterResult = purchaseOrderRepository.findAll(spec, pageable);
-            return poServiceHelper.transformToPaginatedSummaryView(filterResult);
+            return poFilterStrategy.filterPurchaseOrders(category, status, pageable);
         } catch (Exception e) {
             logger.error("PO (filterIncomingPurchaseOrders): Error filtering orders - {}", e.getMessage());
             throw new ServiceException("Failed to filter orders", e);

@@ -2,12 +2,11 @@ package com.JK.SIMS.service.InventoryServices.inventoryPageService.searchLogic;
 
 import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.models.IC_models.inventoryData.PendingOrdersResponseDto;
-import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderResponseDto;
 import com.JK.SIMS.models.IC_models.purchaseOrder.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderResponseDto;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
-import com.JK.SIMS.service.InventoryServices.poService.searchLogic.PoStrategy;
+import com.JK.SIMS.service.purchaseOrderSearchLogic.PoSearchStrategy;
 import com.JK.SIMS.service.InventoryServices.soService.searchLogic.SoStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,14 +23,14 @@ import java.util.List;
 public class SearchInPendingOrdersImpl implements PendingOrdersSearchStrategy {
     private static final Logger logger = LoggerFactory.getLogger(SearchInPendingOrdersImpl.class);
 
-    private final PoStrategy poStrategy;
+    private final PoSearchStrategy poSearchStrategy;
     private final SoStrategy soStrategy;
     private final InventoryServiceHelper inventoryServiceHelper;
 
-    public SearchInPendingOrdersImpl(@Qualifier("icPoSearchStrategy") PoStrategy poStrategy,
+    public SearchInPendingOrdersImpl(@Qualifier("icPoSearchStrategy") PoSearchStrategy poSearchStrategy,
                                      @Qualifier("icSoSearchStrategy") SoStrategy soStrategy,
                                      InventoryServiceHelper inventoryServiceHelper) {
-        this.poStrategy = poStrategy;
+        this.poSearchStrategy = poSearchStrategy;
         this.soStrategy = soStrategy;
         this.inventoryServiceHelper = inventoryServiceHelper;
     }
@@ -47,7 +46,7 @@ public class SearchInPendingOrdersImpl implements PendingOrdersSearchStrategy {
             // Search in Purchase Orders
             String defaultSortByForPo = "product.name";
             PaginatedResponse<SummaryPurchaseOrderView> pendingPurchaseOrdersResult =
-                    poStrategy.searchInPos(text, page, size, defaultSortByForPo, "asc");
+                    poSearchStrategy.searchInPos(text, page, size, defaultSortByForPo, "asc");
 
             // Combine the results
             List<PendingOrdersResponseDto> combinedResults = new ArrayList<>();
