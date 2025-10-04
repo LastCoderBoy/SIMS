@@ -6,6 +6,7 @@ import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataDto;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataStatus;
 import com.JK.SIMS.models.IC_models.inventoryData.PendingOrdersResponseDto;
 import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderResponseDto;
+import com.JK.SIMS.models.IC_models.purchaseOrder.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderResponseDto;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.stockMovements.StockMovementReferenceType;
@@ -87,9 +88,28 @@ public class InventoryServiceHelper {
         }
     }
 
+//    public void fillWithPurchaseOrders(List<PendingOrdersResponseDto> combinedPendingOrders,
+//                                        List<PurchaseOrderResponseDto> pendingPurchaseOrders){
+//        for(PurchaseOrderResponseDto po : pendingPurchaseOrders){
+//            PendingOrdersResponseDto pendingOrder = new PendingOrdersResponseDto(
+//                    po.getId(),
+//                    po.getPoNumber(),
+//                    po.getProductName(),
+//                    po.getProductCategory().toString(),
+//                    StockMovementReferenceType.PURCHASE_ORDER.toString(),
+//                    po.getStatus().toString(),
+//                    po.getOrderDate().atStartOfDay(),
+//                    po.getExpectedArrivalDate().atStartOfDay(),
+//                    po.getSupplierName(),
+//                    po.getOrderedQuantity()
+//            );
+//            combinedPendingOrders.add(pendingOrder);
+//        }
+//    }
+
     public void fillWithPurchaseOrders(List<PendingOrdersResponseDto> combinedPendingOrders,
-                                        List<PurchaseOrderResponseDto> pendingPurchaseOrders){
-        for(PurchaseOrderResponseDto po : pendingPurchaseOrders){
+                                       List<SummaryPurchaseOrderView> pendingPurchaseOrders){
+        for(SummaryPurchaseOrderView po : pendingPurchaseOrders){
             PendingOrdersResponseDto pendingOrder = new PendingOrdersResponseDto(
                     po.getId(),
                     po.getPoNumber(),
@@ -97,9 +117,8 @@ public class InventoryServiceHelper {
                     po.getProductCategory().toString(),
                     StockMovementReferenceType.PURCHASE_ORDER.toString(),
                     po.getStatus().toString(),
-                    po.getOrderDate().atStartOfDay(),
-                    po.getExpectedArrivalDate().atStartOfDay(),
-                    po.getTotalPrice(),
+                    po.getOrderDate() != null ? po.getOrderDate().atStartOfDay() : null,
+                    po.getExpectedArrivalDate() != null ? po.getExpectedArrivalDate().atStartOfDay() : null,
                     po.getSupplierName(),
                     po.getOrderedQuantity()
             );
@@ -118,7 +137,6 @@ public class InventoryServiceHelper {
                         so.getStatus().toString(),
                         so.getOrderDate(),
                         so.getEstimatedDeliveryDate(),
-                        so.getTotalAmount(),
                         so.getCustomerName(),
                         salesOrderServiceHelper.totalSalesOrderQuantity(so.getItems())
                 ))

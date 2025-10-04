@@ -78,4 +78,18 @@ public class PurchaseOrderController {
         logger.error("OM-PO: cancelIncomingStockInternal() Invalid Token provided. {}", token);
         throw new InvalidTokenException("Invalid Token provided. Please re-login.");
     }
+
+    @GetMapping("/search")
+    public ResponseEntity<?> searchPurchaseOrders(@RequestParam(required = false) String text,
+                                                  @RequestParam(defaultValue = "0") int page,
+                                                  @RequestParam(defaultValue = "10") int size,
+                                                  @RequestParam(defaultValue = "product.name") String sortBy,
+                                                  @RequestParam(defaultValue = "asc") String sortDirection){
+        logger.info("OM-PO: searchPurchaseOrders() calling...");
+        PaginatedResponse<SummaryPurchaseOrderView> response = purchaseOrderService.searchPurchaseOrders(text, page, size, sortBy, sortDirection);
+        return ResponseEntity.ok(response);
+    }
+
+
+    // TODO: Filter Logic
 }

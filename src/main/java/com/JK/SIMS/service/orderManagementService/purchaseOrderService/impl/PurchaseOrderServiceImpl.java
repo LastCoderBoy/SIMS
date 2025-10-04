@@ -12,6 +12,7 @@ import com.JK.SIMS.models.IC_models.purchaseOrder.*;
 import com.JK.SIMS.models.IC_models.purchaseOrder.confirmationToken.ConfirmationToken;
 import com.JK.SIMS.models.IC_models.purchaseOrder.confirmationToken.ConfirmationTokenStatus;
 import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderRequestDto;
+import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderResponseDto;
 import com.JK.SIMS.models.IC_models.purchaseOrder.views.DetailsPurchaseOrderView;
 import com.JK.SIMS.models.IC_models.purchaseOrder.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.models.PM_models.ProductStatus;
@@ -20,6 +21,7 @@ import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.supplier.Supplier;
 import com.JK.SIMS.repository.PO_repo.PurchaseOrderRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
+import com.JK.SIMS.service.InventoryServices.poService.searchLogic.PoStrategy;
 import com.JK.SIMS.service.helperServices.PurchaseOrderServiceHelper;
 import com.JK.SIMS.service.orderManagementService.purchaseOrderService.PurchaseOrderService;
 import com.JK.SIMS.service.productManagementService.PMServiceHelper;
@@ -35,6 +37,7 @@ import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -72,10 +75,12 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     private final InventoryServiceHelper inventoryServiceHelper;
     private final ConfirmationTokenService confirmationTokenService;
     private final PurchaseOrderServiceHelper purchaseOrderServiceHelper;
+    private final PoStrategy poStrategy;
     @Autowired
     public PurchaseOrderServiceImpl(Clock clock, PurchaseOrderRepository purchaseOrderRepository, SecurityUtils securityUtils, GlobalServiceHelper globalServiceHelper,
                                     SupplierService supplierService, EmailService emailService, PMServiceHelper pmServiceHelper,
-                                    InventoryControlService inventoryControlService, InventoryServiceHelper inventoryServiceHelper, ConfirmationTokenService confirmationTokenService, PurchaseOrderServiceHelper purchaseOrderServiceHelper) {
+                                    InventoryControlService inventoryControlService, InventoryServiceHelper inventoryServiceHelper, ConfirmationTokenService confirmationTokenService,
+                                    PurchaseOrderServiceHelper purchaseOrderServiceHelper, @Qualifier("omPoSearchStrategy") PoStrategy poStrategy) {
         this.clock = clock;
         this.purchaseOrderRepository = purchaseOrderRepository;
         this.securityUtils = securityUtils;
@@ -87,6 +92,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         this.inventoryServiceHelper = inventoryServiceHelper;
         this.confirmationTokenService = confirmationTokenService;
         this.purchaseOrderServiceHelper = purchaseOrderServiceHelper;
+        this.poStrategy = poStrategy;
     }
 
     @Override
@@ -159,6 +165,17 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             logger.error("OM-PO (getDetailsForOrderId): Unexpected error occurred: {}", e.getMessage(), e);
             throw new ServiceException("Internal Service Error occurred:", e);
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaginatedResponse<SummaryPurchaseOrderView> searchPurchaseOrders(String text, int page, int size, String sortBy, String sortDirection) {
+        globalServiceHelper.validatePaginationParameters(page, size);
+        if (text == null || text.trim().isEmpty()) {
+            logger.warn("PO (searchPurchaseOrders): Search text is null or empty, returning all incoming orders.");
+            return getAllPurchaseOrders(page, size, sortBy, sortDirection);
+        }
+        return poStrategy.searchInPos(text, page, size, sortBy, sortDirection);
     }
 
     // Method for the Email Confirmation

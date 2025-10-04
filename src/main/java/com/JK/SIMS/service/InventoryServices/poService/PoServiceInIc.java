@@ -11,6 +11,7 @@ import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderResponseDto;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
 import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.ReceiveStockRequestDto;
+import com.JK.SIMS.models.IC_models.purchaseOrder.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.models.stockMovements.StockMovementReferenceType;
 import com.JK.SIMS.models.stockMovements.StockMovementType;
 import com.JK.SIMS.service.InventoryServices.poService.filterLogic.PurchaseOrderSpecification;
@@ -78,7 +79,7 @@ public class PoServiceInIc {
     }
 
     @Transactional(readOnly = true)
-    public PaginatedResponse<PurchaseOrderResponseDto> getAllPendingPurchaseOrders(int page, int size, String sortBy, String sortDirection) {
+    public PaginatedResponse<SummaryPurchaseOrderView> getAllPendingPurchaseOrders(int page, int size, String sortBy, String sortDirection) {
         try {
             String effectiveSortBy = (sortBy == null || sortBy.trim().isEmpty()) ? DEFAULT_SORT_BY : sortBy;
             String effectiveSortDirection = (sortDirection == null || sortDirection.trim().isEmpty()) ? DEFAULT_SORT_DIRECTION : sortDirection;
@@ -88,8 +89,8 @@ public class PoServiceInIc {
 
             Pageable pageable = PageRequest.of(page, size, Sort.by(direction, effectiveSortBy));
             Page<PurchaseOrder> entityResponse = purchaseOrderRepository.findAllPendingOrders(pageable);
-            PaginatedResponse<PurchaseOrderResponseDto> dtoResponse =
-                    poServiceHelper.transformToPaginatedDtoResponse(entityResponse);
+            PaginatedResponse<SummaryPurchaseOrderView> dtoResponse =
+                    poServiceHelper.transformToPaginatedSummaryView(entityResponse);
             logger.info("PO (getAllPendingPurchaseOrders): Returning {} paginated data", dtoResponse.getContent().size());
             return dtoResponse;
         }catch (DataAccessException da){
@@ -238,14 +239,14 @@ public class PoServiceInIc {
     }
 
     @Transactional(readOnly = true)
-    public PaginatedResponse<PurchaseOrderResponseDto> searchInIncomingPurchaseOrders(String text, int page, int size) {
+    public PaginatedResponse<SummaryPurchaseOrderView> searchInIncomingPurchaseOrders(String text, int page, int size, String sortBy, String sortDirection) {
         try {
             globalServiceHelper.validatePaginationParameters(page, size);
             if (text == null || text.trim().isEmpty()) {
                 logger.warn("PO (searchInIncomingPurchaseOrders): Search text is null or empty, returning all incoming orders.");
                 return getAllPendingPurchaseOrders(page, size, DEFAULT_SORT_BY, DEFAULT_SORT_DIRECTION);
             }
-            return poStrategy.searchInPos(text, page, size);
+            return poStrategy.searchInPos(text, page, size, sortBy, sortDirection);
         } catch (Exception e) {
             logger.error("PO (searchInIncomingPurchaseOrders): Error searching orders - {}", e.getMessage());
             throw new ServiceException("Failed to search orders", e);
@@ -253,7 +254,7 @@ public class PoServiceInIc {
     }
 
     @Transactional(readOnly = true)
-    public PaginatedResponse<PurchaseOrderResponseDto> filterIncomingPurchaseOrders(PurchaseOrderStatus status, ProductCategories category,
+    public PaginatedResponse<SummaryPurchaseOrderView> filterIncomingPurchaseOrders(PurchaseOrderStatus status, ProductCategories category,
                                                                            String sortBy, String sortDirection, int page, int size){
         try {
             // Parse sort direction
@@ -273,7 +274,7 @@ public class PoServiceInIc {
                 spec = spec.and(PurchaseOrderSpecification.hasProductCategory(category));
             }
             Page<PurchaseOrder> filterResult = purchaseOrderRepository.findAll(spec, pageable);
-            return poServiceHelper.transformToPaginatedDtoResponse(filterResult);
+            return poServiceHelper.transformToPaginatedSummaryView(filterResult);
         } catch (Exception e) {
             logger.error("PO (filterIncomingPurchaseOrders): Error filtering orders - {}", e.getMessage());
             throw new ServiceException("Failed to filter orders", e);

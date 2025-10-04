@@ -5,6 +5,7 @@ import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderResponseDto;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
 import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.ReceiveStockRequestDto;
+import com.JK.SIMS.models.IC_models.purchaseOrder.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryServices.poService.PoServiceInIc;
@@ -39,7 +40,7 @@ public class PoControllerInIc {
             @RequestParam(defaultValue = "asc") String sortDirection
             ){
         logger.info("IcPo: getAllPendingPurchaseOrders() calling with page {} and size {}", page, size);
-        PaginatedResponse<PurchaseOrderResponseDto> paginatedStockResponse =
+        PaginatedResponse<SummaryPurchaseOrderView> paginatedStockResponse =
                 poServiceInIc.getAllPendingPurchaseOrders(page, size, sortBy, sortDirection);
         return ResponseEntity.ok(paginatedStockResponse);
     }
@@ -56,9 +57,11 @@ public class PoControllerInIc {
     public ResponseEntity<?> searchPoProduct(
             @RequestParam(required = false) String text,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size){
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "product.name") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortDirection){
         logger.info("IcPo: searchProduct() calling with text: {}", text);
-        PaginatedResponse<PurchaseOrderResponseDto> dtoResponse = poServiceInIc.searchInIncomingPurchaseOrders(text, page, size);
+        PaginatedResponse<SummaryPurchaseOrderView> dtoResponse = poServiceInIc.searchInIncomingPurchaseOrders(text, page, size, sortBy, sortDirection);
         return ResponseEntity.ok(dtoResponse);
     }
 
@@ -69,7 +72,7 @@ public class PoControllerInIc {
                                          @RequestParam(defaultValue = "asc") String sortDirection,
                                          @RequestParam(defaultValue = "0") int page,
                                          @RequestParam(defaultValue = "10") int size) {
-        PaginatedResponse<PurchaseOrderResponseDto> filterResponse =
+        PaginatedResponse<SummaryPurchaseOrderView> filterResponse =
                 poServiceInIc.filterIncomingPurchaseOrders(status, category, sortBy, sortDirection, page, size);
         logger.info("IcPo filterStock(): Returning {} paginated data", filterResponse.getContent().size());
         return ResponseEntity.ok(filterResponse);

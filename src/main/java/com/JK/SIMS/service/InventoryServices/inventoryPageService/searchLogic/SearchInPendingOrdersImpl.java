@@ -3,6 +3,7 @@ package com.JK.SIMS.service.InventoryServices.inventoryPageService.searchLogic;
 import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.models.IC_models.inventoryData.PendingOrdersResponseDto;
 import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderResponseDto;
+import com.JK.SIMS.models.IC_models.purchaseOrder.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderResponseDto;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
@@ -44,8 +45,9 @@ public class SearchInPendingOrdersImpl implements PendingOrdersSearchStrategy {
                     soStrategy.searchInSo(text, page, size);
 
             // Search in Purchase Orders
-            PaginatedResponse<PurchaseOrderResponseDto> pendingPurchaseOrdersResult =
-                    poStrategy.searchInPos(text, page, size);
+            String defaultSortByForPo = "product.name";
+            PaginatedResponse<SummaryPurchaseOrderView> pendingPurchaseOrdersResult =
+                    poStrategy.searchInPos(text, page, size, defaultSortByForPo, "asc");
 
             // Combine the results
             List<PendingOrdersResponseDto> combinedResults = new ArrayList<>();

@@ -16,4 +16,6 @@ public interface PurchaseOrderService {
 
     DetailsPurchaseOrderView getDetailsForOrderId(Long orderId);
 
+    PaginatedResponse<SummaryPurchaseOrderView> searchPurchaseOrders(String text, int page, int size, String sortBy, String sortDirection);
+
 }

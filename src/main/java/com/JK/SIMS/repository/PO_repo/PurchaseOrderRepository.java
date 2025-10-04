@@ -16,8 +16,6 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, Lo
     @Query("SELECT isr FROM PurchaseOrder isr WHERE " +
             "LOWER(isr.product.name) LIKE CONCAT('%', :text, '%') OR " +
             "LOWER(isr.supplier.name) LIKE CONCAT('%', :text, '%') OR " +
-            "LOWER(isr.orderedBy) LIKE CONCAT('%', :text, '%') OR " +
-            "LOWER(isr.updatedBy) LIKE CONCAT('%', :text, '%') OR " +
             "LOWER(isr.PONumber) LIKE CONCAT('%', :text, '%')")
     Page<PurchaseOrder> searchOrders(String text, Pageable pageable);
 

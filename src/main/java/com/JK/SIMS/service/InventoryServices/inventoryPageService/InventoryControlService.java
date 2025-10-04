@@ -4,6 +4,7 @@ import com.JK.SIMS.exceptionHandler.*;
 import com.JK.SIMS.models.IC_models.inventoryData.*;
 import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderResponseDto;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
+import com.JK.SIMS.models.IC_models.purchaseOrder.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderResponseDto;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.PM_models.ProductCategories;
@@ -16,6 +17,7 @@ import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventorySer
 import com.JK.SIMS.service.InventoryServices.poService.PoServiceInIc;
 import com.JK.SIMS.service.InventoryServices.soService.SoServiceInIc;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
+import com.jayway.jsonpath.internal.function.numeric.Sum;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -91,7 +93,7 @@ public class InventoryControlService {
         PaginatedResponse<SalesOrderResponseDto> allPendingSalesOrders =
                 soServiceInIc.getAllWaitingSalesOrders(page, size, "orderDate", "desc");
 
-        PaginatedResponse<PurchaseOrderResponseDto> allPendingPurchaseOrders =
+        PaginatedResponse<SummaryPurchaseOrderView> allPendingPurchaseOrders =
                 poServiceInIc.getAllPendingPurchaseOrders(page, size, "product.name", "asc");
 
         // Combine and sort
@@ -250,7 +252,7 @@ public class InventoryControlService {
             inventoryServiceHelper.fillWithSalesOrders(combinedResults, salesOrders.getContent());
 
             // Fetch all pending Purchase Orders
-            PaginatedResponse<PurchaseOrderResponseDto> purchaseOrders =
+            PaginatedResponse<SummaryPurchaseOrderView> purchaseOrders =
                     poServiceInIc.getAllPendingPurchaseOrders(page, size, sortBy, sortDirection);
             inventoryServiceHelper.fillWithPurchaseOrders(combinedResults, purchaseOrders.getContent());
         }
@@ -281,12 +283,12 @@ public class InventoryControlService {
         if (isPurchaseOrderType || hasPurchaseOrderFilters) {
             if (isPurchaseOrderType && !hasPurchaseOrderFilters) {
                 // Fetch all Purchase Orders (no filters)
-                PaginatedResponse<PurchaseOrderResponseDto> allPurchaseOrders =
+                PaginatedResponse<SummaryPurchaseOrderView> allPurchaseOrders =
                         poServiceInIc.getAllPendingPurchaseOrders(page, size, sortBy, sortDirection);
                 inventoryServiceHelper.fillWithPurchaseOrders(combinedResults, allPurchaseOrders.getContent());
             } else {
                 // Fetch filtered Purchase Orders
-                PaginatedResponse<PurchaseOrderResponseDto> purchaseOrders =
+                PaginatedResponse<SummaryPurchaseOrderView> purchaseOrders =
                         poServiceInIc.filterIncomingPurchaseOrders(poStatus, category, sortBy, sortDirection, page, size);
                 inventoryServiceHelper.fillWithPurchaseOrders(combinedResults, purchaseOrders.getContent());
             }

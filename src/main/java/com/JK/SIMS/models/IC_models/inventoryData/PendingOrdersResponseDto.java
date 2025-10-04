@@ -26,7 +26,6 @@ public class PendingOrdersResponseDto {
     private String status;
     private LocalDateTime orderDate;
     private LocalDateTime estimatedDate; // For SO: estimatedDeliveryDate, for PO: expectedArrivalDate
-    private BigDecimal totalAmount; // For SO: totalAmount, for PO: null or calculated value
     private String customerOrSupplierName; // For SO: customerName, for PO: supplierName
     private Integer totalOrderedQuantity;
 }

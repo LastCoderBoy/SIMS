@@ -4,6 +4,7 @@ import com.JK.SIMS.exceptionHandler.DatabaseException;
 import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderResponseDto;
+import com.JK.SIMS.models.IC_models.purchaseOrder.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.PO_repo.PurchaseOrderRepository;
 import com.JK.SIMS.service.helperServices.PurchaseOrderServiceHelper;
@@ -15,6 +16,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
@@ -31,15 +33,19 @@ public class IcPoSearchStrategy implements PoStrategy {
     }
 
     @Override
-    public PaginatedResponse<PurchaseOrderResponseDto> searchInPos(String text, int page, int size) {
+    @Transactional(readOnly = true)
+    public PaginatedResponse<SummaryPurchaseOrderView> searchInPos(String text, int page, int size, String sortBy, String sortDirection) {
         try {
             Optional<String> inputText = Optional.ofNullable(text);
+            Sort sort = sortDirection.equalsIgnoreCase("desc")
+                    ? Sort.by(sortBy).descending()
+                    : Sort.by(sortBy).ascending();
             if (inputText.isPresent() && !inputText.get().trim().isEmpty()) {
                 logger.info("IcPo (searchProduct): Search text provided. Searching for orders with text '{}'", text);
-                Pageable pageable = PageRequest.of(page, size, Sort.by("product.name"));
+                Pageable pageable = PageRequest.of(page, size, sort);
                 Page<PurchaseOrder> searchEntityResponse =
                         purchaseOrderRepository.searchInPendingOrders(text.trim().toLowerCase(), pageable);
-                return poServiceHelper.transformToPaginatedDtoResponse(searchEntityResponse);
+                return poServiceHelper.transformToPaginatedSummaryView(searchEntityResponse);
             }
             return new PaginatedResponse<>();
         } catch (DataAccessException dae) {

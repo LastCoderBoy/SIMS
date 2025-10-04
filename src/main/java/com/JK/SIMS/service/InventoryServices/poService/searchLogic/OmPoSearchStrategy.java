@@ -5,6 +5,7 @@ import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderResponseDto;
+import com.JK.SIMS.models.IC_models.purchaseOrder.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.PO_repo.PurchaseOrderRepository;
 import com.JK.SIMS.service.helperServices.PurchaseOrderServiceHelper;
@@ -17,6 +18,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 @Component
 public class OmPoSearchStrategy implements PoStrategy {
@@ -31,21 +33,22 @@ public class OmPoSearchStrategy implements PoStrategy {
     }
 
     @Override
-    public PaginatedResponse<PurchaseOrderResponseDto> searchInPos(String text, int page, int size) {
+    @Transactional(readOnly = true)
+    public PaginatedResponse<SummaryPurchaseOrderView> searchInPos(String text, int page, int size, String sortBy, String sortDirection) {
         if (text == null || text.isEmpty()) {
             logger.warn("OmPo (searchProduct): Search text is null or empty");
-            throw new ValidationException("IcPo (searchProduct): Search text cannot be empty");
+            throw new ValidationException("Search text cannot be empty");
         }
         try {
             Pageable pageable = PageRequest.of(page, size, Sort.by("product.name"));
             Page<PurchaseOrder> searchEntityResponse = purchaseOrderRepository.searchOrders(text.trim().toLowerCase(), pageable);
-            return poServiceHelper.transformToPaginatedDtoResponse(searchEntityResponse);
+            return poServiceHelper.transformToPaginatedSummaryView(searchEntityResponse);
         } catch (DataAccessException dae) {
             logger.error("OmPo (searchProduct): Database error while searching products", dae);
-            throw new DatabaseException("OmPo (searchProduct): Error occurred while searching products");
+            throw new DatabaseException("Error occurred while searching products");
         } catch (Exception e) {
             logger.error("OmPo (searchProduct): Unexpected error while searching products", e);
-            throw new ServiceException("OmPo (searchProduct): Error occurred while searching products");
+            throw new ServiceException("Internal Service occurred, please contact the administration");
         }
     }
 }
