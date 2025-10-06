@@ -49,4 +49,9 @@ public class GlobalServiceHelper {
             return false;
         }
     }
+
+    public static <T extends Enum<T>> boolean isInEnum(Enum<T> value, Class<T> enumClass) {
+        if(value == null) return false;
+        return enumClass.isInstance(value);
+    }
 }

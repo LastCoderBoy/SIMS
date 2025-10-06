@@ -1,6 +1,7 @@
 package com.JK.SIMS.service.purchaseOrderFilterLogic;
 
 import com.JK.SIMS.exceptionHandler.ServiceException;
+import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
 import com.JK.SIMS.models.IC_models.purchaseOrder.views.SummaryPurchaseOrderView;
@@ -16,6 +17,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 public abstract class AbstractPoFilterStrategy implements PoFilterStrategy {
 
@@ -49,6 +51,9 @@ public abstract class AbstractPoFilterStrategy implements PoFilterStrategy {
 
             Page<PurchaseOrder> filterResult = purchaseOrderRepository.findAll(spec, pageable);
             return poServiceHelper.transformToPaginatedSummaryView(filterResult);
+        } catch (IllegalArgumentException iae) {
+            logger.error("{}: Invalid pagination parameters: {}", getClass().getSimpleName(), iae.getMessage());
+            throw new ValidationException("Invalid pagination parameters: " + iae.getMessage());
         } catch (Exception e) {
             logger.error("{}: Error filtering orders - {}", getClass().getSimpleName(), e.getMessage());
             throw new ServiceException("Failed to filter orders", e);

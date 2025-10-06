@@ -14,12 +14,14 @@ import com.JK.SIMS.models.IC_models.purchaseOrder.confirmationToken.Confirmation
 import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderRequestDto;
 import com.JK.SIMS.models.IC_models.purchaseOrder.views.DetailsPurchaseOrderView;
 import com.JK.SIMS.models.IC_models.purchaseOrder.views.SummaryPurchaseOrderView;
+import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.supplier.Supplier;
 import com.JK.SIMS.repository.PO_repo.PurchaseOrderRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
+import com.JK.SIMS.service.purchaseOrderFilterLogic.PoFilterStrategy;
 import com.JK.SIMS.service.purchaseOrderSearchLogic.PoSearchStrategy;
 import com.JK.SIMS.service.helperServices.PurchaseOrderServiceHelper;
 import com.JK.SIMS.service.orderManagementService.purchaseOrderService.PurchaseOrderService;
@@ -29,6 +31,8 @@ import com.JK.SIMS.service.InventoryServices.inventoryPageService.InventoryContr
 import com.JK.SIMS.service.confirmTokenService.ConfirmationTokenService;
 import com.JK.SIMS.service.email_service.EmailService;
 import com.JK.SIMS.service.supplierService.SupplierService;
+import com.JK.SIMS.service.utilities.ProductCategoriesConverter;
+import com.JK.SIMS.service.utilities.PurchaseOrderStatusConverter;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;
@@ -75,11 +79,15 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     private final ConfirmationTokenService confirmationTokenService;
     private final PurchaseOrderServiceHelper purchaseOrderServiceHelper;
     private final PoSearchStrategy poSearchStrategy;
+    private final PoFilterStrategy poFilterStrategy;
+    private final PurchaseOrderStatusConverter purchaseOrderStatusConverter;
+    private final ProductCategoriesConverter productCategoriesConverter;
     @Autowired
     public PurchaseOrderServiceImpl(Clock clock, PurchaseOrderRepository purchaseOrderRepository, SecurityUtils securityUtils, GlobalServiceHelper globalServiceHelper,
                                     SupplierService supplierService, EmailService emailService, PMServiceHelper pmServiceHelper,
                                     InventoryControlService inventoryControlService, InventoryServiceHelper inventoryServiceHelper, ConfirmationTokenService confirmationTokenService,
-                                    PurchaseOrderServiceHelper purchaseOrderServiceHelper, @Qualifier("omPoSearchStrategy") PoSearchStrategy poSearchStrategy) {
+                                    PurchaseOrderServiceHelper purchaseOrderServiceHelper, @Qualifier("omPoSearchStrategy") PoSearchStrategy poSearchStrategy,
+                                    @Qualifier("allPoFilterStrategy") PoFilterStrategy poFilterStrategy, PurchaseOrderStatusConverter purchaseOrderStatusConverter, ProductCategoriesConverter productCategoriesConverter) {
         this.clock = clock;
         this.purchaseOrderRepository = purchaseOrderRepository;
         this.securityUtils = securityUtils;
@@ -92,6 +100,9 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         this.confirmationTokenService = confirmationTokenService;
         this.purchaseOrderServiceHelper = purchaseOrderServiceHelper;
         this.poSearchStrategy = poSearchStrategy;
+        this.poFilterStrategy = poFilterStrategy;
+        this.purchaseOrderStatusConverter = purchaseOrderStatusConverter;
+        this.productCategoriesConverter = productCategoriesConverter;
     }
 
     @Override
@@ -175,6 +186,36 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             return getAllPurchaseOrders(page, size, sortBy, sortDirection);
         }
         return poSearchStrategy.searchInPos(text, page, size, sortBy, sortDirection);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaginatedResponse<SummaryPurchaseOrderView> filterPurchaseOrders(String category, String status, String sortBy, String sortDirection, int page, int size) {
+        try {
+            globalServiceHelper.validatePaginationParameters(page, size);
+            Sort sort = sortDirection.equalsIgnoreCase("desc") ? Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
+            Pageable pageable = PageRequest.of(page, size, sort);
+            // Validate the category if provided
+            ProductCategories categoryValue = null;
+            if (category != null) {
+                categoryValue = productCategoriesConverter.convert(category); // throws ValidationException if invalid
+            }
+            // Validate the status if provided
+            PurchaseOrderStatus statusValue = null;
+            if (status != null) {
+                statusValue = purchaseOrderStatusConverter.convert(status);  // throws ValidationException if invalid
+            }
+            return poFilterStrategy.filterPurchaseOrders(categoryValue, statusValue, pageable);
+        } catch (DataAccessException da) {
+            logger.error("OM-PO (filterPurchaseOrders): Database error occurred: {}", da.getMessage(), da);
+            throw new DatabaseException("Internal error", da);
+        } catch (ValidationException ve){
+            logger.error("OM-PO (filterPurchaseOrders): Invalid filter provided: {}", ve.getMessage(), ve);
+            throw new ValidationException("Invalid filter provided: " + ve.getMessage());
+        } catch (Exception e) {
+            logger.error("OM-PO (filterPurchaseOrders): Unexpected error occurred: {}", e.getMessage(), e);
+            throw new ServiceException("Internal Service Error occurred:", e);
+        }
     }
 
     // Method for the Email Confirmation

@@ -4,9 +4,11 @@ package com.JK.SIMS.controller.orderManagement;
 import com.JK.SIMS.config.security.TokenUtils;
 import com.JK.SIMS.exceptionHandler.InvalidTokenException;
 import com.JK.SIMS.models.ApiResponse;
+import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
 import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderRequestDto;
 import com.JK.SIMS.models.IC_models.purchaseOrder.views.DetailsPurchaseOrderView;
 import com.JK.SIMS.models.IC_models.purchaseOrder.views.SummaryPurchaseOrderView;
+import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryServices.poService.PoServiceInIc;
 import com.JK.SIMS.service.orderManagementService.purchaseOrderService.PurchaseOrderService;
@@ -86,10 +88,21 @@ public class PurchaseOrderController {
                                                   @RequestParam(defaultValue = "product.name") String sortBy,
                                                   @RequestParam(defaultValue = "asc") String sortDirection){
         logger.info("OM-PO: searchPurchaseOrders() calling...");
-        PaginatedResponse<SummaryPurchaseOrderView> response = purchaseOrderService.searchPurchaseOrders(text, page, size, sortBy, sortDirection);
+        PaginatedResponse<SummaryPurchaseOrderView> response =
+                purchaseOrderService.searchPurchaseOrders(text, page, size, sortBy, sortDirection);
         return ResponseEntity.ok(response);
     }
 
-
-    // TODO: Filter Logic
+    @GetMapping("/filter")
+    public ResponseEntity<?> filterPurchaseOrders(@RequestParam(required = false) String category,
+                                                  @RequestParam(required = false) String status,
+                                                  @RequestParam(defaultValue = "product.name") String sortBy,
+                                                  @RequestParam(defaultValue = "asc") String sortDirection,
+                                                  @RequestParam(defaultValue = "0") int page,
+                                                  @RequestParam(defaultValue = "10") int size){
+        logger.info("OM-PO: filterPurchaseOrders() calling...");
+        PaginatedResponse<SummaryPurchaseOrderView> filterResponse =
+                purchaseOrderService.filterPurchaseOrders(category, status, sortBy, sortDirection, page, size);
+        return ResponseEntity.ok(filterResponse);
+    }
 }
