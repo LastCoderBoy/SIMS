@@ -1,9 +1,9 @@
-package com.JK.SIMS.service.helperServices;
+package com.JK.SIMS.service.utilities;
 
 import com.JK.SIMS.exceptionHandler.ResourceNotFoundException;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderResponseDto;
-import com.JK.SIMS.models.IC_models.purchaseOrder.views.SummaryPurchaseOrderView;
+import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.PO_repo.PurchaseOrderRepository;
 import lombok.AllArgsConstructor;
@@ -64,27 +64,5 @@ public class PurchaseOrderServiceHelper {
 
     public static BigDecimal calculateTotalPrice(PurchaseOrder purchaseOrder){
         return purchaseOrder.getProduct().getPrice().multiply(new BigDecimal(purchaseOrder.getOrderedQuantity()));
-    }
-
-
-    // Method to build an HTML response page for the supplier after clicking a link
-    public static String buildConfirmationPage(String message, String alertClass) {
-        return "<html>"
-                + "<head><title>Purchase Order Confirmation</title>"
-                + "<style>"
-                + "body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }"
-                + ".alert { padding: 20px; margin: 20px auto; border-radius: 5px; max-width: 500px; }"
-                + ".alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }"
-                + ".alert-danger { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }"
-                + "</style>"
-                + "</head>"
-                + "<body>"
-                + "<div class='alert " + alertClass + "'>"
-                + "<h2>SIMS Inventory System</h2>"
-                + "<p>" + message + "</p>"
-                + "<p>You can close this window.</p>"
-                + "</div>"
-                + "</body>"
-                + "</html>";
     }
 }

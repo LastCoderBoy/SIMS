@@ -3,7 +3,7 @@ package com.JK.SIMS.service.InventoryServices.soService.searchLogic;
 import com.JK.SIMS.exceptionHandler.DatabaseException;
 import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
-import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderResponseDto;
+import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderResponseDto;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.outgoingStockRepo.SalesOrderRepository;
 import com.JK.SIMS.service.InventoryServices.soService.SalesOrderServiceHelper;

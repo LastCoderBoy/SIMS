@@ -11,16 +11,14 @@ import com.JK.SIMS.models.stockMovements.StockMovementReferenceType;
 import com.JK.SIMS.models.stockMovements.StockMovementType;
 import com.JK.SIMS.repository.outgoingStockRepo.SalesOrderRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
-import com.JK.SIMS.service.InventoryServices.soService.SoServiceInIc;
 import com.JK.SIMS.service.stockMovementService.StockMovementService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
 
+@Slf4j
 public abstract class OrderProcessor {
-    private static Logger logger = LoggerFactory.getLogger(OrderProcessor.class);
 
     protected final StockManagementLogic stockManagementLogic;
     protected final StockMovementService stockMovementService;
@@ -34,7 +32,7 @@ public abstract class OrderProcessor {
 
     @Transactional
     public ApiResponse processOrder(Long orderId, Map<Long, Integer> approvedQuantities, String approvedPerson){
-        logger.info("SO: Processing order with ID: {}", orderId);
+        log.info("SO: Processing order with ID: {}", orderId);
         try {
             SalesOrder salesOrder = getSalesOrderById(orderId);
             validateOrder(salesOrder);
@@ -62,13 +60,13 @@ public abstract class OrderProcessor {
             updateOrderStatus(salesOrder, partialApproval);
             salesOrderRepository.save(salesOrder);
 
-            logger.info("OS (processOrderedProduct): SalesOrder {} processed successfully", orderId);
+            log.info("OS (processOrderedProduct): SalesOrder {} processed successfully", orderId);
             return new ApiResponse(true, "SalesOrder processed successfully");
         } catch (InsufficientStockException e) {
-            logger.error("OS (processOrderedProduct): Insufficient stock - {}", e.getMessage());
+            log.error("OS (processOrderedProduct): Insufficient stock - {}", e.getMessage());
             throw e;
         } catch (Exception e) {
-            logger.error("OS (processOrderedProduct): Error processing order - {}", e.getMessage());
+            log.error("OS (processOrderedProduct): Error processing order - {}", e.getMessage());
             throw new ServiceException("Failed to process order", e);
         }
     }
@@ -90,10 +88,10 @@ public abstract class OrderProcessor {
     protected void updateOrderStatus(SalesOrder salesOrder, boolean partialApproval) {
         if (partialApproval) {
             salesOrder.setStatus(SalesOrderStatus.PARTIALLY_APPROVED);
-            logger.info("OS (updateOrderStatus): Updated status of SalesOrder {} to PARTIALLY_APPROVED", salesOrder.getOrderReference());
+            log.info("OS (updateOrderStatus): Updated status of SalesOrder {} to PARTIALLY_APPROVED", salesOrder.getOrderReference());
         } else{
             salesOrder.setStatus(SalesOrderStatus.APPROVED);
-            logger.info("OS (updateOrderStatus): Updated status of SalesOrder {} to APPROVED", salesOrder.getOrderReference());
+            log.info("OS (updateOrderStatus): Updated status of SalesOrder {} to APPROVED", salesOrder.getOrderReference());
         }
     }
 }

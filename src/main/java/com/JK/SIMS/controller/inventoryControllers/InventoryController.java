@@ -3,7 +3,7 @@ package com.JK.SIMS.controller.inventoryControllers;
 
 import com.JK.SIMS.models.IC_models.inventoryData.PendingOrdersResponseDto;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
-import com.JK.SIMS.models.IC_models.salesOrder.BulkShipStockRequestDto;
+import com.JK.SIMS.models.IC_models.salesOrder.dtos.processSalesOrderDtos.BulkShipStockRequestDto;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.service.InventoryServices.soService.SoServiceInIc;

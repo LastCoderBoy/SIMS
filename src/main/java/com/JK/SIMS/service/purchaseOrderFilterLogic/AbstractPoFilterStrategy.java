@@ -4,11 +4,11 @@ import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
-import com.JK.SIMS.models.IC_models.purchaseOrder.views.SummaryPurchaseOrderView;
+import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.PO_repo.PurchaseOrderRepository;
-import com.JK.SIMS.service.helperServices.PurchaseOrderServiceHelper;
+import com.JK.SIMS.service.utilities.PurchaseOrderServiceHelper;
 import com.JK.SIMS.service.purchaseOrderFilterLogic.filterSpecification.PurchaseOrderSpecification;
 import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
@@ -17,7 +17,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 public abstract class AbstractPoFilterStrategy implements PoFilterStrategy {
 

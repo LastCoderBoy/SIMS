@@ -1,4 +1,4 @@
-package com.JK.SIMS.models.IC_models.salesOrder;
+package com.JK.SIMS.models.IC_models.salesOrder.dtos.processSalesOrderDtos;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;

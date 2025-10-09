@@ -17,8 +17,8 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
 @Service
-public class EmailService {
-    private static final Logger logger = LoggerFactory.getLogger(EmailService.class);
+public class EmailSender {
+    private static final Logger logger = LoggerFactory.getLogger(EmailSender.class);
 
     private final JavaMailSender mailSender;
 
@@ -31,7 +31,7 @@ public class EmailService {
     @Value("${app.backend.base-url}")
     private String backendBaseUrl;
 
-    public EmailService(JavaMailSender mailSender) {
+    public EmailSender(JavaMailSender mailSender) {
         this.mailSender = mailSender;
     }
 
@@ -61,7 +61,7 @@ public class EmailService {
             helper.setTo(supplierEmail);
             helper.setSubject("Purchase Order Request: " + order.getPONumber() + " - " + order.getProduct().getName());
             helper.setText(
-                    buildOrderRequestHtml(order, confirmationToken),
+                    buildPurchaseOrderRequestHtml(order, confirmationToken),
                     true
             );
 
@@ -74,7 +74,7 @@ public class EmailService {
     }
 
 
-    private String buildOrderRequestHtml(PurchaseOrder order, ConfirmationToken confirmationToken) {
+    private String buildPurchaseOrderRequestHtml(PurchaseOrder order, ConfirmationToken confirmationToken) {
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
         String productName = order.getProduct().getName();
@@ -88,7 +88,7 @@ public class EmailService {
 
         String confirmUrl = String.format("%s/HTML/email/confirmationForm.html?token=%s",
                 backendBaseUrl, token);
-        String cancelUrl = String.format("%s/api/v1/SIMS/cancel?token=%s",
+        String cancelUrl = String.format("%s/HTML/email/confirmationForm.html?token=%s", // TODO: change to cancel URL
                 backendBaseUrl, token);
 
         // TODO: create a separate HTML page and return it (later)

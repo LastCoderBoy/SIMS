@@ -2,10 +2,9 @@ package com.JK.SIMS.service.InventoryServices.inventoryPageService;
 
 import com.JK.SIMS.exceptionHandler.*;
 import com.JK.SIMS.models.IC_models.inventoryData.*;
-import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderResponseDto;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
-import com.JK.SIMS.models.IC_models.purchaseOrder.views.SummaryPurchaseOrderView;
-import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderResponseDto;
+import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;
+import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderResponseDto;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
@@ -17,7 +16,6 @@ import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventorySer
 import com.JK.SIMS.service.InventoryServices.poService.PoServiceInIc;
 import com.JK.SIMS.service.InventoryServices.soService.SoServiceInIc;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
-import com.jayway.jsonpath.internal.function.numeric.Sum;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

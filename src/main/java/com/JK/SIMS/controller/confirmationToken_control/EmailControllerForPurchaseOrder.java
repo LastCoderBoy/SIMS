@@ -4,7 +4,7 @@ import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.purchaseOrder.confirmationToken.ConfirmationToken;
 import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.ConfirmPoRequestDto;
 import com.JK.SIMS.service.confirmTokenService.ConfirmationTokenService;
-import com.JK.SIMS.service.orderManagementService.purchaseOrderService.impl.PurchaseOrderServiceImpl;
+import com.JK.SIMS.service.email_service.EmailServiceForPo;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -16,14 +16,14 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/SIMS") // this endpoint will not be authenticated.
-public class ConfirmationController {
+public class EmailControllerForPurchaseOrder {
 
-    private final PurchaseOrderServiceImpl purchaseOrderServiceImpl;
     private final ConfirmationTokenService confirmationTokenService;
+    private final EmailServiceForPo emailServiceForPo;
     @Autowired
-    public ConfirmationController(PurchaseOrderServiceImpl purchaseOrderServiceImpl, ConfirmationTokenService confirmationTokenService) {
-        this.purchaseOrderServiceImpl = purchaseOrderServiceImpl;
+    public EmailControllerForPurchaseOrder(ConfirmationTokenService confirmationTokenService, EmailServiceForPo emailServiceForPo) {
         this.confirmationTokenService = confirmationTokenService;
+        this.emailServiceForPo = emailServiceForPo;
     }
 
     @GetMapping("/confirm-form")
@@ -41,7 +41,7 @@ public class ConfirmationController {
     @PostMapping("/confirm")
     public ResponseEntity<?> processConfirmation(@RequestParam String token,
                                                  @Valid @RequestBody ConfirmPoRequestDto dto) {
-        ApiResponse<String> response = purchaseOrderServiceImpl.confirmPurchaseOrder(token, dto.getExpectedArrivalDate());
+        ApiResponse<String> response = emailServiceForPo.confirmPurchaseOrder(token, dto.getExpectedArrivalDate());
         return ResponseEntity.ok(response);
     }
 
@@ -54,7 +54,7 @@ public class ConfirmationController {
 
     @GetMapping(value = "/cancel", produces = MediaType.TEXT_HTML_VALUE)
     public ResponseEntity<?> cancelOrder(@RequestParam String token){
-        purchaseOrderServiceImpl.cancelPurchaseOrder(token);
+        emailServiceForPo.cancelPurchaseOrder(token);
         Map<String, String> data = new HashMap<>();
         data.put("message", "Order cancelled successfully.");
         data.put("alertClass", "alert-success");

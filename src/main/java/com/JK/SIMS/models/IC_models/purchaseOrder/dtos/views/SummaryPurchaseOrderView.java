@@ -1,4 +1,4 @@
-package com.JK.SIMS.models.IC_models.purchaseOrder.views;
+package com.JK.SIMS.models.IC_models.purchaseOrder.dtos.views;
 
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;

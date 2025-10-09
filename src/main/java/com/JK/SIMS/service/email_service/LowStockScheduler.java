@@ -15,11 +15,11 @@ public class LowStockScheduler {
     private static final Logger logger = LoggerFactory.getLogger(LowStockScheduler.class);
 
     private final IC_repository icRepository;
-    private final EmailService emailService;
+    private final EmailSender emailSender;
     @Autowired
-    public LowStockScheduler(IC_repository icRepository, EmailService emailService) {
+    public LowStockScheduler(IC_repository icRepository, EmailSender emailSender) {
         this.icRepository = icRepository;
-        this.emailService = emailService;
+        this.emailSender = emailSender;
     }
 
 
@@ -32,7 +32,7 @@ public class LowStockScheduler {
         }
         logger.info("Sending daily low stock alerts product size {}.", lowStockProducts.size());
         String html = buildLowStockHtml(lowStockProducts);
-        emailService.sendLowStockEmail( "Daily Low Stock Alert", html);
+        emailSender.sendLowStockEmail( "Daily Low Stock Alert", html);
     }
 
     public String buildLowStockHtml(List<InventoryData> lowStockProducts) {
