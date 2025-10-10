@@ -1,11 +1,9 @@
-package com.JK.SIMS.repository.outgoingStockRepo;
+package com.JK.SIMS.repository.SalesOrder_Repo;
 
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;

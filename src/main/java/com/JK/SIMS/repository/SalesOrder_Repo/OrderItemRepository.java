@@ -1,4 +1,4 @@
-package com.JK.SIMS.repository.outgoingStockRepo;
+package com.JK.SIMS.repository.SalesOrder_Repo;
 
 import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItem;
 import org.springframework.data.jpa.repository.JpaRepository;

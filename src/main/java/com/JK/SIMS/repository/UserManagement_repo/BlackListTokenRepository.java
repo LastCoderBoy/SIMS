@@ -1,4 +1,4 @@
-package com.JK.SIMS.repository.UM_repo;
+package com.JK.SIMS.repository.UserManagement_repo;
 
 import com.JK.SIMS.models.UM_models.BlacklistedToken;
 import org.springframework.data.jpa.repository.JpaRepository;

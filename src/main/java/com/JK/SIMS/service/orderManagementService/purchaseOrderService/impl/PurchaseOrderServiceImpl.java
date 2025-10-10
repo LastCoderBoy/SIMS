@@ -16,7 +16,7 @@ import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.supplier.Supplier;
-import com.JK.SIMS.repository.PO_repo.PurchaseOrderRepository;
+import com.JK.SIMS.repository.PurchaseOrder_repo.PurchaseOrderRepository;
 import com.JK.SIMS.service.confirmTokenService.ConfirmationTokenService;
 import com.JK.SIMS.service.email_service.EmailSender;
 import com.JK.SIMS.service.orderManagementService.purchaseOrderService.PurchaseOrderService;
@@ -142,23 +142,23 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public DetailsPurchaseOrderView getDetailsForOrderId(Long orderId) throws ResourceNotFoundException {
+    public DetailsPurchaseOrderView getDetailsForPurchaseOrderId(Long orderId) throws ResourceNotFoundException {
         try {
             purchaseOrderServiceHelper.validateOrderId(orderId);
             PurchaseOrder purchaseOrder = purchaseOrderServiceHelper.getPurchaseOrderById(orderId);
-            logger.info("OM-PO (getDetailsForOrderId): Returning details for PO ID: {}", orderId);
+            logger.info("OM-PO (getDetailsForPurchaseOrderId): Returning details for PO ID: {}", orderId);
             return new DetailsPurchaseOrderView(purchaseOrder);
         } catch (DataAccessException da) {
-            logger.error("OM-PO (getDetailsForOrderId): Database error occurred: {}", da.getMessage(), da);
+            logger.error("OM-PO (getDetailsForPurchaseOrderId): Database error occurred: {}", da.getMessage(), da);
             throw new DatabaseException("Database error", da);
         } catch (ResourceNotFoundException e) {
-            logger.error("OM-PO (getDetailsForOrderId): Order ID {} not found: {}", orderId, e.getMessage(), e);
+            logger.error("OM-PO (getDetailsForPurchaseOrderId): Order ID {} not found: {}", orderId, e.getMessage(), e);
             throw new ResourceNotFoundException("Order ID " + orderId + " not found", e);
         } catch (IllegalArgumentException e) {
-            logger.error("OM-PO (getDetailsForOrderId): Invalid order ID provided: {}", e.getMessage(), e);
+            logger.error("OM-PO (getDetailsForPurchaseOrderId): Invalid order ID provided: {}", e.getMessage(), e);
             throw new ValidationException("Invalid order ID provided: " + e.getMessage());
         } catch (Exception e) {
-            logger.error("OM-PO (getDetailsForOrderId): Unexpected error occurred: {}", e.getMessage(), e);
+            logger.error("OM-PO (getDetailsForPurchaseOrderId): Unexpected error occurred: {}", e.getMessage(), e);
             throw new ServiceException("Internal Service Error occurred:", e);
         }
     }

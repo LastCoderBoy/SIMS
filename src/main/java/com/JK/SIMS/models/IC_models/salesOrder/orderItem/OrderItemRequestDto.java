@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 @Data
-public class OrderItemDto {
+public class OrderItemRequestDto {
     @NotBlank(message = "Product ID is required")
     private String productId;
 

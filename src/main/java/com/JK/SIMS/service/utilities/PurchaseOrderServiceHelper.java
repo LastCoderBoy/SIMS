@@ -5,7 +5,7 @@ import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderResponseDto;
 import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.models.PaginatedResponse;
-import com.JK.SIMS.repository.PO_repo.PurchaseOrderRepository;
+import com.JK.SIMS.repository.PurchaseOrder_repo.PurchaseOrderRepository;
 import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,6 +59,9 @@ public class PurchaseOrderServiceHelper {
     public void validateOrderId(Long orderId) {
         if (orderId == null) {
             throw new IllegalArgumentException("PO (validateOrderId): PurchaseOrder ID cannot be null");
+        }
+        if (orderId < 1) {
+            throw new IllegalArgumentException("PO (validateOrderId): PurchaseOrder ID must be greater than zero");
         }
     }
 

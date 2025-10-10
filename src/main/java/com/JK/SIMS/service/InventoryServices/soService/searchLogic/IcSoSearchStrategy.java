@@ -5,7 +5,7 @@ import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderResponseDto;
 import com.JK.SIMS.models.PaginatedResponse;
-import com.JK.SIMS.repository.outgoingStockRepo.SalesOrderRepository;
+import com.JK.SIMS.repository.SalesOrder_Repo.SalesOrderRepository;
 import com.JK.SIMS.service.InventoryServices.soService.SalesOrderServiceHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,7 +40,7 @@ public class IcSoSearchStrategy implements SoStrategy{
                 Pageable pageable = PageRequest.of(page, size, Sort.by("id"));
                 logger.info("IcSo (searchInSo): Search text provided. Searching for orders with text '{}'", text);
                 Page<SalesOrder> entityResponse = salesOrderRepository.searchInOutgoingSalesOrders(text, pageable);
-                Page<SalesOrderResponseDto> mappedEntity = entityResponse.map(soServiceHelper::convertToOrderResponseDto);
+                Page<SalesOrderResponseDto> mappedEntity = entityResponse.map(soServiceHelper::convertToSalesOrderResponseDto);
                 return new PaginatedResponse<>(mappedEntity);
             }
             return new PaginatedResponse<>();

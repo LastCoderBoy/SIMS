@@ -3,11 +3,15 @@ package com.JK.SIMS.service.InventoryServices.soService;
 import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderResponseDto;
+import com.JK.SIMS.models.IC_models.salesOrder.dtos.views.SummarySalesOrderView;
 import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItem;
 import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItemResponseDto;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
+import com.JK.SIMS.models.PaginatedResponse;
+import com.jayway.jsonpath.internal.function.numeric.Sum;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -20,7 +24,7 @@ public class SalesOrderServiceHelper {
 
     private static final Logger logger = LoggerFactory.getLogger(SalesOrderServiceHelper.class);
 
-    public SalesOrderResponseDto convertToOrderResponseDto(SalesOrder salesOrder) {
+    public SalesOrderResponseDto convertToSalesOrderResponseDto(SalesOrder salesOrder) {
         try {
             List<OrderItemResponseDto> itemDtos = salesOrder.getItems().stream()
                     .map(this::convertToOrderItemResponseDto)
@@ -43,7 +47,7 @@ public class SalesOrderServiceHelper {
                     itemDtos
             );
         } catch (Exception e) {
-            logger.error("OS (convertToOrderResponseDto): Error converting salesOrder {} - {}",
+            logger.error("OS (convertToSalesOrderResponseDto): Error converting salesOrder {} - {}",
                     salesOrder.getId(), e.getMessage());
             throw new ServiceException("Failed to convert salesOrder to response DTO", e);
         }
@@ -71,9 +75,18 @@ public class SalesOrderServiceHelper {
                     item.getOrderPrice() // Total price for this line item
             );
         } catch (Exception e) {
-            logger.error("OS (convertToOrderItemResponseDto): Error converting order item {} - {}",
+            logger.error("SoHelper convertToOrderItemResponseDto(): Error converting order item {} - {}",
                     item.getId(), e.getMessage());
-            throw new ServiceException("Failed to convert order item to response DTO", e);
+            throw new ServiceException("Failed to convert order item to response DTO");
         }
+    }
+
+    public PaginatedResponse<SummarySalesOrderView> transformToSummarySalesOrderView(Page<SalesOrder> salesOrderPage){
+         Page<SummarySalesOrderView> test = salesOrderPage.map(this::convertToSummarySalesOrderView);
+         return new PaginatedResponse<>(test);
+    }
+
+    private SummarySalesOrderView convertToSummarySalesOrderView(SalesOrder order){
+        return new SummarySalesOrderView(order);
     }
 }

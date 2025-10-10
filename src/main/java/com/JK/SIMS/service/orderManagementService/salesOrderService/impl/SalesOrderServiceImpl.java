@@ -5,18 +5,22 @@ import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.salesOrder.*;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderRequestDto;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderResponseDto;
+import com.JK.SIMS.models.IC_models.salesOrder.dtos.views.DetailedSalesOrderView;
+import com.JK.SIMS.models.IC_models.salesOrder.dtos.views.SummarySalesOrderView;
 import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItem;
-import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItemDto;
+import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItemRequestDto;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
-import com.JK.SIMS.repository.outgoingStockRepo.OrderItemRepository;
-import com.JK.SIMS.repository.outgoingStockRepo.SalesOrderRepository;
+import com.JK.SIMS.repository.SalesOrder_Repo.OrderItemRepository;
+import com.JK.SIMS.repository.SalesOrder_Repo.SalesOrderRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
 import com.JK.SIMS.service.InventoryServices.soService.SalesOrderServiceHelper;
+import com.JK.SIMS.service.orderManagementService.salesOrderService.SalesOrderService;
 import com.JK.SIMS.service.productManagementService.PMServiceHelper;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import jakarta.validation.ConstraintViolationException;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +30,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,7 +43,8 @@ import java.util.Optional;
 import java.util.Set;
 
 @Service
-public class SalesOrderServiceImpl {
+@Slf4j
+public class SalesOrderServiceImpl implements SalesOrderService {
     private static final Logger logger = LoggerFactory.getLogger(SalesOrderServiceImpl.class);
 
     private final GlobalServiceHelper globalServiceHelper;
@@ -69,7 +75,7 @@ public class SalesOrderServiceImpl {
             SalesOrder salesOrder = createOrderEntity(salesOrderRequestDto, orderReference);
 
             // Process each item with stock reservation
-            for (OrderItemDto itemDto : salesOrderRequestDto.getItems()) {
+            for (OrderItemRequestDto itemDto : salesOrderRequestDto.getItems()) {
                 ProductsForPM product = pmServiceHelper.findProductById(itemDto.getProductId());
 
                 // Validate Product Status
@@ -125,7 +131,7 @@ public class SalesOrderServiceImpl {
                     salesOrderRepository.findByStatus(status.get(), pageable) :
                     salesOrderRepository.findAll(pageable);
 
-            Page<SalesOrderResponseDto> dtoResponse = orders.map(salesOrderServiceHelper::convertToOrderResponseDto);
+            Page<SalesOrderResponseDto> dtoResponse = orders.map(salesOrderServiceHelper::convertToSalesOrderResponseDto);
             return new PaginatedResponse<>(dtoResponse);
 
         } catch (Exception e) {
@@ -147,7 +153,7 @@ public class SalesOrderServiceImpl {
                 );
 
                 logger.info("OS (searchOutgoingStock): {} orders retrieved.", outgoingStockData.getContent().size());
-                Page<SalesOrderResponseDto> dtoResponse = outgoingStockData.map(salesOrderServiceHelper::convertToOrderResponseDto);
+                Page<SalesOrderResponseDto> dtoResponse = outgoingStockData.map(salesOrderServiceHelper::convertToSalesOrderResponseDto);
                 return new PaginatedResponse<>(dtoResponse);
             }
             logger.info("OS (searchOutgoingStock): No search text provided. Retrieving first page with default size.");
@@ -177,7 +183,7 @@ public class SalesOrderServiceImpl {
 
         // Check for duplicate products in the same order
         Set<String> productIds = new HashSet<>();
-        for (OrderItemDto item : salesOrderRequestDto.getItems()) {
+        for (OrderItemRequestDto item : salesOrderRequestDto.getItems()) {
             if (!productIds.add(item.getProductId())) {
                 throw new ValidationException("OS (validateOrderRequest): Duplicate product found in order: " + item.getProductId());
             }
@@ -244,5 +250,67 @@ public class SalesOrderServiceImpl {
             logger.error("OS (generateOrderReference): Error generating order reference - {}", e.getMessage());
             throw new ServiceException("Failed to generate unique order reference", e);
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaginatedResponse<SummarySalesOrderView> getAllSummarySalesOrders(String sortBy, String sortDirection, int page, int size) {
+        try {
+            Sort sort = sortDirection.equalsIgnoreCase("desc") ?
+                    Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
+            Pageable pageable = PageRequest.of(page, size, sort);
+            Page<SalesOrder> salesOrderPage = salesOrderRepository.findAll(pageable);
+            log.info("OM-SO (getAllSummarySalesOrders): Returning {} paginated data", salesOrderPage.getContent().size());
+            return salesOrderServiceHelper.transformToSummarySalesOrderView(salesOrderPage);
+        } catch (DataAccessException da){
+            log.error("OM-SO (getAllSummarySalesOrders): Database error occurred: {}", da.getMessage(), da);
+            throw new DatabaseException("Database error occurred, please contact the administration");
+        } catch (PropertyReferenceException e) {
+            log.error("OM-SO (getAllSummarySalesOrders): Invalid sort field provided: {}", e.getMessage(), e);
+            throw new ValidationException("Invalid sort field provided. Check your request");
+        } catch (Exception e) {
+            log.error("OM-SO (getAllSummarySalesOrders): Unexpected error occurred: {}", e.getMessage(), e);
+            throw new ServiceException("Internal Service Error occurred: ", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DetailedSalesOrderView getDetailsForSalesOrderId(Long orderId) {
+        try {
+            globalServiceHelper.validateOrderId(orderId, salesOrderRepository, "SalesOrder"); // might throw ValidationException
+            SalesOrder salesOrder = getSalesOrderById(orderId);
+            log.info("Returning detailed salesOrder view for ID: {}", orderId);
+            return new DetailedSalesOrderView(salesOrder);
+        } catch (ValidationException | ResourceNotFoundException e) {
+            throw e;
+        } catch (DataAccessException da) {
+            log.error("OM-SO (getDetailsForSalesOrderId): Database error occurred: {}", da.getMessage(), da);
+            throw new DatabaseException("Database error occurred, please contact the administration");
+        } catch (Exception e) {
+            log.error("OM-SO (getDetailsForSalesOrderId): Unexpected error occurred: {}", e.getMessage(), e);
+            throw new ServiceException("Internal Service Error occurred: ", e);
+        }
+    }
+
+    @Override
+    public ApiResponse<String> createOrder(SalesOrderRequestDto salesOrderRequestDto, String jwtToken) {
+        return null;
+    }
+
+    @Override
+    public ApiResponse<String> updateSalesOrder(Long orderId, SalesOrderRequestDto salesOrderRequestDto, String jwtToken) {
+        return null;
+    }
+
+    @Override
+    public ApiResponse<String> cancelSalesOrder(Long orderId, String jwtToken) {
+        return null;
+    }
+
+    @Transactional(readOnly = true)
+    public SalesOrder getSalesOrderById(Long orderId) {
+        return salesOrderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("SalesOrder with ID: " + orderId + " not found"));
     }
 }

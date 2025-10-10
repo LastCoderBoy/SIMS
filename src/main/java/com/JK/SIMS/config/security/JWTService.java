@@ -1,7 +1,7 @@
 package com.JK.SIMS.config.security;
 
 
-import com.JK.SIMS.repository.UM_repo.BlackListTokenRepository;
+import com.JK.SIMS.repository.UserManagement_repo.BlackListTokenRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;

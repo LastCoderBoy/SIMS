@@ -9,7 +9,7 @@ import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.views.SummaryPurchaseOrde
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderResponseDto;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.stockMovements.StockMovementReferenceType;
-import com.JK.SIMS.repository.IC_repo.IC_repository;
+import com.JK.SIMS.repository.InventoryControl_repo.IC_repository;
 import com.JK.SIMS.service.InventoryServices.soService.SalesOrderServiceHelper;
 import com.JK.SIMS.service.email_service.LowStockScheduler;
 import org.apache.coyote.BadRequestException;

@@ -6,7 +6,7 @@ import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
-import com.JK.SIMS.repository.PM_repo.PM_repository;
+import com.JK.SIMS.repository.ProductManagement_repo.PM_repository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

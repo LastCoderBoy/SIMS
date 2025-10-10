@@ -7,7 +7,7 @@ import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataDto;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
-import com.JK.SIMS.repository.IC_repo.IC_repository;
+import com.JK.SIMS.repository.InventoryControl_repo.IC_repository;
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import jakarta.servlet.http.HttpServletResponse;

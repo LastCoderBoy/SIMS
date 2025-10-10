@@ -1,7 +1,7 @@
 package com.JK.SIMS.service.email_service;
 
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
-import com.JK.SIMS.repository.IC_repo.IC_repository;
+import com.JK.SIMS.repository.InventoryControl_repo.IC_repository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

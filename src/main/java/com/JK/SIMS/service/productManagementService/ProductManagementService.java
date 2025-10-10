@@ -13,7 +13,7 @@ import com.JK.SIMS.models.PM_models.ProductManagementDTO;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
-import com.JK.SIMS.repository.PM_repo.PM_repository;
+import com.JK.SIMS.repository.ProductManagement_repo.PM_repository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.InventoryControlService;
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
 import com.JK.SIMS.service.utilities.ExcelReporterHelper;

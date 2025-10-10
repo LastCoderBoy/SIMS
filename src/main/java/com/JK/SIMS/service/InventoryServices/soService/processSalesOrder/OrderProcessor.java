@@ -9,7 +9,7 @@ import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItem;
 import com.JK.SIMS.models.stockMovements.StockMovementReferenceType;
 import com.JK.SIMS.models.stockMovements.StockMovementType;
-import com.JK.SIMS.repository.outgoingStockRepo.SalesOrderRepository;
+import com.JK.SIMS.repository.SalesOrder_Repo.SalesOrderRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
 import com.JK.SIMS.service.stockMovementService.StockMovementService;
 import lombok.extern.slf4j.Slf4j;

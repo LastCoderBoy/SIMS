@@ -13,7 +13,7 @@ import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItem;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
-import com.JK.SIMS.repository.outgoingStockRepo.SalesOrderRepository;
+import com.JK.SIMS.repository.SalesOrder_Repo.SalesOrderRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
 import com.JK.SIMS.service.InventoryServices.soService.filterLogic.SalesOrderSpecification;
 import com.JK.SIMS.service.InventoryServices.soService.processSalesOrder.StockOutProcessor;
@@ -74,7 +74,7 @@ public class SoServiceInIc {
             Pageable pageable = PageRequest.of(page, size, sort);
             Page<SalesOrder> salesOrders = salesOrderRepository.findAllWaitingSalesOrders(pageable);
 
-            Page<SalesOrderResponseDto> dtoResponse = salesOrders.map(salesOrderServiceHelper::convertToOrderResponseDto);
+            Page<SalesOrderResponseDto> dtoResponse = salesOrders.map(salesOrderServiceHelper::convertToSalesOrderResponseDto);
             return new PaginatedResponse<>(dtoResponse);
 
         } catch (Exception e) {
@@ -93,7 +93,7 @@ public class SoServiceInIc {
 
             // Get the page of urgent orders.
             Page<SalesOrder> entityResponse = salesOrderRepository.findAllUrgentSalesOrders(pageable);
-            Page<SalesOrderResponseDto> dtoResponse = entityResponse.map(salesOrderServiceHelper::convertToOrderResponseDto);
+            Page<SalesOrderResponseDto> dtoResponse = entityResponse.map(salesOrderServiceHelper::convertToSalesOrderResponseDto);
             return new PaginatedResponse<>(dtoResponse);
         } catch (DataAccessException da){
             logger.error("OS (getAllUrgentSalesOrders): Failed to retrieve orders due to database error: {}", da.getMessage(), da);
@@ -234,7 +234,7 @@ public class SoServiceInIc {
             // Database call and conversion to DTO
             Pageable pageable = PageRequest.of(page, size);
             Page<SalesOrder> entityResponse = salesOrderRepository.findAll(specification, pageable);
-            Page<SalesOrderResponseDto> dtoResponse = entityResponse.map(salesOrderServiceHelper::convertToOrderResponseDto);
+            Page<SalesOrderResponseDto> dtoResponse = entityResponse.map(salesOrderServiceHelper::convertToSalesOrderResponseDto);
             return new PaginatedResponse<>(dtoResponse);
 
         } catch (IllegalArgumentException ie) {

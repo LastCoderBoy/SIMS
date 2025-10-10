@@ -1,4 +1,4 @@
-package com.JK.SIMS.repository.UM_repo;
+package com.JK.SIMS.repository.UserManagement_repo;
 
 import com.JK.SIMS.models.UM_models.Users;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -6,7 +6,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
 import java.util.Optional;
 
 @Repository

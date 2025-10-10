@@ -9,7 +9,7 @@ import com.JK.SIMS.models.IC_models.purchaseOrder.confirmationToken.Confirmation
 import com.JK.SIMS.models.IC_models.purchaseOrder.confirmationToken.ConfirmationTokenStatus;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
-import com.JK.SIMS.repository.PO_repo.PurchaseOrderRepository;
+import com.JK.SIMS.repository.PurchaseOrder_repo.PurchaseOrderRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.InventoryControlService;
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
 import com.JK.SIMS.service.confirmTokenService.ConfirmationTokenService;

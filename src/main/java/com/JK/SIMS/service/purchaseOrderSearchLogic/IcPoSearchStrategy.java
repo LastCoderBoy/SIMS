@@ -5,7 +5,7 @@ import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.models.PaginatedResponse;
-import com.JK.SIMS.repository.PO_repo.PurchaseOrderRepository;
+import com.JK.SIMS.repository.PurchaseOrder_repo.PurchaseOrderRepository;
 import com.JK.SIMS.service.utilities.PurchaseOrderServiceHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

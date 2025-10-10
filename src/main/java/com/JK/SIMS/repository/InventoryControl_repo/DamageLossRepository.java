@@ -1,4 +1,4 @@
-package com.JK.SIMS.repository.IC_repo;
+package com.JK.SIMS.repository.InventoryControl_repo;
 
 import com.JK.SIMS.models.IC_models.damage_loss.DamageLoss;
 import com.JK.SIMS.models.IC_models.damage_loss.DamageLossMetrics;

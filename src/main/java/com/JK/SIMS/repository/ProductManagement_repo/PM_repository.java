@@ -1,4 +1,4 @@
-package com.JK.SIMS.repository.PM_repo;
+package com.JK.SIMS.repository.ProductManagement_repo;
 
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PM_models.ProductCategories;
@@ -10,7 +10,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
 import java.util.Optional;
 
 @Repository

@@ -17,7 +17,7 @@ import com.JK.SIMS.models.stockMovements.StockMovementType;
 import com.JK.SIMS.service.purchaseOrderFilterLogic.PoFilterStrategy;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
-import com.JK.SIMS.repository.PO_repo.PurchaseOrderRepository;
+import com.JK.SIMS.repository.PurchaseOrder_repo.PurchaseOrderRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
 import com.JK.SIMS.service.utilities.PurchaseOrderServiceHelper;

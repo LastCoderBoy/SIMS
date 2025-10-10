@@ -1,16 +1,23 @@
 package com.JK.SIMS.service.utilities;
 
+import com.JK.SIMS.exceptionHandler.ResourceNotFoundException;
+import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.config.security.JWTService;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.coyote.BadRequestException;
+import org.apache.poi.ss.formula.functions.T;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 
 @Component
+@Slf4j
 public class GlobalServiceHelper {
 
     //TODO: Use abstract inheritance for common logic serives
@@ -37,6 +44,16 @@ public class GlobalServiceHelper {
         }
         if (size <= 0 || size > 100) {
             throw new IllegalArgumentException("Page size must be between 1 and 100");
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public <T> void validateOrderId(Long orderId, JpaRepository<T, Long> repository, String entityName) {
+        if (orderId == null || orderId < 1) {
+            throw new ValidationException(entityName + " Order ID must be valid and greater than zero");
+        }
+        if (!repository.existsById(orderId)) {
+            throw new ResourceNotFoundException(entityName + " Order with ID " + orderId + " does not exist");
         }
     }
 

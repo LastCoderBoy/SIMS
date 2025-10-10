@@ -1,6 +1,6 @@
 package com.JK.SIMS.models.IC_models.salesOrder.dtos;
 
-import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItemDto;
+import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItemRequestDto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.AllArgsConstructor;
@@ -18,5 +18,5 @@ public class SalesOrderRequestDto {
     private String customerName;
 
     @NotEmpty
-    private List<OrderItemDto> items;
+    private List<OrderItemRequestDto> items;
 }

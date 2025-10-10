@@ -3,7 +3,7 @@ package com.JK.SIMS.service.InventoryServices.soService.processSalesOrder;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.processSalesOrderDtos.BulkShipStockRequestDto;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.processSalesOrderDtos.ShipStockRequestDto;
-import com.JK.SIMS.repository.outgoingStockRepo.SalesOrderRepository;
+import com.JK.SIMS.repository.SalesOrder_Repo.SalesOrderRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
 import com.JK.SIMS.service.stockMovementService.StockMovementService;
 import jakarta.transaction.Transactional;

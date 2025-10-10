@@ -36,9 +36,9 @@ public class PurchaseOrderController {
 
     @GetMapping
     public ResponseEntity<?> getAllSummaryPurchaseOrders(@RequestParam(defaultValue = "0") int page,
-                                                  @RequestParam(defaultValue = "10") int size,
-                                                  @RequestParam(defaultValue = "asc") String sortDirection,
-                                                  @RequestParam(defaultValue = "product.name") String sortBy){
+                                                         @RequestParam(defaultValue = "10") int size,
+                                                         @RequestParam(defaultValue = "asc") String sortDirection,
+                                                         @RequestParam(defaultValue = "product.name") String sortBy){
         logger.info("OM-PO: getAllPurchaseOrders() calling...");
         PaginatedResponse<SummaryPurchaseOrderView> pageResponse =
                 purchaseOrderService.getAllPurchaseOrders(page, size, sortBy, sortDirection);
@@ -46,9 +46,9 @@ public class PurchaseOrderController {
     }
 
     @GetMapping("/{orderId}")
-    public ResponseEntity<?> getDetailsForOrderId(@PathVariable Long orderId){
-        logger.info("OM-PO: getDetailsForOrderId() calling for ID: {}", orderId);
-        DetailsPurchaseOrderView detailsForPurchaseOrder = purchaseOrderService.getDetailsForOrderId(orderId);
+    public ResponseEntity<?> getDetailsForPurchaseOrderId(@PathVariable Long orderId){
+        logger.info("OM-PO: getDetailsForPurchaseOrderId() calling for ID: {}", orderId);
+        DetailsPurchaseOrderView detailsForPurchaseOrder = purchaseOrderService.getDetailsForPurchaseOrderId(orderId);
         return ResponseEntity.ok(detailsForPurchaseOrder);
     }
 
@@ -66,9 +66,10 @@ public class PurchaseOrderController {
         throw new InvalidTokenException("OM-PO: createPurchaseOrder() Invalid Token provided.");
     }
 
-    @PutMapping("{orderId}/cancel-order")
+    @PutMapping("{orderId}/cancel-purchaseorder")
     @PreAuthorize("@securityUtils.hasAccess()")
-    public ResponseEntity<?> cancelIncomingStockInternal(@PathVariable Long orderId, @RequestHeader("Authorization") String token) throws BadRequestException, AccessDeniedException {
+    public ResponseEntity<?> cancelIncomingStockInternal(@PathVariable Long orderId,
+                                                         @RequestHeader("Authorization") String token) throws BadRequestException, AccessDeniedException {
         if(token != null && !token.trim().isEmpty()) {
             String jwtToken = TokenUtils.extractToken(token);
             ApiResponse<Void> response = poServiceInIc.cancelPurchaseOrderInternal(orderId, jwtToken);

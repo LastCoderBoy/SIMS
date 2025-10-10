@@ -7,7 +7,7 @@ import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
 import com.JK.SIMS.models.IC_models.damage_loss.*;
 import com.JK.SIMS.models.PaginatedResponse;
-import com.JK.SIMS.repository.IC_repo.DamageLossRepository;
+import com.JK.SIMS.repository.InventoryControl_repo.DamageLossRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
 import com.JK.SIMS.config.security.JWTService;
