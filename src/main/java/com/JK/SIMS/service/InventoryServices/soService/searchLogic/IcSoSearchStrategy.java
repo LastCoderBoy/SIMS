@@ -6,7 +6,7 @@ import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderResponseDto;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.SalesOrder_Repo.SalesOrderRepository;
-import com.JK.SIMS.service.InventoryServices.soService.SalesOrderServiceHelper;
+import com.JK.SIMS.service.utilities.SalesOrderServiceHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

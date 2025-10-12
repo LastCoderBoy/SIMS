@@ -1,10 +1,9 @@
 package com.JK.SIMS.models.IC_models.salesOrder;
 
+import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderRequestDto;
 import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItem;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -13,6 +12,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Data
+@ToString(exclude = "items")
+@EqualsAndHashCode(exclude = "items")
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
@@ -32,6 +33,12 @@ public class SalesOrder {
     @Column(nullable = false, name = "customer_name")
     private String customerName;
 
+    @Column(name = "created_by")
+    private String createdBy; // Person who created the Sales Order.
+
+    @Column(name = "updated_by")
+    private String updatedBy; // Person who updated the Sales Order.
+
     @Column(name = "confirmed_by")
     private String confirmedBy; // Person who is confirming the SalesOrder in the IC.
 
@@ -46,7 +53,7 @@ public class SalesOrder {
     @Column(nullable = false, name = "estimated_delivery_date")
     private LocalDateTime estimatedDeliveryDate;
 
-    @Column(nullable = false, name = "delivery_date")
+    @Column(name = "delivery_date")
     private LocalDateTime deliveryDate;
 
     @UpdateTimestamp

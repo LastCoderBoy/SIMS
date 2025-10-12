@@ -3,7 +3,7 @@ package com.JK.SIMS.service.InventoryServices.lowStockService;
 import com.JK.SIMS.exceptionHandler.DatabaseException;
 import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
-import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
+import com.JK.SIMS.models.IC_models.inventoryData.InventoryControlData;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataDto;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
@@ -56,7 +56,7 @@ public class LowStockService {
             // Create the sort and get the data
             Sort sort = Sort.by(direction, sortBy);
             Pageable pageable = PageRequest.of(page, size, sort);
-            Page<InventoryData> inventoryPage = icRepository.getLowStockItems(pageable);
+            Page<InventoryControlData> inventoryPage = icRepository.getLowStockItems(pageable);
             return inventoryServiceHelper.transformToPaginatedInventoryDTOResponse(inventoryPage);
         }catch (DataAccessException da){
             logger.error("LowStockService (getAllPaginatedLowStockRecords): Failed to retrieve products due to database error: {}", da.getMessage(), da);
@@ -74,7 +74,7 @@ public class LowStockService {
             Optional<String> inputText = Optional.ofNullable((text));
             if (inputText.isPresent() && !inputText.get().trim().isEmpty()) {
                 Pageable pageable = PageRequest.of(page, size, Sort.by(DEFAULT_SORT_BY).ascending());
-                Page<InventoryData> inventoryData =
+                Page<InventoryControlData> inventoryData =
                         icRepository.searchInLowStockProducts(inputText.get().trim().toLowerCase(), pageable);
 
                 logger.info("LowStockService (searchProduct): {} products retrieved.", inventoryData.getContent().size());
@@ -106,7 +106,7 @@ public class LowStockService {
             Sort sort = Sort.by(direction, sortBy);
             Pageable pageable = PageRequest.of(page, size, sort);
 
-            Page<InventoryData> resultPage = icRepository.getLowStockItemsByCategory(category, pageable);
+            Page<InventoryControlData> resultPage = icRepository.getLowStockItemsByCategory(category, pageable);
 
             logger.info("TotalItems (filterProducts): {} products retrieved.", resultPage.getContent().size());
             return inventoryServiceHelper.transformToPaginatedInventoryDTOResponse(resultPage);
@@ -137,7 +137,7 @@ public class LowStockService {
 
             // Create the sort and get all data
             Sort sort = Sort.by(direction, sortBy);
-            List<InventoryData> inventoryList = icRepository.getLowStockItems(sort);
+            List<InventoryControlData> inventoryList = icRepository.getLowStockItems(sort);
 
             // Convert to DTOs
             return inventoryList.stream().map(inventoryServiceHelper::convertToInventoryDTO).toList();

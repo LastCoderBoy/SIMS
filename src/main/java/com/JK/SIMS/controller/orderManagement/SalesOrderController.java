@@ -8,6 +8,7 @@ import com.JK.SIMS.models.IC_models.salesOrder.dtos.views.DetailedSalesOrderView
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.views.SummarySalesOrderView;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.orderManagementService.salesOrderService.SalesOrderService;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -47,7 +48,7 @@ public class SalesOrderController {
 
     @PostMapping("/create")
     @PreAuthorize("@securityUtils.hasAccess()")
-    public ResponseEntity<?> createOrder(@RequestBody SalesOrderRequestDto salesOrderRequestDto,
+    public ResponseEntity<?> createOrder(@Valid @RequestBody SalesOrderRequestDto salesOrderRequestDto,
                                          @RequestHeader("Authorization") String token){
         log.info("OM-SO createOrder() is calling...");
         if(token != null && !token.trim().isEmpty()) {
@@ -55,9 +56,10 @@ public class SalesOrderController {
             ApiResponse<String> response = salesOrderService.createOrder(salesOrderRequestDto, jwtToken);
             return new ResponseEntity<>(response, HttpStatus.CREATED);
         }
-        log.error("OM-SO createOrder() Invalid Token provided. {}" , token);
+        log.error("OM-SO createOrder() Invalid Token provided. {}", token);
         throw new InvalidTokenException("Invalid Token provided. Please re-login.");
     }
+
 
     @PutMapping("/{orderId}/update")
     @PreAuthorize("@securityUtils.hasAccess()")

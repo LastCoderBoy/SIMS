@@ -1,7 +1,7 @@
 package com.JK.SIMS.service.InventoryServices.inventoryServiceHelper;
 
 import com.JK.SIMS.exceptionHandler.ValidationException;
-import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
+import com.JK.SIMS.models.IC_models.inventoryData.InventoryControlData;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataDto;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataStatus;
 import com.JK.SIMS.models.IC_models.inventoryData.PendingOrdersResponseDto;
@@ -10,7 +10,7 @@ import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderResponseDto;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.stockMovements.StockMovementReferenceType;
 import com.JK.SIMS.repository.InventoryControl_repo.IC_repository;
-import com.JK.SIMS.service.InventoryServices.soService.SalesOrderServiceHelper;
+import com.JK.SIMS.service.utilities.SalesOrderServiceHelper;
 import com.JK.SIMS.service.email_service.LowStockScheduler;
 import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
@@ -40,10 +40,10 @@ public class InventoryServiceHelper {
     }
 
 
-    public static void validateUpdateRequest(InventoryData newInventoryData) {
+    public static void validateUpdateRequest(InventoryControlData newInventoryControlData) {
         List<String> errors = new ArrayList<>();
-        Integer newCurrentStock = newInventoryData.getCurrentStock();
-        Integer newMinLevel = newInventoryData.getMinLevel();
+        Integer newCurrentStock = newInventoryControlData.getCurrentStock();
+        Integer newMinLevel = newInventoryControlData.getMinLevel();
 
         if (newCurrentStock == null && newMinLevel == null) {
             errors.add("At least one of currentStock or minLevel must be provided");
@@ -65,18 +65,18 @@ public class InventoryServiceHelper {
     }
 
     @Transactional(readOnly = true)
-    public InventoryData getInventoryDataBySku(String sku) throws BadRequestException {
+    public InventoryControlData getInventoryDataBySku(String sku) throws BadRequestException {
         return icRepository.findBySKU(sku)
                 .orElseThrow(() -> new BadRequestException(
                         "IC (updateProduct): No product with SKU " + sku + " found"));
     }
 
     @Transactional(readOnly = true)
-    public Optional<InventoryData> getInventoryProductByProductId(String productId) {
+    public Optional<InventoryControlData> getInventoryProductByProductId(String productId) {
         return icRepository.findByPmProduct_ProductID(productId);
     }
 
-    public void updateInventoryStatus(InventoryData product) {
+    public void updateInventoryStatus(InventoryControlData product) {
         if(product.getStatus() != InventoryDataStatus.INVALID) {
             if (product.getCurrentStock() <= product.getMinLevel()) {
                 product.setStatus(InventoryDataStatus.LOW_STOCK);
@@ -142,7 +142,7 @@ public class InventoryServiceHelper {
         );
     }
 
-    public PaginatedResponse<InventoryDataDto> transformToPaginatedInventoryDTOResponse(Page<InventoryData> inventoryPage){
+    public PaginatedResponse<InventoryDataDto> transformToPaginatedInventoryDTOResponse(Page<InventoryControlData> inventoryPage){
         PaginatedResponse<InventoryDataDto> dtoResponse = new PaginatedResponse<>();
         dtoResponse.setContent(inventoryPage.getContent().stream()
                                                         .map(this::convertToInventoryDTO).toList());
@@ -152,23 +152,23 @@ public class InventoryServiceHelper {
         return dtoResponse;
     }
 
-    public InventoryDataDto convertToInventoryDTO(InventoryData inventoryData) {
+    public InventoryDataDto convertToInventoryDTO(InventoryControlData inventoryControlData) {
         InventoryDataDto dto = new InventoryDataDto();
         // Set product fields
-        dto.setProductID(inventoryData.getPmProduct().getProductID());
-        dto.setProductName(inventoryData.getPmProduct().getName());
-        dto.setCategory(inventoryData.getPmProduct().getCategory());
-        dto.setPrice(inventoryData.getPmProduct().getPrice());
-        dto.setProductStatus(inventoryData.getPmProduct().getStatus());
+        dto.setProductID(inventoryControlData.getPmProduct().getProductID());
+        dto.setProductName(inventoryControlData.getPmProduct().getName());
+        dto.setCategory(inventoryControlData.getPmProduct().getCategory());
+        dto.setPrice(inventoryControlData.getPmProduct().getPrice());
+        dto.setProductStatus(inventoryControlData.getPmProduct().getStatus());
 
         // Set inventory fields
-        dto.setSKU(inventoryData.getSKU());
-        dto.setLocation(inventoryData.getLocation());
-        dto.setCurrentStock(inventoryData.getCurrentStock());
-        dto.setMinLevel(inventoryData.getMinLevel());
-        dto.setReservedStock(inventoryData.getReservedStock());
-        dto.setInventoryStatus(inventoryData.getStatus());
-        dto.setLastUpdate(inventoryData.getLastUpdate().toString());
+        dto.setSKU(inventoryControlData.getSKU());
+        dto.setLocation(inventoryControlData.getLocation());
+        dto.setCurrentStock(inventoryControlData.getCurrentStock());
+        dto.setMinLevel(inventoryControlData.getMinLevel());
+        dto.setReservedStock(inventoryControlData.getReservedStock());
+        dto.setInventoryStatus(inventoryControlData.getStatus());
+        dto.setLastUpdate(inventoryControlData.getLastUpdate().toString());
 
         return dto;
     }

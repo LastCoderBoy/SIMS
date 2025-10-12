@@ -3,9 +3,11 @@ package com.JK.SIMS.service.InventoryServices.inventoryPageService;
 import com.JK.SIMS.exceptionHandler.DatabaseException;
 import com.JK.SIMS.exceptionHandler.InsufficientStockException;
 import com.JK.SIMS.exceptionHandler.ResourceNotFoundException;
-import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
+import com.JK.SIMS.exceptionHandler.ServiceException;
+import com.JK.SIMS.models.IC_models.inventoryData.InventoryControlData;
 import com.JK.SIMS.repository.InventoryControl_repo.IC_repository;
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
@@ -16,9 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
 
 @Component
+@Slf4j
 public class StockManagementLogic {
-
-    private static final Logger logger = LoggerFactory.getLogger(StockManagementLogic.class);
 
     private final InventoryServiceHelper inventoryServiceHelper;
     private final IC_repository icRepository;
@@ -29,38 +30,46 @@ public class StockManagementLogic {
     }
 
 
-    // Reserve stock atomically - returns true if successful, false if insufficient stock
+    // Reserve stock atomically - throws exception if insufficient stock
     @Transactional
-    public boolean reserveStock(String productId, Integer requestQuantity) {
+    public void reserveStock(String productId, Integer requestQuantity) {
         try {
-            InventoryData inventory = icRepository.findByProductIdWithLock(productId);
+            InventoryControlData inventory = icRepository.findByProductIdWithLock(productId);
             if (inventory == null) {
                 throw new ResourceNotFoundException("Inventory not found for product: " + productId);
             }
+            log.debug("Inventory Data: {}", inventory); // debug
 
-            // Validate the requested requestQuantity
+            // Validate the requested Quantity
             int availableStock = getAvailableStock(inventory);
-            if (availableStock >= requestQuantity) {
-                inventory.setReservedStock(inventory.getReservedStock() + requestQuantity);
-                icRepository.save(inventory);
-                logger.debug("IC (reserveStock): Reserved {} units for product {}", requestQuantity, productId);
-                return true;
+
+            if (availableStock < requestQuantity) {
+                log.warn("StockManagement reserveStock(): Insufficient stock for product {}. Available: {}, Requested: {}",
+                        productId, availableStock, requestQuantity);
+                throw new InsufficientStockException(
+                        String.format("Insufficient stock for product %s. Available: %d, Requested: %d",
+                                productId, availableStock, requestQuantity)
+                );
             }
-
-            logger.warn("IC (reserveStock): Insufficient stock for product {}. Available: {}, Requested: {}",
-                    productId, availableStock, requestQuantity);
-            return false;
-
+            inventory.setReservedStock(inventory.getReservedStock() + requestQuantity);
+            icRepository.save(inventory);
+            log.debug("StockManagement reserveStock(): Reserved {} units for product {}", requestQuantity, productId);
         } catch (DataAccessException e) {
-            logger.error("IC (reserveStock): Database error - {}", e.getMessage());
+            log.error("StockManagement reserveStock(): Database error - {}", e.getMessage());
             throw new DatabaseException("Failed to reserve stock", e);
+        } catch ( InsufficientStockException e){
+            log.error("StockManagement reserveStock(): Insufficient stock - {}", e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            log.error("StockManagement reserveStock(): Unexpected error - {}", e.getMessage());
+            throw new ServiceException("Failed to reserve stock", e);
         }
     }
 
     @Transactional
     public void fulfillReservation(String productId, int approvedQuantity) {
         try {
-            InventoryData inventory = icRepository.findByProductIdWithLock(productId);
+            InventoryControlData inventory = icRepository.findByProductIdWithLock(productId);
             if (inventory == null) {
                 throw new ResourceNotFoundException("Inventory not found for product: " + productId);
             }
@@ -77,18 +86,18 @@ public class StockManagementLogic {
             inventoryServiceHelper.updateInventoryStatus(inventory);
             icRepository.save(inventory);
 
-            logger.debug("IC (fulfillReservation): Fulfilled reservation of {} units for product {}", approvedQuantity, productId);
+            log.debug("IC (fulfillReservation): Fulfilled reservation of {} units for product {}", approvedQuantity, productId);
         } catch (DataAccessException e) {
-            logger.error("IC (fulfillReservation): Database error - {}", e.getMessage());
+            log.error("IC (fulfillReservation): Database error - {}", e.getMessage());
             throw new DatabaseException("Failed to fulfill reservation", e);
         }
     }
 
-    // Release reservation when the order is cancelled
+    // Release reservation when the order is cancelled or creation failed.
     @Transactional
     public void releaseReservation(String productId, int quantity) {
         try {
-            InventoryData inventory = icRepository.findByProductIdWithLock(productId);
+            InventoryControlData inventory = icRepository.findByProductIdWithLock(productId);
             if (inventory == null) {
                 throw new ResourceNotFoundException("Inventory not found for product: " + productId);
             }
@@ -96,16 +105,16 @@ public class StockManagementLogic {
             inventory.setReservedStock(Math.max(0, inventory.getReservedStock() - quantity));
 
             icRepository.save(inventory);
-            logger.debug("IC (releaseReservation): Released reservation of {} units for product {}", quantity, productId);
+            log.debug("IC (releaseReservation): Released reservation of {} units for product {}", quantity, productId);
 
         } catch (DataAccessException e) {
-            logger.error("IC (releaseReservation): Database error - {}", e.getMessage());
+            log.error("IC (releaseReservation): Database error - {}", e.getMessage());
             throw new DatabaseException("Failed to release reservation", e);
         }
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
-    public void updateStockLevels(InventoryData existingProduct, Optional<Integer> newStockLevel, Optional<Integer> newMinLevel ) {
+    public void updateStockLevels(InventoryControlData existingProduct, Optional<Integer> newStockLevel, Optional<Integer> newMinLevel ) {
         // Update current stock if provided
         newStockLevel.ifPresent(existingProduct::setCurrentStock);
 
@@ -119,7 +128,7 @@ public class StockManagementLogic {
     }
 
     // Get available stock (current - reserved)
-    private int getAvailableStock(InventoryData inventory) {
+    private int getAvailableStock(InventoryControlData inventory) {
         return inventory.getCurrentStock() - inventory.getReservedStock();
     }
 }

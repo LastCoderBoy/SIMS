@@ -1,6 +1,6 @@
 package com.JK.SIMS.service.email_service;
 
-import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
+import com.JK.SIMS.models.IC_models.inventoryData.InventoryControlData;
 import com.JK.SIMS.repository.InventoryControl_repo.IC_repository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +26,7 @@ public class LowStockScheduler {
 //    @Scheduled(cron = "*/30 * * * * ?")
     @Scheduled(cron = "0 0 8 * * ?")
     public void sendDailyLowStockAlert() {
-        List<InventoryData> lowStockProducts = icRepository.getLowStockItems();
+        List<InventoryControlData> lowStockProducts = icRepository.getLowStockItems();
         if (lowStockProducts.isEmpty()) {
             return; // nothing to send
         }
@@ -35,14 +35,14 @@ public class LowStockScheduler {
         emailSender.sendLowStockEmail( "Daily Low Stock Alert", html);
     }
 
-    public String buildLowStockHtml(List<InventoryData> lowStockProducts) {
+    public String buildLowStockHtml(List<InventoryControlData> lowStockProducts) {
         StringBuilder html = new StringBuilder();
         html.append("<h2 style='color:#d9534f;'>Low Stock Alert - SIMS Inventory</h2>");
         html.append("<p>The following products are below the minimum stock level:</p>");
         html.append("<table border='1' cellpadding='8' cellspacing='0' style='border-collapse:collapse;'>");
         html.append("<tr style='background-color:#f2f2f2;'><th>SKU</th><th>Product Name</th><th>Category</th><th>Stock</th><th>Min Level</th></tr>");
 
-        for (InventoryData product : lowStockProducts) {
+        for (InventoryControlData product : lowStockProducts) {
             html.append("<tr>")
                     .append("<td>").append(product.getSKU()).append("</td>")
                     .append("<td>").append(product.getPmProduct().getName()).append("</td>")

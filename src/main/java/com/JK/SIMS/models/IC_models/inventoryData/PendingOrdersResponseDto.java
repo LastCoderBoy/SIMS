@@ -1,17 +1,10 @@
 package com.JK.SIMS.models.IC_models.inventoryData;
 
-import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
-import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
-import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItemResponseDto;
-import com.JK.SIMS.service.InventoryServices.soService.SalesOrderServiceHelper;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Data
 @AllArgsConstructor

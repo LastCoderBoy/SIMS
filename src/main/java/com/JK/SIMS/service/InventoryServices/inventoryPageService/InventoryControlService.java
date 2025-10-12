@@ -107,30 +107,30 @@ public class InventoryControlService {
     @Transactional
     public void addProduct(ProductsForPM product, boolean isUnderTransfer){
         try {
-            InventoryData inventoryData = new InventoryData();
+            InventoryControlData inventoryControlData = new InventoryControlData();
 
             //Generating the SKU and populating the object field
             String sku = generateSKU(product.getProductID(), product.getCategory());
-            inventoryData.setSKU(sku);
+            inventoryControlData.setSKU(sku);
 
             // Set the basic fields
-            inventoryData.setPmProduct(product);
-            inventoryData.setLocation(product.getLocation());
-            inventoryData.setCurrentStock(0);
-            inventoryData.setMinLevel(0);
+            inventoryControlData.setPmProduct(product);
+            inventoryControlData.setLocation(product.getLocation());
+            inventoryControlData.setCurrentStock(0);
+            inventoryControlData.setMinLevel(0);
 
             // Handle the status properly
             if(amongInvalidStatus(product.getStatus())){
-                inventoryData.setStatus(InventoryDataStatus.INVALID);
+                inventoryControlData.setStatus(InventoryDataStatus.INVALID);
             }else {
                 // isUnderTransfer means the Product is INCOMING
                 if(isUnderTransfer){
-                    inventoryData.setStatus(InventoryDataStatus.INCOMING);
+                    inventoryControlData.setStatus(InventoryDataStatus.INCOMING);
                 } else {
-                    inventoryData.setStatus(InventoryDataStatus.LOW_STOCK);
+                    inventoryControlData.setStatus(InventoryDataStatus.LOW_STOCK);
                 }
             }
-            icRepository.save(inventoryData);
+            icRepository.save(inventoryControlData);
             logger.info("IC: New product is added with the {} SKU", sku);
         } catch (DataAccessException da){
             throw new DatabaseException("IC (addProduct): Failed to save inventory data due to database error", da);
@@ -143,11 +143,11 @@ public class InventoryControlService {
 
     // Helper method for internal use
     @Transactional(propagation = Propagation.MANDATORY)
-    public void saveInventoryProduct(InventoryData inventoryData) {
+    public void saveInventoryProduct(InventoryControlData inventoryControlData) {
         try {
-            icRepository.save(inventoryData);
+            icRepository.save(inventoryControlData);
             logger.info("IC (saveInventoryProduct): Successfully saved/updated inventory data with SKU {}",
-                    inventoryData.getSKU());
+                    inventoryControlData.getSKU());
         } catch (DataAccessException da) {
             logger.error("IC (saveInventoryProduct): Database error while saving inventory data: {}",
                     da.getMessage());
@@ -175,9 +175,9 @@ public class InventoryControlService {
     }
 
     @Transactional
-    public void updateInventoryStatus(Optional<InventoryData> productInIcOpt, InventoryDataStatus status) {
+    public void updateInventoryStatus(Optional<InventoryControlData> productInIcOpt, InventoryDataStatus status) {
         if (productInIcOpt.isPresent()) {
-            InventoryData product = productInIcOpt.get();
+            InventoryControlData product = productInIcOpt.get();
             product.setStatus(status);
             try {
                 icRepository.save(product);

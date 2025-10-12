@@ -4,7 +4,7 @@ import com.JK.SIMS.exceptionHandler.DatabaseException;
 import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
+import com.JK.SIMS.models.IC_models.inventoryData.InventoryControlData;
 import com.JK.SIMS.models.IC_models.damage_loss.*;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.InventoryControl_repo.DamageLossRepository;
@@ -74,7 +74,7 @@ public class DamageLossService {
         try {
             validateDamageLossDto(dtoRequest);
 
-            InventoryData inventoryProduct =
+            InventoryControlData inventoryProduct =
                     inventoryServiceHelper.getInventoryDataBySku(dtoRequest.sku());
             validateStockInput(inventoryProduct, dtoRequest.quantityLost());
 
@@ -116,7 +116,7 @@ public class DamageLossService {
             }
 
             if (request.quantityLost() != null) {
-                InventoryData inventoryProduct = report.getIcProduct();
+                InventoryControlData inventoryProduct = report.getIcProduct();
 
                 int newQuantity = request.quantityLost();
                 validateStockInput(inventoryProduct, newQuantity);
@@ -249,7 +249,7 @@ public class DamageLossService {
         }
     }
 
-    private void validateStockInput(InventoryData inventoryProduct, Integer lostQuantity){
+    private void validateStockInput(InventoryControlData inventoryProduct, Integer lostQuantity){
         if(inventoryProduct.getCurrentStock() < lostQuantity){
             if(lostQuantity <= 0){
                 throw new IllegalArgumentException("Lost level cannot be zero or negative.");
@@ -258,13 +258,13 @@ public class DamageLossService {
         }
     }
 
-    private DamageLoss convertToEntity(DamageLossDTORequest dto, InventoryData inventoryData, String user) {
-        BigDecimal price = inventoryData.getPmProduct().getPrice();
+    private DamageLoss convertToEntity(DamageLossDTORequest dto, InventoryControlData inventoryControlData, String user) {
+        BigDecimal price = inventoryControlData.getPmProduct().getPrice();
         BigDecimal lossValue = price.multiply(BigDecimal.valueOf(dto.quantityLost()));
 
         return new DamageLoss(
                 null,
-                inventoryData,
+                inventoryControlData,
                 dto.quantityLost(),
                 dto.reason(),
                 lossValue,
@@ -275,7 +275,7 @@ public class DamageLossService {
         );
     }
 
-    private void restoreStockLevel(InventoryData product, int quantityToRestore) {
+    private void restoreStockLevel(InventoryControlData product, int quantityToRestore) {
         if (quantityToRestore <= 0) {
             logger.warn("DL (restoreStockLevel): Quantity to restore is zero or negative. Skipping update.");
             return;

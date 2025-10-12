@@ -1,28 +1,30 @@
-package com.JK.SIMS.service.InventoryServices.soService;
+package com.JK.SIMS.service.utilities;
 
 import com.JK.SIMS.exceptionHandler.ServiceException;
+import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
+import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderRequestDto;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderResponseDto;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.views.SummarySalesOrderView;
 import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItem;
+import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItemRequestDto;
 import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItemResponseDto;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
-import com.jayway.jsonpath.internal.function.numeric.Sum;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Component
+@Slf4j
 public class SalesOrderServiceHelper {
-
-    private static final Logger logger = LoggerFactory.getLogger(SalesOrderServiceHelper.class);
 
     public SalesOrderResponseDto convertToSalesOrderResponseDto(SalesOrder salesOrder) {
         try {
@@ -47,7 +49,7 @@ public class SalesOrderServiceHelper {
                     itemDtos
             );
         } catch (Exception e) {
-            logger.error("OS (convertToSalesOrderResponseDto): Error converting salesOrder {} - {}",
+            log.error("OS (convertToSalesOrderResponseDto): Error converting salesOrder {} - {}",
                     salesOrder.getId(), e.getMessage());
             throw new ServiceException("Failed to convert salesOrder to response DTO", e);
         }
@@ -75,7 +77,7 @@ public class SalesOrderServiceHelper {
                     item.getOrderPrice() // Total price for this line item
             );
         } catch (Exception e) {
-            logger.error("SoHelper convertToOrderItemResponseDto(): Error converting order item {} - {}",
+            log.error("SoHelper convertToOrderItemResponseDto(): Error converting order item {} - {}",
                     item.getId(), e.getMessage());
             throw new ServiceException("Failed to convert order item to response DTO");
         }
@@ -88,5 +90,40 @@ public class SalesOrderServiceHelper {
 
     private SummarySalesOrderView convertToSummarySalesOrderView(SalesOrder order){
         return new SummarySalesOrderView(order);
+    }
+
+    public void validateSoRequestForCreate(SalesOrderRequestDto salesOrderRequestDto) {
+        if (salesOrderRequestDto == null) {
+            throw new ValidationException("OM-SO validateSoRequestForCreate(): SalesOrder request cannot be null.");
+        }
+
+        if (salesOrderRequestDto.getOrderItems() == null || salesOrderRequestDto.getOrderItems().isEmpty()) {
+            throw new ValidationException("OM-SO validateSoRequestForCreate(): SalesOrder items list cannot be empty.");
+        }
+
+        if (salesOrderRequestDto.getDestination() == null || salesOrderRequestDto.getDestination().trim().isEmpty()) {
+            throw new ValidationException("OM-SO validateSoRequestForCreate(): Destination cannot be empty.");
+        }
+
+        if (salesOrderRequestDto.getCustomerName() == null || salesOrderRequestDto.getCustomerName().trim().isEmpty()) {
+            throw new ValidationException("OM-SO validateSoRequestForCreate(): Customer name cannot be empty.");
+        }
+
+        // Check for duplicate products in the same order
+        Set<String> productIds = new HashSet<>();
+        for (OrderItemRequestDto item : salesOrderRequestDto.getOrderItems()) {
+            if (!productIds.add(item.getProductId())) {
+                throw new ValidationException("OM-SO validateSoRequestForCreate(): Duplicate product found in order: " + item.getProductId());
+            }
+        }
+
+        log.debug("OM-SO validateSoRequestForCreate(): SalesOrder request validation passed");
+    }
+
+    public void validateSoRequestForUpdate(SalesOrderRequestDto salesOrderRequestDto) {
+        if (salesOrderRequestDto == null) {
+            log.debug("OM-SO validateSoRequestForUpdate(): SalesOrder request is null. Nothing to validate.");
+            throw new ValidationException("OM-SO validateSoRequestForUpdate(): SalesOrder request cannot be null.");
+        }
     }
 }

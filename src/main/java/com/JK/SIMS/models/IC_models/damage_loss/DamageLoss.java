@@ -1,6 +1,6 @@
 package com.JK.SIMS.models.IC_models.damage_loss;
 
-import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
+import com.JK.SIMS.models.IC_models.inventoryData.InventoryControlData;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -22,7 +22,7 @@ public class DamageLoss {
 
     @ManyToOne
     @JoinColumn(name = "sku", nullable = false)
-    private InventoryData icProduct;
+    private InventoryControlData icProduct;
 
     @Column(nullable = false)
     private Integer quantityLost;

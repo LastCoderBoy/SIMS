@@ -4,7 +4,7 @@ import com.JK.SIMS.exceptionHandler.DatabaseException;
 import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
+import com.JK.SIMS.models.IC_models.inventoryData.InventoryControlData;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataDto;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataStatus;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
@@ -72,7 +72,7 @@ public class TotalItemsService {
             // Create the sort and get the data
             Sort sort = Sort.by(direction, sortBy);
             Pageable pageable = PageRequest.of(page, size, sort);
-            Page<InventoryData> inventoryPage = icRepository.findAll(pageable);
+            Page<InventoryControlData> inventoryPage = icRepository.findAll(pageable);
             return inventoryServiceHelper.transformToPaginatedInventoryDTOResponse(inventoryPage);
         } catch (DataAccessException da){
             logger.error("TotalItems (getInventoryDataDTOList): Failed to retrieve products due to database error: {}", da.getMessage(), da);
@@ -85,18 +85,18 @@ public class TotalItemsService {
 
     // Only currentStock and minLevel can be updated in the IC section
     @Transactional
-    public ApiResponse updateProduct(String sku, InventoryData newInventoryData) throws BadRequestException {
+    public ApiResponse updateProduct(String sku, InventoryControlData newInventoryControlData) throws BadRequestException {
         try {
             // Validate input parameters
-            validateUpdateRequest(newInventoryData);
+            validateUpdateRequest(newInventoryControlData);
 
             // Find and validate the existing product
-            InventoryData existingProduct = inventoryServiceHelper.getInventoryDataBySku(sku);
+            InventoryControlData existingProduct = inventoryServiceHelper.getInventoryDataBySku(sku);
 
             // Update stock levels
             stockManagementLogic.updateStockLevels(existingProduct,
-                    Optional.ofNullable(newInventoryData.getCurrentStock()),
-                    Optional.ofNullable(newInventoryData.getMinLevel()));
+                    Optional.ofNullable(newInventoryControlData.getCurrentStock()),
+                    Optional.ofNullable(newInventoryControlData.getMinLevel()));
 
             logger.info("IcTotalItems (updateProduct): Product with SKU {} updated successfully", sku);
             return new ApiResponse(true, sku + " is updated successfully");
@@ -121,7 +121,7 @@ public class TotalItemsService {
             Optional<String> inputText = Optional.ofNullable((text));
             if (inputText.isPresent() && !inputText.get().trim().isEmpty()) {
                 Pageable pageable = PageRequest.of(page, size, Sort.by(DEFAULT_SORT_BY).ascending());
-                Page<InventoryData> inventoryData = icRepository.searchProducts(inputText.get().trim().toLowerCase(), pageable);
+                Page<InventoryControlData> inventoryData = icRepository.searchProducts(inputText.get().trim().toLowerCase(), pageable);
                 logger.info("TotalItems (searchProduct): {} products retrieved.", inventoryData.getContent().size());
                 return inventoryServiceHelper.transformToPaginatedInventoryDTOResponse(inventoryData) ;
             }
@@ -149,7 +149,7 @@ public class TotalItemsService {
             Pageable pageable = PageRequest.of(page, size, sort);
 
             // Handle filtering
-            Page<InventoryData> resultPage;
+            Page<InventoryControlData> resultPage;
             if (filterBy != null && !filterBy.trim().isEmpty()) {
                 String[] filterParts = filterBy.trim().split(":");
                 if (filterParts.length == 2) {
@@ -166,7 +166,7 @@ public class TotalItemsService {
                     };
                 } else {
                     boolean isStatusType = GlobalServiceHelper.isInEnum(filterBy.trim().toUpperCase(), InventoryDataStatus.class);
-                    Specification<InventoryData> specification;
+                    Specification<InventoryControlData> specification;
                     if(isStatusType){
                         specification = Specification.where(InventorySpecification.hasStatus(
                                         InventoryDataStatus.valueOf(filterBy.trim().toUpperCase())));
@@ -207,9 +207,9 @@ public class TotalItemsService {
     @Transactional
     public ApiResponse deleteProduct(String sku) throws BadRequestException {
         try{
-            Optional<InventoryData> product = icRepository.findBySKU(sku);
+            Optional<InventoryControlData> product = icRepository.findBySKU(sku);
             if(product.isPresent()){
-                InventoryData productToBeDeleted = product.get();
+                InventoryControlData productToBeDeleted = product.get();
                 ProductsForPM productInPM = productToBeDeleted.getPmProduct();
 
                 if(productInPM.getStatus().equals(ProductStatus.ACTIVE) ||
@@ -253,7 +253,7 @@ public class TotalItemsService {
 
             // Create the sort and get all data
             Sort sort = Sort.by(direction, sortBy);
-            List<InventoryData> inventoryList = icRepository.findAll(sort);
+            List<InventoryControlData> inventoryList = icRepository.findAll(sort);
 
             // Convert to DTOs
             return inventoryList.stream().map(inventoryServiceHelper::convertToInventoryDTO).toList();

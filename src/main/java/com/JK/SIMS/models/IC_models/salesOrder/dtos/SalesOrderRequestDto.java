@@ -18,5 +18,5 @@ public class SalesOrderRequestDto {
     private String customerName;
 
     @NotEmpty
-    private List<OrderItemRequestDto> items;
+    private List<OrderItemRequestDto> orderItems;
 }

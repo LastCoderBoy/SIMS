@@ -1,8 +1,7 @@
 package com.JK.SIMS.controller.inventoryControllers;
 
-import com.JK.SIMS.config.security.SecurityUtils;
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
+import com.JK.SIMS.models.IC_models.inventoryData.InventoryControlData;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataDto;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryServices.totalItemsService.TotalItemsService;
@@ -42,11 +41,11 @@ public class TotalItemsController {
     // Used to update the IC Stock levels.
     @PutMapping("/{sku}")
     public ResponseEntity<?> updateProduct(@PathVariable String sku,
-                                           @RequestBody InventoryData newInventoryData) throws BadRequestException {
-        if(sku == null || sku.trim().isEmpty() || newInventoryData == null){
+                                           @RequestBody InventoryControlData newInventoryControlData) throws BadRequestException {
+        if(sku == null || sku.trim().isEmpty() || newInventoryControlData == null){
             throw new BadRequestException("IC: updateProduct() SKU or new input body cannot be null or empty");
         }
-        ApiResponse response = totalItemsService.updateProduct(sku.toUpperCase(), newInventoryData);
+        ApiResponse response = totalItemsService.updateProduct(sku.toUpperCase(), newInventoryControlData);
         return ResponseEntity.ok(response);
     }
 

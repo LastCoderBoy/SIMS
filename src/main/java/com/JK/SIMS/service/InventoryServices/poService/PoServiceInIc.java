@@ -6,7 +6,7 @@ import com.JK.SIMS.exceptionHandler.ResourceNotFoundException;
 import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
+import com.JK.SIMS.models.IC_models.inventoryData.InventoryControlData;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderResponseDto;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
@@ -175,10 +175,10 @@ public class PoServiceInIc {
             return; // No inventory update needed
         }
         try {
-            Optional<InventoryData> inventoryProductOpt =
+            Optional<InventoryControlData> inventoryProductOpt =
                     inventoryServiceHelper.getInventoryProductByProductId(order.getProduct().getProductID());
             if(inventoryProductOpt.isPresent()){
-                InventoryData inventoryProduct = inventoryProductOpt.get();
+                InventoryControlData inventoryProduct = inventoryProductOpt.get();
                 int newStockLevel = inventoryProduct.getCurrentStock() + receivedQuantity;
 
                 // The service method to update stock levels with proper error handling
@@ -216,7 +216,7 @@ public class PoServiceInIc {
             pmServiceHelper.updateIncomingProductStatusInPm(purchaseOrder.getProduct());
 
             // Return back the Inventory Control into the previous state
-            Optional<InventoryData> inventoryProductOpt =
+            Optional<InventoryControlData> inventoryProductOpt =
                     inventoryServiceHelper.getInventoryProductByProductId(purchaseOrder.getProduct().getProductID());
             inventoryProductOpt.ifPresent(inventoryServiceHelper::updateInventoryStatus);
 

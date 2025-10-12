@@ -1,7 +1,7 @@
 package com.JK.SIMS.service.email_service.impl;
 
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
+import com.JK.SIMS.models.IC_models.inventoryData.InventoryControlData;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataStatus;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
@@ -86,7 +86,7 @@ public class EmailServiceForPoImpl implements EmailServiceForPo {
 
 
     private void handleInventoryStatusUpdates(ProductsForPM orderedProduct) {
-        Optional<InventoryData> inventoryProductOpt =
+        Optional<InventoryControlData> inventoryProductOpt =
                 inventoryServiceHelper.getInventoryProductByProductId(orderedProduct.getProductID());
 
         if (orderedProduct.getStatus() == ProductStatus.PLANNING) {
@@ -96,7 +96,7 @@ public class EmailServiceForPoImpl implements EmailServiceForPo {
         }
     }
 
-    private void handlePlanningStatusUpdate(ProductsForPM orderedProduct, Optional<InventoryData> inventoryProductOpt) {
+    private void handlePlanningStatusUpdate(ProductsForPM orderedProduct, Optional<InventoryControlData> inventoryProductOpt) {
         // Update the product status from PLANNING to ON_ORDER
         orderedProduct.setStatus(ProductStatus.ON_ORDER);
         pmServiceHelper.saveProduct(orderedProduct);
@@ -110,12 +110,12 @@ public class EmailServiceForPoImpl implements EmailServiceForPo {
         }
     }
 
-    private void handleActiveStatusUpdate(Optional<InventoryData> inventoryDataOpt) {
+    private void handleActiveStatusUpdate(Optional<InventoryControlData> inventoryDataOpt) {
         if(inventoryDataOpt.isPresent()) {
-            InventoryData inventoryData = inventoryDataOpt.get();
-            if (inventoryData.getStatus() != InventoryDataStatus.INCOMING) {
-                inventoryData.setStatus(InventoryDataStatus.INCOMING);
-                inventoryControlService.saveInventoryProduct(inventoryData);
+            InventoryControlData inventoryControlData = inventoryDataOpt.get();
+            if (inventoryControlData.getStatus() != InventoryDataStatus.INCOMING) {
+                inventoryControlData.setStatus(InventoryDataStatus.INCOMING);
+                inventoryControlService.saveInventoryProduct(inventoryControlData);
             }
         }
         // Active status products will always be present in the Inventory

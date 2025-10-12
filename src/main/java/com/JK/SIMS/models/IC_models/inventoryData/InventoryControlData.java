@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(name = "InventoryControl_Data")
-public class InventoryData {
+public class InventoryControlData {
 
     @Id
     @Column(name = "SKU", unique = true, nullable = false)

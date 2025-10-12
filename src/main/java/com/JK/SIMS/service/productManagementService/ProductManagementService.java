@@ -6,7 +6,7 @@ import com.JK.SIMS.exceptionHandler.ResourceNotFoundException;
 import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.IC_models.inventoryData.InventoryData;
+import com.JK.SIMS.models.IC_models.inventoryData.InventoryControlData;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataStatus;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductManagementDTO;
@@ -220,7 +220,7 @@ public class ProductManagementService {
 
     private void updateProductAndInventoryStatus(ProductsForPM currentProduct, ProductsForPM newProduct, String productId) {
         if (newProduct.getStatus() != null && !newProduct.getStatus().equals(currentProduct.getStatus())) {
-            Optional<InventoryData> productInIcOpt =
+            Optional<InventoryControlData> productInIcOpt =
                     inventoryServiceHelper.getInventoryProductByProductId(productId);
             ProductStatus previousStatus = currentProduct.getStatus();
 
@@ -236,7 +236,7 @@ public class ProductManagementService {
         }
     }
 
-    private void handleStatusChange(ProductsForPM currentProduct, ProductsForPM newProduct, ProductStatus previousStatus, Optional<InventoryData> productInIcOpt) {
+    private void handleStatusChange(ProductsForPM currentProduct, ProductsForPM newProduct, ProductStatus previousStatus, Optional<InventoryControlData> productInIcOpt) {
         if (newProduct.getStatus().equals(ProductStatus.ACTIVE) || newProduct.getStatus().equals(ProductStatus.ON_ORDER)) {
             if (previousStatus.equals(ProductStatus.ARCHIVED)) {
                 // the status is changing from ARCHIVED -> ACTIVE, ON_ORDER

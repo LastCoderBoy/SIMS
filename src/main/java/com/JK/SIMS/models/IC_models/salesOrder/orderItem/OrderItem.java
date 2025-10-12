@@ -3,15 +3,15 @@ package com.JK.SIMS.models.IC_models.salesOrder.orderItem;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.math.BigDecimal;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@ToString(exclude = "salesOrder")
+@EqualsAndHashCode(exclude = "salesOrder")
 @Entity
 @Table(name = "order_items")
 public class OrderItem {
@@ -31,12 +31,12 @@ public class OrderItem {
     private BigDecimal orderPrice;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id", nullable = false)
+    @JoinColumn(name = "sales_order_id", nullable = false)
     private SalesOrder salesOrder;
 
-    public OrderItem(Integer quantity, ProductsForPM product, BigDecimal orderPrice){
+    public OrderItem(Integer quantity, ProductsForPM product, BigDecimal totalOrderPrice){
         this.quantity = quantity;
         this.product = product;
-        this.orderPrice = orderPrice;
+        this.orderPrice = totalOrderPrice;
     }
 }
