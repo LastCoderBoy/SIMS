@@ -7,8 +7,8 @@ import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderRequestDto;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderResponseDto;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.views.SummarySalesOrderView;
 import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItem;
-import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItemRequestDto;
-import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItemResponseDto;
+import com.JK.SIMS.models.IC_models.salesOrder.orderItem.dtos.OrderItemRequestDto;
+import com.JK.SIMS.models.IC_models.salesOrder.orderItem.dtos.OrderItemResponseDto;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -73,7 +73,7 @@ public class SalesOrderServiceHelper {
                     product.getName(),
                     product.getCategory(),
                     item.getQuantity(),
-                    item.getOrderPrice().divide(BigDecimal.valueOf(item.getQuantity()), 2, RoundingMode.HALF_UP), // Unit price
+                    item.getProduct().getPrice(), // Unit price
                     item.getOrderPrice() // Total price for this line item
             );
         } catch (Exception e) {
@@ -92,26 +92,10 @@ public class SalesOrderServiceHelper {
         return new SummarySalesOrderView(order);
     }
 
-    public void validateSoRequestForCreate(SalesOrderRequestDto salesOrderRequestDto) {
-        if (salesOrderRequestDto == null) {
-            throw new ValidationException("OM-SO validateSoRequestForCreate(): SalesOrder request cannot be null.");
-        }
-
-        if (salesOrderRequestDto.getOrderItems() == null || salesOrderRequestDto.getOrderItems().isEmpty()) {
-            throw new ValidationException("OM-SO validateSoRequestForCreate(): SalesOrder items list cannot be empty.");
-        }
-
-        if (salesOrderRequestDto.getDestination() == null || salesOrderRequestDto.getDestination().trim().isEmpty()) {
-            throw new ValidationException("OM-SO validateSoRequestForCreate(): Destination cannot be empty.");
-        }
-
-        if (salesOrderRequestDto.getCustomerName() == null || salesOrderRequestDto.getCustomerName().trim().isEmpty()) {
-            throw new ValidationException("OM-SO validateSoRequestForCreate(): Customer name cannot be empty.");
-        }
-
+    public void validateSalesOrderItems(List<OrderItemRequestDto> requestedOrderItems) {
         // Check for duplicate products in the same order
         Set<String> productIds = new HashSet<>();
-        for (OrderItemRequestDto item : salesOrderRequestDto.getOrderItems()) {
+        for (OrderItemRequestDto item : requestedOrderItems) {
             if (!productIds.add(item.getProductId())) {
                 throw new ValidationException("OM-SO validateSoRequestForCreate(): Duplicate product found in order: " + item.getProductId());
             }

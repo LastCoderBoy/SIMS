@@ -8,8 +8,9 @@ import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderRequestDto;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderResponseDto;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.views.DetailedSalesOrderView;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.views.SummarySalesOrderView;
+import com.JK.SIMS.models.IC_models.salesOrder.orderItem.dtos.BulkOrderItemsRequestDto;
 import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItem;
-import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItemRequestDto;
+import com.JK.SIMS.models.IC_models.salesOrder.orderItem.dtos.OrderItemRequestDto;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
@@ -42,10 +43,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -75,44 +74,17 @@ public class SalesOrderServiceImpl implements SalesOrderService {
 
     @Override
     @Transactional
-    public ApiResponse<String> createOrder(SalesOrderRequestDto salesOrderRequestDto, String jwtToken) {
+    public ApiResponse<String> createOrder(@Valid SalesOrderRequestDto salesOrderRequestDto, String jwtToken) {
         try {
             // Validate the request and Create the Entity
-            salesOrderServiceHelper.validateSoRequestForCreate(salesOrderRequestDto); // might throw ValidationException
+            salesOrderServiceHelper.validateSalesOrderItems(salesOrderRequestDto.getOrderItems()); // might throw ValidationException
             String user = securityUtils.validateAndExtractUsername(jwtToken);
             String orderReference = generateOrderReference(LocalDate.now());
             SalesOrder salesOrder = createSalesOrderEntity(salesOrderRequestDto, orderReference, user);
 
             // Process each item with stock reservation
-            List<OrderItem> items = new ArrayList<>();
-            try {
-                for (OrderItemRequestDto itemDto : salesOrderRequestDto.getOrderItems()) {
-                    ProductsForPM product = pmServiceHelper.findProductById(itemDto.getProductId());
+            populateSalesOrderWithItems(salesOrder, salesOrderRequestDto.getOrderItems());
 
-                    // Validate the ordered Product Status
-                    if (product.getStatus() != ProductStatus.ACTIVE && product.getStatus() != ProductStatus.ON_ORDER) {
-                        throw new ValidationException("Product '" + product.getName() + "ID: " + product.getProductID() + " is not active.");
-                    }
-                    // Reserve stock atomically - throws "InsufficientStockException" if insufficient stock
-                    stockManagementLogic.reserveStock(product.getProductID(), itemDto.getQuantity());
-
-                    // Create and Add OrderItem to SalesOrder
-                    OrderItem orderItem = createOrderItem(product, itemDto.getQuantity());
-                    items.add(orderItem);
-                }
-                // Add all OrderItems to the SalesOrder after successful reservation
-                log.debug("OM-SO createOrder(): Adding {} OrderItems to the SalesOrder", items); // debug
-                for(OrderItem item : items) {
-                    salesOrder.addOrderItem(item);
-                }
-                log.info("OM-SO createOrder(): OrderItems added to the SalesOrder successfully List: {}", items.toString()); // debug
-            } catch (Exception e) {
-                // Rollback the reservations if any error occurred
-                for (OrderItem item : items) {
-                    stockManagementLogic.releaseReservation(item.getProduct().getProductID(), item.getQuantity());
-                }
-                throw e;
-            }
             salesOrderRepository.save(salesOrder);
             logger.info("OM-SO createOrder(): SalesOrder created successfully with reference ID: {}", orderReference);
             return new ApiResponse<>(true, "SalesOrder created successfully and it is under APPROVED status");
@@ -137,15 +109,33 @@ public class SalesOrderServiceImpl implements SalesOrderService {
     @Override
     @Transactional
     public ApiResponse<String> updateSalesOrder(Long orderId, SalesOrderRequestDto salesOrderRequestDto, String jwtToken) {
-        salesOrderServiceHelper.validateSoRequestForUpdate(salesOrderRequestDto);
-        SalesOrder orderToBeUpdated = getSalesOrderById(orderId);
-        if(orderToBeUpdated.isFinalized()){
-            log.warn("OM-SO updateSalesOrder(): Order with ID {} already processed, cannot be updated!", orderId);
-            throw new ValidationException("Order is already processed, cannot be updated!");
+        try {
+            SalesOrder orderToBeUpdated = getSalesOrderById(orderId); // might throw ResourceNotFoundException
+            if (orderToBeUpdated.isFinalized()) {
+                log.warn("OM-SO updateSalesOrder(): Order with ID {} already processed, cannot be updated!", orderId);
+                throw new ValidationException("Order is already processed, cannot be updated!");
+            }
+            salesOrderServiceHelper.validateSoRequestForUpdate(salesOrderRequestDto); // dto null check
+
+            // Update the base fields
+            updateBaseFieldsIfProvided(
+                    orderToBeUpdated,
+                    salesOrderRequestDto.getDestination(),
+                    salesOrderRequestDto.getCustomerName());
+
+            // Update the quantity
+            updateItemQuantity(orderToBeUpdated, salesOrderRequestDto.getOrderItems());
+
+            String updatedUser = securityUtils.validateAndExtractUsername(jwtToken);
+            orderToBeUpdated.setUpdatedBy(updatedUser);
+            salesOrderRepository.save(orderToBeUpdated);
+            return new ApiResponse<>(true, "Sales Order: " + orderToBeUpdated.getOrderReference() + " is updated successfully.");
+        } catch (ResourceNotFoundException | ValidationException | InsufficientStockException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("OM-SO updateSalesOrder(): Unexpected error - {}", e.getMessage());
+            throw new ServiceException("Internal Service error occurred while updating the order.", e);
         }
-        updateBaseFieldsIfProvided(orderToBeUpdated, salesOrderRequestDto.getDestination(), salesOrderRequestDto.getCustomerName());
-        updateOrderItemsIfProvided(orderToBeUpdated, salesOrderRequestDto.getOrderItems());
-        return null;
     }
 
     private void updateBaseFieldsIfProvided(SalesOrder orderToBeUpdated, @Nullable String destination, @Nullable String customerName) {
@@ -153,60 +143,178 @@ public class SalesOrderServiceImpl implements SalesOrderService {
         Optional.ofNullable(customerName).ifPresent(name -> orderToBeUpdated.setCustomerName(name.trim()));
     }
 
-    // Why marked as Valid, bcz we have to know which product we are going to update.
-    private void updateOrderItemsIfProvided(SalesOrder orderToBeUpdated, @Valid List<OrderItemRequestDto> orderItemsDto) {
+    private void updateItemQuantity(SalesOrder salesOrder, List<OrderItemRequestDto> orderItemsDto) {
+        log.debug("List {}", orderItemsDto); // debug
         if (orderItemsDto == null || orderItemsDto.isEmpty()) {
             return; // Nothing to update
         }
-        List<OrderItem> existingItems = orderToBeUpdated.getItems();
-        HashMap<String, OrderItem> orderItemMap = new HashMap<>();
-        for (OrderItem item : existingItems) {
-            orderItemMap.put(item.getProduct().getProductID(), item);
-        }
-        List<OrderItem> itemsToAdd = new ArrayList<>();
+        // Create map of existing items for quick lookup
+        Map<String, OrderItem> existingItemsMap = salesOrder.getItems().stream()
+                .collect(Collectors.toMap(
+                        item -> item.getProduct().getProductID(),
+                        item -> item
+                ));
+        log.debug("Map {}", existingItemsMap);
+        // Track stock adjustments for rollback
+        List<SalesOrderAdjustments> stockAdjustments = new ArrayList<>();
         try {
             for(OrderItemRequestDto itemDto : orderItemsDto) {
                 String productId = itemDto.getProductId();
-                if(orderItemMap.containsKey(productId)){
-                    OrderItem existingItem = orderItemMap.get(productId);
+                if(existingItemsMap.containsKey(productId)){
+                    OrderItem existingItem = existingItemsMap.get(productId);
                     int quantityDifference = itemDto.getQuantity() - existingItem.getQuantity();
+                    if (quantityDifference == 0) {
+                        continue; // No change needed
+                    }
                     if(quantityDifference > 0){
                         // Need to reserve more stock
                         stockManagementLogic.reserveStock(productId, quantityDifference);
-                    } else if(quantityDifference < 0){
+                        stockAdjustments.add(new SalesOrderAdjustments(productId, quantityDifference, true));
+                    } else {
                         // Need to release the excess stock
                         stockManagementLogic.releaseReservation(productId, Math.abs(quantityDifference));
+                        stockAdjustments.add(new SalesOrderAdjustments(productId, quantityDifference, false));
                     }
                     existingItem.setQuantity(itemDto.getQuantity());
-                    existingItem.setOrderPrice(existingItem.getProduct().getPrice().multiply(BigDecimal.valueOf(itemDto.getQuantity())));
-                } else {
-                    // Need to add a new item
-                    ProductsForPM product = pmServiceHelper.findProductById(productId);
-
-                    if (product.getStatus() != ProductStatus.ACTIVE) {
-                        throw new ValidationException("Product '" + product.getName() + "' (ID: " + productId + ") is not active.");
-                    }
-                    stockManagementLogic.reserveStock(productId, itemDto.getQuantity());
-                    OrderItem orderItem = createOrderItem(product, itemDto.getQuantity());
-                    itemsToAdd.add(orderItem);
+                    existingItem.setOrderPrice(existingItem.getProduct().getPrice()
+                            .multiply(BigDecimal.valueOf(itemDto.getQuantity())));
                 }
             }
-            existingItems.addAll(itemsToAdd);
-            salesOrderRepository.save(orderToBeUpdated);
-
-            log.info("OM-SO updateOrderItemsIfProvided(): Successfully updated order items for order {}",
-                    orderToBeUpdated.getOrderReference());
-
+            log.info("OM-SO updateOrderQuantity(): Successfully updated order items for order {}",
+                    salesOrder.getOrderReference());
         } catch (Exception e) {
-            // Rollback all new reservations
-            for (OrderItem item : itemsToAdd) {
-                stockManagementLogic.releaseReservation(
-                        item.getProduct().getProductID(),
-                        item.getQuantity()
-                );
+            // Rollback stock adjustments in reverse order
+            log.warn("OM-SO updateItemQuantities(): Error occurred, rolling back {} stock adjustments",
+                    stockAdjustments.size());
+
+            Collections.reverse(stockAdjustments);
+            for (SalesOrderAdjustments adjustment : stockAdjustments) {
+                try {
+                    if (adjustment.isWasReserved()) {
+                        // Rollback reservation by releasing
+                        stockManagementLogic.releaseReservation(adjustment.getProductId(), adjustment.getQuantity());
+                    } else {
+                        // Rollback release by reserving back
+                        stockManagementLogic.reserveStock(adjustment.getProductId(), adjustment.getQuantity());
+                    }
+                } catch (Exception rollbackException) {
+                    log.error("OM-SO updateItemQuantities(): Failed to rollback adjustment for product {}: {}",
+                            adjustment.getProductId(), rollbackException.getMessage());
+                }
             }
-            log.error("OM-SO updateOrderItemsIfProvided(): Failed to update order items - {}", e.getMessage());
+            log.error("OM-SO updateOrderQuantity(): Failed to update order items - {}", e.getMessage());
             throw e;
+        }
+    }
+
+    @Transactional
+    @Override
+    public ApiResponse<String> addItemsToSalesOrder(Long orderId, @Valid BulkOrderItemsRequestDto bulkOrderItemsRequestDto, String jwtToken){
+        try {
+            SalesOrder salesOrder = getSalesOrderById(orderId);
+            if (salesOrder.isFinalized()) {
+                log.warn("OM-SO addItemsToSalesOrder(): Order with ID {} already processed, cannot be updated!", orderId);
+                throw new ValidationException("Order is already processed, cannot be updated!");
+            }
+            salesOrderServiceHelper.validateSalesOrderItems(bulkOrderItemsRequestDto.getOrderItems());
+            String updatedUser = securityUtils.validateAndExtractUsername(jwtToken);
+
+            // Process and add items with stock reservation
+            populateSalesOrderWithItems(salesOrder, bulkOrderItemsRequestDto.getOrderItems());
+
+            salesOrder.setUpdatedBy(updatedUser);
+            salesOrderRepository.save(salesOrder);
+            logger.info("OM-SO addItemsToSalesOrder(): New Items added to Sales Order: {}", salesOrder.getOrderReference());
+            return new ApiResponse<>(true, "Order Item(s) added successfully");
+
+        } catch (ValidationException | InsufficientStockException | ResourceNotFoundException e) {
+            logger.error("OM-SO addItemsToSalesOrder(): Error - {}", e.getMessage());
+            throw e;
+        } catch (DataAccessException dae) {
+            logger.error("OM-SO addItemsToSalesOrder(): Database error - {}", dae.getMessage());
+            throw new DatabaseException("OM-SO addItemsToSalesOrder(): Failed to add items to the order.", dae);
+        } catch (Exception e) {
+            logger.error("OM-SO addItemsToSalesOrder(): Unexpected error - {}", e.getMessage());
+            throw new ServiceException("Internal Service error occurred while adding items to the order.", e);
+        }
+    }
+
+    /**
+     * Populates SalesOrder with OrderItems after reserving stock.
+     * This method is NOT marked as @Transactional because it's always called
+     * from a method that already has an active transaction.
+     *
+     * @param salesOrder The sales order to populate
+     * @param orderItemRequestDtoList List of order items to add
+     * @throws ValidationException if product is not active
+     * @throws InsufficientStockException if stock is insufficient
+     * @throws ResourceNotFoundException if product/inventory not found
+     */
+    private void populateSalesOrderWithItems(SalesOrder salesOrder, List<OrderItemRequestDto> orderItemRequestDtoList){
+        List<OrderItem> items = new ArrayList<>();
+        try {
+            for (OrderItemRequestDto itemDto : orderItemRequestDtoList ) {
+                ProductsForPM product = pmServiceHelper.findProductById(itemDto.getProductId());
+
+                // Validate the ordered Product Status
+                if (product.getStatus() != ProductStatus.ACTIVE && product.getStatus() != ProductStatus.ON_ORDER) {
+                    throw new ValidationException("Product '" + product.getName() + " ID: " + product.getProductID() + " is not active.");
+                }
+                // Reserve stock atomically - throws "InsufficientStockException" if insufficient stock
+                stockManagementLogic.reserveStock(product.getProductID(), itemDto.getQuantity());
+
+                // Create and Add OrderItem to SalesOrder
+                OrderItem orderItem = createOrderItem(product, itemDto.getQuantity());
+                items.add(orderItem);
+            }
+            // Add all OrderItems to the SalesOrder after successful reservation
+            for(OrderItem item : items) {
+                salesOrder.addOrderItem(item);
+            }
+        } catch (Exception e) {
+            // Rollback the reservations if any error occurred
+            for (OrderItem item : items) {
+                try {
+                    stockManagementLogic.releaseReservation(item.getProduct().getProductID(), item.getQuantity());
+                } catch (Exception rollbackException) {
+                    // Log but don't throw - we want to release as many reservations as possible
+                    logger.error("OM-SO populateSalesOrderWithItems(): Failed to rollback reservation for product {}: {}",
+                            item.getProduct().getProductID(), rollbackException.getMessage());
+                }
+            }
+            throw e;
+        }
+    }
+
+    @Override
+    @Transactional
+    public ApiResponse<String> removeItemFromSalesOrder(Long orderId, Long itemId, String jwtToken){
+        try {
+            SalesOrder salesOrder = getSalesOrderById(orderId);
+            if (salesOrder.isFinalized()) {
+                log.warn("OM-SO removeItemFromSalesOrder(): Order ID {} finalized, cannot remove item!", orderId);
+                throw new ValidationException("Order finalized, cannot remove item!");
+            }
+            String updatedBy = securityUtils.validateAndExtractUsername(jwtToken);
+            salesOrder.setUpdatedBy(updatedBy);
+
+            OrderItem itemToRemove = salesOrder.getItems().stream()
+                    .filter(item -> item.getId().equals(itemId))
+                    .findFirst()
+                    .orElseThrow(() -> new ResourceNotFoundException("Item ID " + itemId + " not found in order " + salesOrder.getOrderReference()));
+
+            stockManagementLogic.releaseReservation(itemToRemove.getProduct().getProductID(), itemToRemove.getQuantity());
+            salesOrder.removeOrderItem(itemToRemove);
+            //TODO: Update Status
+            salesOrderRepository.save(salesOrder);
+
+            logger.info("OM-SO removeItemFromSalesOrder(): Item {} removed from Sales Order {}", itemId, salesOrder.getOrderReference());
+            return new ApiResponse<>(true, "Item removed successfully");
+        } catch (ResourceNotFoundException | ValidationException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("OM-SO removeItemFromSalesOrder(): Unexpected error - {}", e.getMessage());
+            throw new ServiceException("Internal error removing item", e);
         }
     }
 

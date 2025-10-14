@@ -1,20 +1,20 @@
 package com.JK.SIMS.controller.inventoryControllers;
 
 
-import com.JK.SIMS.models.IC_models.inventoryData.PendingOrdersResponseDto;
-import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
-import com.JK.SIMS.models.IC_models.salesOrder.dtos.processSalesOrderDtos.BulkShipStockRequestDto;
-import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
-import com.JK.SIMS.models.PM_models.ProductCategories;
-import com.JK.SIMS.service.InventoryServices.soService.SoServiceInIc;
+import com.JK.SIMS.config.security.TokenUtils;
 import com.JK.SIMS.exceptionHandler.InvalidTokenException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryPageResponse;
+import com.JK.SIMS.models.IC_models.inventoryData.PendingOrdersResponseDto;
+import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
 import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.ReceiveStockRequestDto;
+import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
+import com.JK.SIMS.models.IC_models.salesOrder.dtos.processSalesOrderDtos.ProcessSalesOrderRequestDto;
+import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.InventoryControlService;
 import com.JK.SIMS.service.InventoryServices.poService.PoServiceInIc;
-import com.JK.SIMS.config.security.TokenUtils;
+import com.JK.SIMS.service.InventoryServices.soService.SoServiceInIc;
 import jakarta.validation.Valid;
 import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
@@ -74,9 +74,9 @@ public class InventoryController {
     // STOCK OUT button
     @PutMapping("/stocks/out")
     @PreAuthorize("@securityUtils.hasAccess()")
-    public ResponseEntity<?> bulkStockOutOrders(@Valid @RequestBody BulkShipStockRequestDto request,
+    public ResponseEntity<?> bulkStockOutOrders(@Valid @RequestBody ProcessSalesOrderRequestDto request,
                                                 @RequestHeader("Authorization") String token){
-        logger.info("IC: bulkStockOutOrders() called with {} orders", request.getBulkSoRequestDtos().size());
+        logger.info("IC: bulkStockOutOrders() called with {} orders", request.getItemQuantities().size());
         if (token == null || token.trim().isEmpty()) {
             throw new IllegalArgumentException("IC: bulkStockOutOrders() Invalid Token provided.");
         }

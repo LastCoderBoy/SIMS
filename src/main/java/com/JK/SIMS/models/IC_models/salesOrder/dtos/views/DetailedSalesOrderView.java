@@ -3,7 +3,7 @@ package com.JK.SIMS.models.IC_models.salesOrder.dtos.views;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItem;
-import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItemResponseDto;
+import com.JK.SIMS.models.IC_models.salesOrder.orderItem.dtos.OrderItemResponseDto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -42,7 +42,7 @@ public class DetailedSalesOrderView {
         this.customerName = salesOrder.getCustomerName();
         this.totalItems = salesOrder.getItems().stream().mapToInt(OrderItem::getQuantity).sum();
         this.totalAmount = salesOrder.getItems().stream()
-                .map(item -> item.getOrderPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
+                .map(item -> item.getProduct().getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         // Set up New fields
@@ -55,8 +55,8 @@ public class DetailedSalesOrderView {
                         item.getProduct().getName(),
                         item.getProduct().getCategory(),
                         item.getQuantity(),
-                        item.getOrderPrice(),
-                        item.getOrderPrice().multiply(BigDecimal.valueOf(item.getQuantity()))
+                        item.getProduct().getPrice(),
+                        item.getProduct().getPrice().multiply(BigDecimal.valueOf(item.getQuantity()))
                 )).toList();
         this.confirmedBy = salesOrder.getConfirmedBy();
         this.lastUpdate = salesOrder.getLastUpdate();

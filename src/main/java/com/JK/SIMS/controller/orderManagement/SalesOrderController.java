@@ -6,6 +6,7 @@ import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderRequestDto;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.views.DetailedSalesOrderView;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.views.SummarySalesOrderView;
+import com.JK.SIMS.models.IC_models.salesOrder.orderItem.dtos.BulkOrderItemsRequestDto;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.orderManagementService.salesOrderService.SalesOrderService;
 import jakarta.validation.Valid;
@@ -61,6 +62,7 @@ public class SalesOrderController {
     }
 
 
+    // Only the Destination, CustomerName and Quantity can be updated.
     @PutMapping("/{orderId}/update")
     @PreAuthorize("@securityUtils.hasAccess()")
     public ResponseEntity<?> updateSalesOrder(@PathVariable Long orderId,
@@ -75,6 +77,38 @@ public class SalesOrderController {
         log.error("OM-SO updateSalesOrder() Invalid Token provided. {}", token);
         throw new InvalidTokenException("Invalid Token provided. Please re-login.");
     }
+
+
+    // Updating the SO by adding new items
+    @PatchMapping("/{orderId}/items/add")
+    @PreAuthorize("@securityUtils.hasAccess()")
+    public ResponseEntity<?> addItemsToSalesOrder(@PathVariable Long orderId,
+                                                  @Valid @RequestBody BulkOrderItemsRequestDto bulkOrderItemsRequestDto,
+                                                  @RequestHeader("Authorization") String token){
+        log.info("OM-SO: addItemsToSalesOrder() is calling...");
+        if(token != null && !token.trim().isEmpty()) {
+            String jwtToken = TokenUtils.extractToken(token);
+            ApiResponse<String> response = salesOrderService.addItemsToSalesOrder(orderId, bulkOrderItemsRequestDto, jwtToken);
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        }
+        log.error("OM-SO: addItemsToSalesOrder() Invalid Token provided. {}", token);
+        throw new InvalidTokenException("Invalid Token provided. Please re-login.");
+    }
+
+    @DeleteMapping("/{orderId}/items/{itemId}")
+    @PreAuthorize("@securityUtils.hasAccess()")
+    public ResponseEntity<ApiResponse<String>> removeItemFromSalesOrder(
+            @PathVariable Long orderId,
+            @PathVariable Long itemId,
+            @RequestHeader("Authorization") String token) {
+        log.info("OM-SO removeItemFromSalesOrder(): Called for orderId {}, itemId {}", orderId, itemId);
+        if (token == null || token.trim().isEmpty()) {
+            throw new IllegalArgumentException("OM-SO: removeItemFromSalesOrder(): Invalid Token provided.");
+        }
+        ApiResponse<String> response = salesOrderService.removeItemFromSalesOrder(orderId, itemId, TokenUtils.extractToken(token));
+        return ResponseEntity.ok(response);
+    }
+
 
     @PutMapping("/{orderId}/cancel-salesorder")
     @PreAuthorize("@securityUtils.hasAccess()")

@@ -32,7 +32,7 @@ public class SummarySalesOrderView {
         this.customerName = salesOrder.getCustomerName();
         this.totalItems = salesOrder.getItems().stream().mapToInt(OrderItem::getQuantity).sum();
         this.totalAmount = salesOrder.getItems().stream()
-                .map(item -> item.getOrderPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
+                .map(item -> item.getProduct().getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 }

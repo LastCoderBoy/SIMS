@@ -1,8 +1,7 @@
 package com.JK.SIMS.service.InventoryServices.soService.processSalesOrder;
 
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.IC_models.salesOrder.dtos.processSalesOrderDtos.BulkShipStockRequestDto;
-import com.JK.SIMS.models.IC_models.salesOrder.dtos.processSalesOrderDtos.ShipStockRequestDto;
+import com.JK.SIMS.models.IC_models.salesOrder.dtos.processSalesOrderDtos.ProcessSalesOrderRequestDto;
 import com.JK.SIMS.repository.SalesOrder_Repo.SalesOrderRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
 import com.JK.SIMS.service.stockMovementService.StockMovementService;
@@ -10,24 +9,25 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
+import java.time.Clock;
 
 @Component
 @Slf4j
 public class BulkStockOutProcessor extends OrderProcessor implements StockOutProcessor {
 
-    public BulkStockOutProcessor(StockManagementLogic stockManagementLogic, StockMovementService stockMovementService, SalesOrderRepository salesOrderRepository) {
-        super(stockManagementLogic, stockMovementService, salesOrderRepository);
+    public BulkStockOutProcessor(Clock clock, StockManagementLogic stockManagementLogic,
+                                 StockMovementService stockMovementService, SalesOrderRepository salesOrderRepository) {
+        super(clock, stockManagementLogic, stockMovementService, salesOrderRepository);
     }
 
     @Override
     @Transactional
-    public ApiResponse processStockOut(BulkShipStockRequestDto bulkSoRequestDto, String username) {
-        List<ShipStockRequestDto> shipStockRequestDtoList = bulkSoRequestDto.getBulkSoRequestDtos();
-        for(ShipStockRequestDto stockRequestDto : shipStockRequestDtoList){
-            ApiResponse response = processOrder(stockRequestDto.getOrderId(), stockRequestDto.getItemQuantities(), username);
-            log.info("SO: Processing order with ID: {} - Response: {}", stockRequestDto.getOrderId(), response.getMessage());
-        }
-        return new ApiResponse(true, "Stock out processed successfully");
+    public ApiResponse<String> processStockOut(ProcessSalesOrderRequestDto processSoRequestDto, String username) {
+        ApiResponse<String> response = processOrder(
+                processSoRequestDto.getOrderId(),
+                processSoRequestDto.getItemQuantities(),
+                username);
+        log.info("SO: Processing order with ID: {} - Response: {}", processSoRequestDto.getOrderId(), response.getMessage());
+        return new ApiResponse<>(true, "Stock out processed successfully");
     }
 }

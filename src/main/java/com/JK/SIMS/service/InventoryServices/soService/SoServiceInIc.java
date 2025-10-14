@@ -1,15 +1,12 @@
 package com.JK.SIMS.service.InventoryServices.soService;
 
 import com.JK.SIMS.config.security.SecurityUtils;
-import com.JK.SIMS.exceptionHandler.DatabaseException;
-import com.JK.SIMS.exceptionHandler.ResourceNotFoundException;
-import com.JK.SIMS.exceptionHandler.ServiceException;
-import com.JK.SIMS.exceptionHandler.ValidationException;
+import com.JK.SIMS.exceptionHandler.*;
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.IC_models.salesOrder.dtos.processSalesOrderDtos.BulkShipStockRequestDto;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
-import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderResponseDto;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
+import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderResponseDto;
+import com.JK.SIMS.models.IC_models.salesOrder.dtos.processSalesOrderDtos.ProcessSalesOrderRequestDto;
 import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItem;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
@@ -22,8 +19,7 @@ import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import com.JK.SIMS.service.utilities.SalesOrderServiceHelper;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataAccessException;
@@ -36,11 +32,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Service
+@Slf4j
 public class SoServiceInIc {
 
-    private static final Logger logger = LoggerFactory.getLogger(SoServiceInIc.class);
+    private static final LocalDateTime URGENT_DELIVERY_DATE = LocalDateTime.now().plusDays(2);
 
     private final SecurityUtils securityUtils;
     private final SalesOrderServiceHelper salesOrderServiceHelper;
@@ -79,12 +77,13 @@ public class SoServiceInIc {
             return new PaginatedResponse<>(dtoResponse);
 
         } catch (Exception e) {
-            logger.error("OS (getAllSalesOrdersSorted): Error fetching orders - {}", e.getMessage());
+            log.error("OS (getAllSalesOrdersSorted): Error fetching orders - {}", e.getMessage());
             throw new ServiceException("Failed to fetch orders", e);
         }
     }
 
-    // Urgent Shipment table (CurrentDate + 2 > estimatedDeliveryDate)
+
+    // TODO: Consider sending automatic message if there are urgent orders.
     @Transactional(readOnly = true)
     public PaginatedResponse<SalesOrderResponseDto> getAllUrgentSalesOrders(@Min(0) int page, @Min(1) @Max(100) int size, String sortBy, String sortDir) {
         try {
@@ -93,27 +92,30 @@ public class SoServiceInIc {
             Pageable pageable = PageRequest.of(page, size, sort);
 
             // Get the page of urgent orders.
-            Page<SalesOrder> entityResponse = salesOrderRepository.findAllUrgentSalesOrders(pageable);
+            Page<SalesOrder> entityResponse = salesOrderRepository.findAllUrgentSalesOrders(pageable, URGENT_DELIVERY_DATE);
             Page<SalesOrderResponseDto> dtoResponse = entityResponse.map(salesOrderServiceHelper::convertToSalesOrderResponseDto);
             return new PaginatedResponse<>(dtoResponse);
         } catch (DataAccessException da){
-            logger.error("OS (getAllUrgentSalesOrders): Failed to retrieve orders due to database error: {}", da.getMessage(), da);
+            log.error("OS (getAllUrgentSalesOrders): Failed to retrieve orders due to database error: {}", da.getMessage(), da);
             throw new DatabaseException("Failed to retrieve orders due to database error", da);
         } catch (Exception e) {
-            logger.error("OS (getAllUrgentSalesOrders): Error fetching orders - {}", e.getMessage());
+            log.error("OS (getAllUrgentSalesOrders): Error fetching orders - {}", e.getMessage());
             throw new ServiceException("Failed to fetch orders", e);
         }
     }
 
     // STOCK OUT button
     @Transactional
-    public ApiResponse processOrderRequest(BulkShipStockRequestDto requestDto, String jwtToken){
+    public ApiResponse<String> processOrderRequest(ProcessSalesOrderRequestDto requestDto, String jwtToken){
         try {
             String confirmedPerson = securityUtils.validateAndExtractUsername(jwtToken);
             return stockOutProcessor.processStockOut(requestDto, confirmedPerson);
-        } catch (Exception e) {
-            logger.error("OS (processOrderedProduct): Error processing order - {}", e.getMessage());
-            throw new ServiceException("Failed to process order", e);
+        } catch (InventoryException be){
+            throw be;
+        }
+        catch (Exception e) {
+            log.error("OS (processOrderedProduct): Error processing order - {}", e.getMessage());
+            throw new ServiceException("Internal Service Error, failed to process order", e);
         }
     }
 
@@ -135,12 +137,12 @@ public class SoServiceInIc {
                 salesOrder.setConfirmedBy(cancelledBy);
                 salesOrderRepository.save(salesOrder);
 
-                logger.info("OS (cancelOrder): SalesOrder {} cancelled successfully", orderId);
-                return new ApiResponse(true, "SalesOrder cancelled successfully");
+                log.info("OS (cancelOrder): SalesOrder {} cancelled successfully", orderId);
+                return new ApiResponse<>(true, "SalesOrder cancelled successfully");
             }
             throw new ValidationException("Only Waiting orders can be cancelled.");
         } catch (Exception e) {
-            logger.error("OS (cancelOrder): Error cancelling order - {}", e.getMessage());
+            log.error("OS (cancelOrder): Error cancelling order - {}", e.getMessage());
             throw new ServiceException("Failed to cancel order", e);
         }
     }
@@ -150,15 +152,15 @@ public class SoServiceInIc {
         try {
             globalServiceHelper.validatePaginationParameters(page, size);
             if(text == null || text.trim().isEmpty()){
-                logger.warn("IcSo (searchInOutgoingSalesOrders): Search text is null or empty, returning all waiting orders.");
+                log.warn("IcSo (searchInOutgoingSalesOrders): Search text is null or empty, returning all waiting orders.");
                 return getAllWaitingSalesOrders(page, size, "id", "asc");
             }
             return searchStrategy.searchInSo(text, page, size);
         } catch (IllegalArgumentException ie) {
-            logger.error("OS (searchInOutgoingSalesOrders): Invalid pagination parameters: {}", ie.getMessage());
+            log.error("OS (searchInOutgoingSalesOrders): Invalid pagination parameters: {}", ie.getMessage());
             throw ie;
         } catch (Exception e) {
-            logger.error("OS (searchInOutgoingSalesOrders): Error searching orders - {}", e.getMessage());
+            log.error("OS (searchInOutgoingSalesOrders): Error searching orders - {}", e.getMessage());
             throw new ServiceException("Failed to search orders", e);
         }
     }
@@ -175,7 +177,7 @@ public class SoServiceInIc {
         try {
             return salesOrderRepository.getOutgoingValidStockSize();
         } catch (Exception e) {
-            logger.error("SO (totalOutgoingStockSize): Error getting outgoing stock size - {}", e.getMessage());
+            log.error("SO (totalOutgoingStockSize): Error getting outgoing stock size - {}", e.getMessage());
             throw new ServiceException("Failed to get total outgoing stock size", e);
         }
     }
@@ -190,10 +192,10 @@ public class SoServiceInIc {
             long totalDeliveryDate = salesOrderRepository.calculateTotalDeliveryDate();
             return (int) (totalDeliveryDate / totalEntities);
         } catch (DataAccessException da) {
-            logger.error("OS (getAverageFulfillTime): Failed to calculate average fulfill time: {}", da.getMessage(), da);
+            log.error("OS (getAverageFulfillTime): Failed to calculate average fulfill time: {}", da.getMessage(), da);
             throw new DatabaseException("Failed to calculate average fulfill time", da);
         } catch (Exception e) {
-            logger.error("OS (getAverageFulfillTime): Error calculating average fulfill time: {}", e.getMessage());
+            log.error("OS (getAverageFulfillTime): Error calculating average fulfill time: {}", e.getMessage());
             throw new ServiceException("Failed to calculate average fulfill time", e);
         }
     }
@@ -239,10 +241,10 @@ public class SoServiceInIc {
             return new PaginatedResponse<>(dtoResponse);
 
         } catch (IllegalArgumentException ie) {
-            logger.error("OS (filterSoProductsByStatus): Invalid pagination parameters: {}", ie.getMessage());
+            log.error("OS (filterSoProductsByStatus): Invalid pagination parameters: {}", ie.getMessage());
             throw ie;
         } catch (Exception e) {
-            logger.error("OS (filterSoProductsByStatus): Error filtering orders - {}", e.getMessage());
+            log.error("OS (filterSoProductsByStatus): Error filtering orders - {}", e.getMessage());
             throw new ServiceException("Failed to filter orders", e);
         }
     }

@@ -1,14 +1,14 @@
 package com.JK.SIMS.controller.inventoryControllers;
 
+import com.JK.SIMS.config.security.TokenUtils;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
-import com.JK.SIMS.models.IC_models.salesOrder.dtos.processSalesOrderDtos.BulkShipStockRequestDto;
-import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderResponseDto;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
+import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderResponseDto;
+import com.JK.SIMS.models.IC_models.salesOrder.dtos.processSalesOrderDtos.ProcessSalesOrderRequestDto;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryServices.soService.SoServiceInIc;
-import com.JK.SIMS.config.security.TokenUtils;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -61,14 +61,14 @@ public class SoControllerInIc {
     // Stock OUT button in the SO section
     @PutMapping("/stocks/out")
     @PreAuthorize("@securityUtils.hasAccess()")
-    public ResponseEntity<?> bulkStockOutOrders(@Valid @RequestBody BulkShipStockRequestDto request,
+    public ResponseEntity<?> bulkStockOutOrders(@Valid @RequestBody ProcessSalesOrderRequestDto request,
                                                 @RequestHeader("Authorization") String token){
-        logger.info("IcSo: bulkStockOutOrders() called with {} orders", request.getBulkSoRequestDtos().size());
+        logger.info("IcSo: bulkStockOutOrders() called with {} orders", request.getItemQuantities().size());
         if (token == null || token.trim().isEmpty()) {
             throw new IllegalArgumentException("IcSo: bulkStockOutOrders() Invalid Token provided.");
         }
         String jwtToken = TokenUtils.extractToken(token);
-        ApiResponse response = soServiceInIc.processOrderRequest(request, jwtToken);
+        ApiResponse<String> response = soServiceInIc.processOrderRequest(request, jwtToken);
         return ResponseEntity.ok(response);
     }
 

@@ -10,11 +10,10 @@ import java.util.Map;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class ShipStockRequestDto {
+public class ProcessSalesOrderRequestDto {
     @NotNull(message = "Order ID is required")
     private Long orderId;
 
     @NotNull(message = "Item quantities are required")
-    private Map<Long, Integer> itemQuantities; // Key: OrderItem ID, Value: Shipped quantity
-
+    private Map<String, Integer> itemQuantities; // ProductID: Shipped quantity
 }

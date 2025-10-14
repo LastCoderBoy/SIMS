@@ -38,7 +38,6 @@ public class StockManagementLogic {
             if (inventory == null) {
                 throw new ResourceNotFoundException("Inventory not found for product: " + productId);
             }
-            log.debug("Inventory Data: {}", inventory); // debug
 
             // Validate the requested Quantity
             int availableStock = getAvailableStock(inventory);
@@ -47,13 +46,11 @@ public class StockManagementLogic {
                 log.warn("StockManagement reserveStock(): Insufficient stock for product {}. Available: {}, Requested: {}",
                         productId, availableStock, requestQuantity);
                 throw new InsufficientStockException(
-                        String.format("Insufficient stock for product %s. Available: %d, Requested: %d",
-                                productId, availableStock, requestQuantity)
-                );
+                        String.format("Insufficient stock for product %s.", productId));
             }
             inventory.setReservedStock(inventory.getReservedStock() + requestQuantity);
             icRepository.save(inventory);
-            log.debug("StockManagement reserveStock(): Reserved {} units for product {}", requestQuantity, productId);
+            log.info("StockManagement reserveStock(): Reserved {} units for product {}", requestQuantity, productId);
         } catch (DataAccessException e) {
             log.error("StockManagement reserveStock(): Database error - {}", e.getMessage());
             throw new DatabaseException("Failed to reserve stock", e);
@@ -85,8 +82,7 @@ public class StockManagementLogic {
             // Update status based on the new stock level
             inventoryServiceHelper.updateInventoryStatus(inventory);
             icRepository.save(inventory);
-
-            log.debug("IC (fulfillReservation): Fulfilled reservation of {} units for product {}", approvedQuantity, productId);
+            log.info("IC (fulfillReservation): Fulfilled reservation of {} units for product {}", approvedQuantity, productId);
         } catch (DataAccessException e) {
             log.error("IC (fulfillReservation): Database error - {}", e.getMessage());
             throw new DatabaseException("Failed to fulfill reservation", e);
@@ -106,10 +102,12 @@ public class StockManagementLogic {
 
             icRepository.save(inventory);
             log.debug("IC (releaseReservation): Released reservation of {} units for product {}", quantity, productId);
-
         } catch (DataAccessException e) {
             log.error("IC (releaseReservation): Database error - {}", e.getMessage());
             throw new DatabaseException("Failed to release reservation", e);
+        } catch (Exception e) {
+            log.error("IC (releaseReservation): Unexpected error - {}", e.getMessage());
+            throw new ServiceException("Failed to release reservation", e);
         }
     }
 

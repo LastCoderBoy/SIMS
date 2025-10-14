@@ -1,4 +1,4 @@
-package com.JK.SIMS.models.IC_models.salesOrder.orderItem;
+package com.JK.SIMS.models.IC_models.salesOrder.orderItem.dtos;
 
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import lombok.AllArgsConstructor;

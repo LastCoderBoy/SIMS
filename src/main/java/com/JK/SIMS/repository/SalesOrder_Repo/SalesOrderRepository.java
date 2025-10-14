@@ -12,6 +12,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Repository
@@ -45,8 +46,8 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long>, J
     Page<SalesOrder> findAllWaitingSalesOrders(Pageable pageable);
 
     @Query("SELECT so FROM SalesOrder so WHERE so.status IN ('PARTIALLY_APPROVED', 'PENDING', 'PARTIALLY_SHIPPED') " +
-            "AND so.estimatedDeliveryDate < FUNCTION('DATE_ADD', CURRENT_DATE, 2)")
-    Page<SalesOrder> findAllUrgentSalesOrders(Pageable pageable);
+            "AND so.estimatedDeliveryDate < :twoDaysFromNow")
+    Page<SalesOrder> findAllUrgentSalesOrders(Pageable pageable, @Param("twoDaysFromNow") LocalDateTime twoDaysFromNow);
 
     @Query(value = "SELECT SUM(DATEDIFF(estimated_delivery_date, order_date)) " +
             "FROM sales_order WHERE status IN ('PARTIALLY_APPROVED', 'PENDING', 'PARTIALLY_SHIPPED')",

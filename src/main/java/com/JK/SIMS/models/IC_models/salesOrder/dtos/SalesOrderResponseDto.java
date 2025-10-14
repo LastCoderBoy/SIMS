@@ -1,7 +1,7 @@
 package com.JK.SIMS.models.IC_models.salesOrder.dtos;
 
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
-import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItemResponseDto;
+import com.JK.SIMS.models.IC_models.salesOrder.orderItem.dtos.OrderItemResponseDto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
