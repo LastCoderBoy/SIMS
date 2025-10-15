@@ -1,6 +1,7 @@
 package com.JK.SIMS.models.IC_models.salesOrder.orderItem;
 
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
+import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import jakarta.persistence.*;
 import lombok.*;
@@ -29,6 +30,10 @@ public class OrderItem {
 
     @Column(nullable = false)
     private BigDecimal orderPrice;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private OrderItemStatus status = OrderItemStatus.PENDING; // Default
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sales_order_id", nullable = false)

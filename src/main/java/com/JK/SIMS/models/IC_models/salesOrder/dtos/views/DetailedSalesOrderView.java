@@ -27,6 +27,7 @@ public class DetailedSalesOrderView {
     private BigDecimal totalAmount; // Sum of orderPrice * quantity
 
     // New fields
+    // TODO: Display the OrderItems Status as well
     private LocalDateTime estimatedDeliveryDate;
     private LocalDateTime deliveryDate;
     private List<OrderItemResponseDto> items; // Nested DTO for OrderItem

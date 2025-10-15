@@ -5,6 +5,7 @@ import com.JK.SIMS.models.IC_models.salesOrder.dtos.processSalesOrderDtos.Proces
 import com.JK.SIMS.repository.SalesOrder_Repo.SalesOrderRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
 import com.JK.SIMS.service.stockMovementService.StockMovementService;
+import com.JK.SIMS.service.utilities.SalesOrderServiceHelper;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -15,9 +16,9 @@ import java.time.Clock;
 @Slf4j
 public class BulkStockOutProcessor extends OrderProcessor implements StockOutProcessor {
 
-    public BulkStockOutProcessor(Clock clock, StockManagementLogic stockManagementLogic,
+    public BulkStockOutProcessor(Clock clock, SalesOrderServiceHelper salesOrderServiceHelper, StockManagementLogic stockManagementLogic,
                                  StockMovementService stockMovementService, SalesOrderRepository salesOrderRepository) {
-        super(clock, stockManagementLogic, stockMovementService, salesOrderRepository);
+        super(clock, salesOrderServiceHelper, stockManagementLogic, stockMovementService, salesOrderRepository);
     }
 
     @Override

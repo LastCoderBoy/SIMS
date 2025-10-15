@@ -293,7 +293,7 @@ public class SalesOrderServiceImpl implements SalesOrderService {
             SalesOrder salesOrder = getSalesOrderById(orderId);
             if (salesOrder.isFinalized()) {
                 log.warn("OM-SO removeItemFromSalesOrder(): Order ID {} finalized, cannot remove item!", orderId);
-                throw new ValidationException("Order finalized, cannot remove item!");
+                throw new ValidationException("Order is finalized, cannot remove item!");
             }
             String updatedBy = securityUtils.validateAndExtractUsername(jwtToken);
             salesOrder.setUpdatedBy(updatedBy);

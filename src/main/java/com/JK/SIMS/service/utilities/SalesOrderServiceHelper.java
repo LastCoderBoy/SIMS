@@ -3,6 +3,7 @@ package com.JK.SIMS.service.utilities;
 import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
+import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderRequestDto;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderResponseDto;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.views.SummarySalesOrderView;
@@ -11,12 +12,14 @@ import com.JK.SIMS.models.IC_models.salesOrder.orderItem.dtos.OrderItemRequestDt
 import com.JK.SIMS.models.IC_models.salesOrder.orderItem.dtos.OrderItemResponseDto;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
+import com.JK.SIMS.models.stockMovements.StockMovementReferenceType;
+import com.JK.SIMS.models.stockMovements.StockMovementType;
+import com.JK.SIMS.service.stockMovementService.StockMovementService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -108,6 +111,14 @@ public class SalesOrderServiceHelper {
         if (salesOrderRequestDto == null) {
             log.debug("OM-SO validateSoRequestForUpdate(): SalesOrder request is null. Nothing to validate.");
             throw new ValidationException("OM-SO validateSoRequestForUpdate(): SalesOrder request cannot be null.");
+        }
+    }
+
+    public void updateSalesOrderStatus(SalesOrder salesOrder, boolean missingItem){
+        if(missingItem){
+            salesOrder.setStatus(SalesOrderStatus.PARTIALLY_APPROVED);
+        } else {
+            salesOrder.setStatus(SalesOrderStatus.APPROVED);
         }
     }
 }
