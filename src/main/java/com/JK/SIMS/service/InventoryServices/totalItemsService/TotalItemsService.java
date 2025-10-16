@@ -94,7 +94,7 @@ public class TotalItemsService {
             InventoryControlData existingProduct = inventoryServiceHelper.getInventoryDataBySku(sku);
 
             // Update stock levels
-            stockManagementLogic.updateStockLevels(existingProduct,
+            stockManagementLogic.updateInventoryStockLevels(existingProduct,
                     Optional.ofNullable(newInventoryControlData.getCurrentStock()),
                     Optional.ofNullable(newInventoryControlData.getMinLevel()));
 

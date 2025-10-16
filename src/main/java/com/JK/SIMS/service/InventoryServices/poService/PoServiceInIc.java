@@ -182,7 +182,7 @@ public class PoServiceInIc {
                 int newStockLevel = inventoryProduct.getCurrentStock() + receivedQuantity;
 
                 // The service method to update stock levels with proper error handling
-                stockManagementLogic.updateStockLevels(inventoryProduct,
+                stockManagementLogic.updateInventoryStockLevels(inventoryProduct,
                         Optional.of(newStockLevel),
                         Optional.empty());
             }

@@ -8,6 +8,7 @@ import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderRequestDto;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderResponseDto;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.views.SummarySalesOrderView;
 import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItem;
+import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItemStatus;
 import com.JK.SIMS.models.IC_models.salesOrder.orderItem.dtos.OrderItemRequestDto;
 import com.JK.SIMS.models.IC_models.salesOrder.orderItem.dtos.OrderItemResponseDto;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -58,7 +60,7 @@ public class SalesOrderServiceHelper {
         }
     }
 
-    private BigDecimal calculateTotalAmount(List<OrderItem> items) {
+    public BigDecimal calculateTotalAmount(List<OrderItem> items) {
         return items.stream().map(OrderItem::getOrderPrice).reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
@@ -75,7 +77,9 @@ public class SalesOrderServiceHelper {
                     product.getProductID(),
                     product.getName(),
                     product.getCategory(),
+                    item.getStatus(),
                     item.getQuantity(),
+                    item.getApprovedQuantity(),
                     item.getProduct().getPrice(), // Unit price
                     item.getOrderPrice() // Total price for this line item
             );
@@ -114,11 +118,40 @@ public class SalesOrderServiceHelper {
         }
     }
 
-    public void updateSalesOrderStatus(SalesOrder salesOrder, boolean missingItem){
-        if(missingItem){
+    public void updateOrderItemStatus(OrderItem orderItem, int approvedQuantity) {
+        if ( approvedQuantity < orderItem.getQuantity()) {
+            orderItem.setStatus(OrderItemStatus.PARTIALLY_APPROVED);
+            log.info("OrderProcessor updateOrderStatus(): Updated status of OrderItem {} - productID: {} to PARTIALLY_APPROVED", orderItem.getId(), orderItem.getProduct().getProductID());
+        } else{
+            orderItem.setStatus(OrderItemStatus.APPROVED);
+            log.info("OrderProcessor updateOrderStatus(): Updated status of OrderItem {} - productID: {} to APPROVED", orderItem.getId(), orderItem.getProduct().getProductID());
+        }
+    }
+
+    // Keep in Pending if all items are not approved yet
+    public void updateSalesOrderStatus(SalesOrder salesOrder) {
+        boolean allApproved = allItemsFulfilled(salesOrder);
+        boolean anyApproved = salesOrder.getItems().stream()
+                .anyMatch(item -> item.getStatus() == OrderItemStatus.APPROVED);
+
+        if (allApproved) {
+            salesOrder.setStatus(SalesOrderStatus.APPROVED);
+        } else if (anyApproved) {
             salesOrder.setStatus(SalesOrderStatus.PARTIALLY_APPROVED);
         } else {
-            salesOrder.setStatus(SalesOrderStatus.APPROVED);
+            salesOrder.setStatus(SalesOrderStatus.PENDING);
         }
+    }
+
+
+    public boolean allItemsFulfilled(SalesOrder salesOrder){
+        boolean condition = true;
+        for(OrderItem item : salesOrder.getItems()){
+            if(item.getStatus() != OrderItemStatus.APPROVED &&
+                    !Objects.equals(item.getQuantity(), item.getApprovedQuantity())){
+                return false;
+            }
+        }
+        return condition;
     }
 }

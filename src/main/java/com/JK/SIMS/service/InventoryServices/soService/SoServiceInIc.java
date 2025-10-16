@@ -109,7 +109,13 @@ public class SoServiceInIc {
     public ApiResponse<String> processOrderRequest(ProcessSalesOrderRequestDto requestDto, String jwtToken){
         try {
             String confirmedPerson = securityUtils.validateAndExtractUsername(jwtToken);
-            return stockOutProcessor.processStockOut(requestDto, confirmedPerson);
+            SalesOrder salesOrder = getSalesOrderById(requestDto.getOrderId());
+            SalesOrder updatedSalesOrder = stockOutProcessor.processStockOut(
+                    salesOrder, requestDto.getItemQuantities(), confirmedPerson
+            );
+            salesOrderRepository.save(updatedSalesOrder);
+            log.info("OS (processOrderedProduct): SalesOrder {} processed successfully", updatedSalesOrder.getOrderReference());
+            return new ApiResponse<>(true, "SalesOrder processed successfully");
         } catch (InventoryException be){
             throw be;
         }

@@ -84,7 +84,7 @@ public class DamageLossService {
 
             // Update the Inventory Stock level and the status
             int remainingStock = inventoryProduct.getCurrentStock() - dtoRequest.quantityLost();
-            stockManagementLogic.updateStockLevels(
+            stockManagementLogic.updateInventoryStockLevels(
                     inventoryProduct, Optional.of(remainingStock), Optional.empty());
         } catch (DataAccessException de) {
             throw new DatabaseException("DL (addDamageLoss): Database error while saving damage/loss record", de);
@@ -282,7 +282,7 @@ public class DamageLossService {
         }
 
         int updatedStock = product.getCurrentStock() + quantityToRestore;
-        stockManagementLogic.updateStockLevels(product, Optional.of(updatedStock), Optional.empty());
+        stockManagementLogic.updateInventoryStockLevels(product, Optional.of(updatedStock), Optional.empty());
 
         logger.info("DL (restoreStockLevel): Restored {} units to SKU {}. New stock: {}",
                 quantityToRestore, product.getSKU(), updatedStock);

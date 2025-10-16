@@ -1,5 +1,6 @@
 package com.JK.SIMS.models.IC_models.salesOrder.orderItem.dtos;
 
+import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItemStatus;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -15,7 +16,9 @@ public class OrderItemResponseDto {
     private String productId;
     private String productName;
     private ProductCategories productCategory;
+    private OrderItemStatus orderItemStatus;
     private Integer quantity;
+    private Integer approvedQuantity;
     private BigDecimal unitPrice;
     private BigDecimal totalPrice;
 }

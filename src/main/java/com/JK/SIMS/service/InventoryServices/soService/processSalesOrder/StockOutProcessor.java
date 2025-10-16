@@ -1,8 +1,9 @@
 package com.JK.SIMS.service.InventoryServices.soService.processSalesOrder;
 
-import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.IC_models.salesOrder.dtos.processSalesOrderDtos.ProcessSalesOrderRequestDto;
+import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
+
+import java.util.Map;
 
 public interface StockOutProcessor {
-    ApiResponse<String> processStockOut(ProcessSalesOrderRequestDto bulkSoRequestDto, String username);
+    SalesOrder processStockOut(SalesOrder salesOrder, Map<String, Integer> approvedQuantities , String username);
 }

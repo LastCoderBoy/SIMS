@@ -8,7 +8,6 @@ import com.JK.SIMS.models.IC_models.inventoryData.InventoryControlData;
 import com.JK.SIMS.repository.InventoryControl_repo.IC_repository;
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
@@ -91,17 +90,16 @@ public class StockManagementLogic {
 
     // Release reservation when the order is cancelled or creation failed.
     @Transactional
-    public void releaseReservation(String productId, int quantity) {
+    public void releaseReservation(String productId, int releasedQuantity) {
         try {
             InventoryControlData inventory = icRepository.findByProductIdWithLock(productId);
             if (inventory == null) {
                 throw new ResourceNotFoundException("Inventory not found for product: " + productId);
             }
 
-            inventory.setReservedStock(Math.max(0, inventory.getReservedStock() - quantity));
-
+            inventory.setReservedStock(Math.max(0, inventory.getReservedStock() - releasedQuantity));
             icRepository.save(inventory);
-            log.debug("IC (releaseReservation): Released reservation of {} units for product {}", quantity, productId);
+            log.debug("IC (releaseReservation): Released reservation of {} units for product {}", releasedQuantity, productId);
         } catch (DataAccessException e) {
             log.error("IC (releaseReservation): Database error - {}", e.getMessage());
             throw new DatabaseException("Failed to release reservation", e);
@@ -112,7 +110,7 @@ public class StockManagementLogic {
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
-    public void updateStockLevels(InventoryControlData existingProduct, Optional<Integer> newStockLevel, Optional<Integer> newMinLevel ) {
+    public void updateInventoryStockLevels(InventoryControlData existingProduct, Optional<Integer> newStockLevel, Optional<Integer> newMinLevel ) {
         // Update current stock if provided
         newStockLevel.ifPresent(existingProduct::setCurrentStock);
 

@@ -73,6 +73,29 @@ public class SalesOrderServiceImpl implements SalesOrderService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public PaginatedResponse<SummarySalesOrderView> getAllSummarySalesOrders(String sortBy, String sortDirection, int page, int size) {
+        try {
+            Sort sort = sortDirection.equalsIgnoreCase("desc") ?
+                    Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
+            Pageable pageable = PageRequest.of(page, size, sort);
+            Page<SalesOrder> salesOrderPage = salesOrderRepository.findAll(pageable);
+            log.info("OM-SO (getAllSummarySalesOrders): Returning {} paginated data", salesOrderPage.getContent().size());
+            return salesOrderServiceHelper.transformToSummarySalesOrderView(salesOrderPage);
+        } catch (DataAccessException da){
+            log.error("OM-SO (getAllSummarySalesOrders): Database error occurred: {}", da.getMessage(), da);
+            throw new DatabaseException("Database error occurred, please contact the administration");
+        } catch (PropertyReferenceException e) {
+            log.error("OM-SO (getAllSummarySalesOrders): Invalid sort field provided: {}", e.getMessage(), e);
+            throw new ValidationException("Invalid sort field provided. Check your request");
+        } catch (Exception e) {
+            log.error("OM-SO (getAllSummarySalesOrders): Unexpected error occurred: {}", e.getMessage(), e);
+            throw new ServiceException("Internal Service Error occurred: ", e);
+        }
+    }
+
+
+    @Override
     @Transactional
     public ApiResponse<String> createOrder(@Valid SalesOrderRequestDto salesOrderRequestDto, String jwtToken) {
         try {
@@ -303,11 +326,16 @@ public class SalesOrderServiceImpl implements SalesOrderService {
                     .findFirst()
                     .orElseThrow(() -> new ResourceNotFoundException("Item ID " + itemId + " not found in order " + salesOrder.getOrderReference()));
 
+            if(itemToRemove.isFinalized()){
+                log.warn("OM-SO removeItemFromSalesOrder(): Item {} finalized, cannot remove!", itemId);
+                throw new ValidationException("Order Item is finalized, cannot remove!");
+            }
+
             stockManagementLogic.releaseReservation(itemToRemove.getProduct().getProductID(), itemToRemove.getQuantity());
             salesOrder.removeOrderItem(itemToRemove);
-            //TODO: Update Status
+            // After removing update the status
+            salesOrderServiceHelper.updateSalesOrderStatus(salesOrder);
             salesOrderRepository.save(salesOrder);
-
             logger.info("OM-SO removeItemFromSalesOrder(): Item {} removed from Sales Order {}", itemId, salesOrder.getOrderReference());
             return new ApiResponse<>(true, "Item removed successfully");
         } catch (ResourceNotFoundException | ValidationException e) {
@@ -436,28 +464,6 @@ public class SalesOrderServiceImpl implements SalesOrderService {
         } catch (Exception e) {
             log.error("OM-SO generateOrderReference(): Error generating order reference - {}", e.getMessage());
             throw new ServiceException("Failed to generate unique order reference", e);
-        }
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public PaginatedResponse<SummarySalesOrderView> getAllSummarySalesOrders(String sortBy, String sortDirection, int page, int size) {
-        try {
-            Sort sort = sortDirection.equalsIgnoreCase("desc") ?
-                    Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
-            Pageable pageable = PageRequest.of(page, size, sort);
-            Page<SalesOrder> salesOrderPage = salesOrderRepository.findAll(pageable);
-            log.info("OM-SO (getAllSummarySalesOrders): Returning {} paginated data", salesOrderPage.getContent().size());
-            return salesOrderServiceHelper.transformToSummarySalesOrderView(salesOrderPage);
-        } catch (DataAccessException da){
-            log.error("OM-SO (getAllSummarySalesOrders): Database error occurred: {}", da.getMessage(), da);
-            throw new DatabaseException("Database error occurred, please contact the administration");
-        } catch (PropertyReferenceException e) {
-            log.error("OM-SO (getAllSummarySalesOrders): Invalid sort field provided: {}", e.getMessage(), e);
-            throw new ValidationException("Invalid sort field provided. Check your request");
-        } catch (Exception e) {
-            log.error("OM-SO (getAllSummarySalesOrders): Unexpected error occurred: {}", e.getMessage(), e);
-            throw new ServiceException("Internal Service Error occurred: ", e);
         }
     }
 

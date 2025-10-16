@@ -20,8 +20,9 @@ public class SummarySalesOrderView {
     private SalesOrderStatus status;
     private LocalDateTime orderDate;
     private String customerName;
-    private Integer totalItems; // Sum of quantities
+    private Integer totalOrderedQuantity; // Sum of ordered quantities
     private BigDecimal totalAmount; // Sum of orderPrice * quantity
+    private Integer totalApprovedQuantity;
 
     public SummarySalesOrderView(SalesOrder salesOrder){
         this.Id = salesOrder.getId();
@@ -30,9 +31,10 @@ public class SummarySalesOrderView {
         this.status = salesOrder.getStatus();
         this.orderDate = salesOrder.getOrderDate();
         this.customerName = salesOrder.getCustomerName();
-        this.totalItems = salesOrder.getItems().stream().mapToInt(OrderItem::getQuantity).sum();
+        this.totalOrderedQuantity = salesOrder.getItems().stream().mapToInt(OrderItem::getQuantity).sum();
         this.totalAmount = salesOrder.getItems().stream()
                 .map(item -> item.getProduct().getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+        this.totalApprovedQuantity = salesOrder.getItems().stream().mapToInt(OrderItem::getApprovedQuantity).sum();
     }
 }

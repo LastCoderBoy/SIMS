@@ -25,9 +25,9 @@ public class DetailedSalesOrderView {
     private String customerName;
     private Integer totalItems; // Sum of quantities
     private BigDecimal totalAmount; // Sum of orderPrice * quantity
+    private Integer totalApprovedQuantity;
 
     // New fields
-    // TODO: Display the OrderItems Status as well
     private LocalDateTime estimatedDeliveryDate;
     private LocalDateTime deliveryDate;
     private List<OrderItemResponseDto> items; // Nested DTO for OrderItem
@@ -45,6 +45,7 @@ public class DetailedSalesOrderView {
         this.totalAmount = salesOrder.getItems().stream()
                 .map(item -> item.getProduct().getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+        this.totalApprovedQuantity = salesOrder.getItems().stream().mapToInt(OrderItem::getApprovedQuantity).sum();
 
         // Set up New fields
         this.estimatedDeliveryDate = salesOrder.getEstimatedDeliveryDate();
@@ -55,7 +56,9 @@ public class DetailedSalesOrderView {
                         item.getProduct().getProductID(),
                         item.getProduct().getName(),
                         item.getProduct().getCategory(),
+                        item.getStatus(),
                         item.getQuantity(),
+                        item.getApprovedQuantity(),
                         item.getProduct().getPrice(),
                         item.getProduct().getPrice().multiply(BigDecimal.valueOf(item.getQuantity()))
                 )).toList();

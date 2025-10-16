@@ -29,6 +29,9 @@ public class OrderItem {
     private Integer quantity;
 
     @Column(nullable = false)
+    private Integer approvedQuantity = 0; // track the quantity that has been fulfilled
+
+    @Column(nullable = false)
     private BigDecimal orderPrice;
 
     @Enumerated(EnumType.STRING)
@@ -43,5 +46,9 @@ public class OrderItem {
         this.quantity = quantity;
         this.product = product;
         this.orderPrice = totalOrderPrice;
+    }
+
+    public boolean isFinalized(){
+        return this.status == OrderItemStatus.APPROVED;
     }
 }
