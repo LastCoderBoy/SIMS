@@ -145,13 +145,7 @@ public class SalesOrderServiceHelper {
 
 
     public boolean allItemsFulfilled(SalesOrder salesOrder){
-        boolean condition = true;
-        for(OrderItem item : salesOrder.getItems()){
-            if(item.getStatus() != OrderItemStatus.APPROVED &&
-                    !Objects.equals(item.getQuantity(), item.getApprovedQuantity())){
-                return false;
-            }
-        }
-        return condition;
+        return salesOrder.getItems().stream()
+                .allMatch(item -> Objects.equals(item.getQuantity(), item.getApprovedQuantity()));
     }
 }

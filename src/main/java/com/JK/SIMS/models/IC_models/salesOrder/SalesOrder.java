@@ -42,6 +42,9 @@ public class SalesOrder {
     @Column(name = "confirmed_by")
     private String confirmedBy; // Person who is confirming the SalesOrder in the IC.
 
+    @Column(name = "cancelled_by")
+    private String cancelledBy; // Person who cancelled the SalesOrder in the IC.
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private SalesOrderStatus status; // PENDING, PARTIALLY_APPROVED, PARTIALLY_SHIPPED, APPROVED, SHIPPED, COMPLETED, CANCELLED

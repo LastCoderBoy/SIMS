@@ -85,6 +85,7 @@ public abstract class OrderProcessor {
             log.error("OrderProcessor processOrder(): Insufficient stock - {}", e.getMessage());
             throw e;
         } catch (InventoryException e) {
+            log.error("OrderProcessor processOrder(): Inventory error - {}", e.getMessage());
             throw e;
         } catch (Exception e) {
             log.error("OrderProcessor processOrder(): Error processing order - {}", e.getMessage());

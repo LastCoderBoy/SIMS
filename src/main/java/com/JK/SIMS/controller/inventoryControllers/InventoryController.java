@@ -64,7 +64,7 @@ public class InventoryController {
         logger.info("IC: receiveIncomingStockOrder() calling...");
         if(token != null && !token.trim().isEmpty()) {
             String jwtToken = TokenUtils.extractToken(token);
-            ApiResponse response =  poServiceInIc.receivePurchaseOrder(orderId, receiveRequest, jwtToken);
+            ApiResponse<Void> response =  poServiceInIc.receivePurchaseOrder(orderId, receiveRequest, jwtToken);
             return new ResponseEntity<>(response, HttpStatus.OK);
         }
         throw new InvalidTokenException("IC: receiveIncomingStockOrder() Invalid Token provided.");
@@ -81,7 +81,7 @@ public class InventoryController {
             throw new IllegalArgumentException("IC: bulkStockOutOrders() Invalid Token provided.");
         }
         String jwtToken = TokenUtils.extractToken(token);
-        ApiResponse response = soServiceInIc.processOrderRequest(request, jwtToken);
+        ApiResponse<Void> response = soServiceInIc.processOrderRequest(request, jwtToken);
         return ResponseEntity.ok(response);
     }
 
@@ -93,7 +93,7 @@ public class InventoryController {
         logger.info("IC: cancelOutgoingStockOrder() calling...");
         if(token != null && !token.trim().isEmpty()) {
             String jwtToken = TokenUtils.extractToken(token);
-            ApiResponse response = soServiceInIc.cancelSalesOrder(orderId, jwtToken);
+            ApiResponse<Void> response = soServiceInIc.cancelSalesOrder(orderId, jwtToken);
             return new ResponseEntity<>(response, HttpStatus.OK);
         }
         throw new InvalidTokenException("IC: cancelOutgoingStockOrder() Invalid Token provided.");

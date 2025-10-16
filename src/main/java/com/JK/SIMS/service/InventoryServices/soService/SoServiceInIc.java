@@ -8,6 +8,7 @@ import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderResponseDto;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.processSalesOrderDtos.ProcessSalesOrderRequestDto;
 import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItem;
+import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItemStatus;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.SalesOrder_Repo.SalesOrderRepository;
@@ -31,6 +32,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -38,6 +40,7 @@ import java.time.LocalDateTime;
 @Slf4j
 public class SoServiceInIc {
 
+    private final Clock clock;
     private static final LocalDateTime URGENT_DELIVERY_DATE = LocalDateTime.now().plusDays(2);
 
     private final SecurityUtils securityUtils;
@@ -49,9 +52,10 @@ public class SoServiceInIc {
 
     private final SalesOrderRepository salesOrderRepository;
     @Autowired
-    public SoServiceInIc(SecurityUtils securityUtils, SalesOrderServiceHelper salesOrderServiceHelper, GlobalServiceHelper globalServiceHelper,
+    public SoServiceInIc(Clock clock, SecurityUtils securityUtils, SalesOrderServiceHelper salesOrderServiceHelper, GlobalServiceHelper globalServiceHelper,
                          StockManagementLogic stockManagementLogic, @Qualifier("icSoSearchStrategy") SoStrategy searchStrategy,
                          StockOutProcessor stockOutProcessor, SalesOrderRepository salesOrderRepository) {
+        this.clock = clock;
         this.securityUtils = securityUtils;
         this.salesOrderServiceHelper = salesOrderServiceHelper;
         this.globalServiceHelper = globalServiceHelper;
@@ -106,7 +110,7 @@ public class SoServiceInIc {
 
     // STOCK OUT button
     @Transactional
-    public ApiResponse<String> processOrderRequest(ProcessSalesOrderRequestDto requestDto, String jwtToken){
+    public ApiResponse<Void> processOrderRequest(ProcessSalesOrderRequestDto requestDto, String jwtToken){
         try {
             String confirmedPerson = securityUtils.validateAndExtractUsername(jwtToken);
             SalesOrder salesOrder = getSalesOrderById(requestDto.getOrderId());
@@ -116,10 +120,9 @@ public class SoServiceInIc {
             salesOrderRepository.save(updatedSalesOrder);
             log.info("OS (processOrderedProduct): SalesOrder {} processed successfully", updatedSalesOrder.getOrderReference());
             return new ApiResponse<>(true, "SalesOrder processed successfully");
-        } catch (InventoryException be){
-            throw be;
-        }
-        catch (Exception e) {
+        } catch (InventoryException ie){
+            throw ie;
+        } catch (Exception e) {
             log.error("OS (processOrderedProduct): Error processing order - {}", e.getMessage());
             throw new ServiceException("Internal Service Error, failed to process order", e);
         }
@@ -127,20 +130,23 @@ public class SoServiceInIc {
 
     // CANCEL button
     @Transactional
-    public ApiResponse cancelSalesOrder(Long orderId, String jwtToken) {
+    public ApiResponse<Void> cancelSalesOrder(Long orderId, String jwtToken) {
         try {
             String cancelledBy = securityUtils.validateAndExtractUsername(jwtToken);
             SalesOrder salesOrder = getSalesOrderById(orderId);
 
-            if (salesOrder.getStatus() == SalesOrderStatus.PENDING || salesOrder.getStatus() == SalesOrderStatus.PARTIALLY_APPROVED
-                    || salesOrder.getStatus() == SalesOrderStatus.PARTIALLY_SHIPPED) {
+            if (salesOrder.getStatus() == SalesOrderStatus.PENDING || salesOrder.getStatus() == SalesOrderStatus.PARTIALLY_APPROVED) {
                 // Release all reservations
                 for (OrderItem item : salesOrder.getItems()) {
-                    stockManagementLogic.releaseReservation(item.getProduct().getProductID(), item.getQuantity());
+                    if(item.isFinalized()) {
+                        stockManagementLogic.releaseReservation(item.getProduct().getProductID(), item.getQuantity() - item.getApprovedQuantity());
+                        item.setStatus(OrderItemStatus.CANCELLED);
+                    }
                 }
 
                 salesOrder.setStatus(SalesOrderStatus.CANCELLED);
-                salesOrder.setConfirmedBy(cancelledBy);
+                salesOrder.setLastUpdate(GlobalServiceHelper.now(clock));
+                salesOrder.setCancelledBy(cancelledBy);
                 salesOrderRepository.save(salesOrder);
 
                 log.info("OS (cancelOrder): SalesOrder {} cancelled successfully", orderId);

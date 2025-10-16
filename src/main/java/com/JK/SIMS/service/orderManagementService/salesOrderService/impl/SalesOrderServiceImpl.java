@@ -98,34 +98,60 @@ public class SalesOrderServiceImpl implements SalesOrderService {
     @Override
     @Transactional
     public ApiResponse<String> createOrder(@Valid SalesOrderRequestDto salesOrderRequestDto, String jwtToken) {
+        List<OrderItem> reservedItems = new ArrayList<>();
         try {
             // Validate the request and Create the Entity
-            salesOrderServiceHelper.validateSalesOrderItems(salesOrderRequestDto.getOrderItems()); // might throw ValidationException
+            salesOrderServiceHelper.validateSalesOrderItems(salesOrderRequestDto.getOrderItems());
             String user = securityUtils.validateAndExtractUsername(jwtToken);
             String orderReference = generateOrderReference(LocalDate.now());
             SalesOrder salesOrder = createSalesOrderEntity(salesOrderRequestDto, orderReference, user);
 
             // Process each item with stock reservation
             populateSalesOrderWithItems(salesOrder, salesOrderRequestDto.getOrderItems());
+            reservedItems.addAll(salesOrder.getItems()); // Track reserved items
 
-            salesOrderRepository.save(salesOrder);
+            salesOrderRepository.save(salesOrder); // This might fail
             logger.info("OM-SO createOrder(): SalesOrder created successfully with reference ID: {}", orderReference);
             return new ApiResponse<>(true, "SalesOrder created successfully and it is under APPROVED status");
 
-        } catch (DataIntegrityViolationException e) {
-            if (e.getCause() instanceof ConstraintViolationException) {
-                logger.warn("SalesOrder reference collision detected, retrying...");
-            }
-            throw e;
         } catch (ValidationException | InsufficientStockException | ResourceNotFoundException e) {
-            logger.error("OM-SO createOrder(): Error - {}", e.getMessage());
+            // Expected business exceptions - rollback reservations
+            rollbackReservations(reservedItems);
+            logger.error("OM-SO createOrder(): Validation error - {}", e.getMessage());
             throw e;
+        } catch (DataIntegrityViolationException e) {
+            // Unexpected constraint violation - rollback reservations
+            rollbackReservations(reservedItems);
+            if (e.getCause() instanceof ConstraintViolationException) {
+                logger.warn("SalesOrder reference collision detected");
+            }
+            logger.error("OM-SO createOrder(): Data integrity error - {}", e.getMessage());
+            throw new DatabaseException("Failed to save the order due to data integrity violation", e);
         } catch (DataAccessException dae) {
+            // Database errors - rollback reservations
+            rollbackReservations(reservedItems);
             logger.error("OM-SO createOrder(): Database error - {}", dae.getMessage());
             throw new DatabaseException("OM-SO createOrder(): Failed to save the order to the database.", dae);
         } catch (Exception e) {
+            // Any other unexpected error - rollback reservations
+            rollbackReservations(reservedItems);
             logger.error("OM-SO createOrder(): Unexpected error - {}", e.getMessage());
             throw new ServiceException("Internal Service error occurred while creating the order.", e);
+        }
+    }
+
+    private void rollbackReservations(List<OrderItem> reservedItems) {
+        for (OrderItem item : reservedItems) {
+            try {
+                stockManagementLogic.releaseReservation(
+                        item.getProduct().getProductID(),
+                        item.getQuantity()
+                );
+                logger.debug("Rolled back reservation for product: {}", item.getProduct().getProductID());
+            } catch (Exception rollbackEx) {
+                logger.error("Failed to rollback reservation for product {}: {}",
+                        item.getProduct().getProductID(), rollbackEx.getMessage());
+            }
         }
     }
 
@@ -296,15 +322,8 @@ public class SalesOrderServiceImpl implements SalesOrderService {
             }
         } catch (Exception e) {
             // Rollback the reservations if any error occurred
-            for (OrderItem item : items) {
-                try {
-                    stockManagementLogic.releaseReservation(item.getProduct().getProductID(), item.getQuantity());
-                } catch (Exception rollbackException) {
-                    // Log but don't throw - we want to release as many reservations as possible
-                    logger.error("OM-SO populateSalesOrderWithItems(): Failed to rollback reservation for product {}: {}",
-                            item.getProduct().getProductID(), rollbackException.getMessage());
-                }
-            }
+            rollbackReservations(items);
+            log.error("OM-SO populateSalesOrderWithItems(): Error - {}", e.getMessage());
             throw e;
         }
     }

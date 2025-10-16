@@ -49,6 +49,6 @@ public class OrderItem {
     }
 
     public boolean isFinalized(){
-        return this.status == OrderItemStatus.APPROVED;
+        return this.status == OrderItemStatus.APPROVED || this.status == OrderItemStatus.CANCELLED;
     }
 }

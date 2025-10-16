@@ -71,7 +71,7 @@ public class StockManagementLogic {
             }
 
             if(approvedQuantity > inventory.getReservedStock()){
-                throw new InsufficientStockException("IC (fulfillReservation): Insufficient stock for product " + productId);
+                throw new InsufficientStockException("IC (fulfillReservation): Approving more quantity than reserved for product " + productId);
             }
 
             // Deduct from both current stock and reserved stock
@@ -85,6 +85,9 @@ public class StockManagementLogic {
         } catch (DataAccessException e) {
             log.error("IC (fulfillReservation): Database error - {}", e.getMessage());
             throw new DatabaseException("Failed to fulfill reservation", e);
+        } catch (Exception e) {
+            log.error("IC (fulfillReservation): Unexpected error - {}", e.getMessage());
+            throw new ServiceException("Failed to fulfill reservation", e);
         }
     }
 
@@ -97,6 +100,10 @@ public class StockManagementLogic {
                 throw new ResourceNotFoundException("Inventory not found for product: " + productId);
             }
 
+            if (inventory.getReservedStock() < releasedQuantity) {
+                log.warn("Attempting to release {} but only {} reserved for product {}",
+                        releasedQuantity, inventory.getReservedStock(), productId);
+            }
             inventory.setReservedStock(Math.max(0, inventory.getReservedStock() - releasedQuantity));
             icRepository.save(inventory);
             log.debug("IC (releaseReservation): Released reservation of {} units for product {}", releasedQuantity, productId);
