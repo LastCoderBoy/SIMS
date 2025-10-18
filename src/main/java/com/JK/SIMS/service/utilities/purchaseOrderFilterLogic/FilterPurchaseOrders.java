@@ -1,4 +1,4 @@
-package com.JK.SIMS.service.purchaseOrderFilterLogic;
+package com.JK.SIMS.service.utilities.purchaseOrderFilterLogic;
 
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.repository.PurchaseOrder_repo.PurchaseOrderRepository;
@@ -8,9 +8,9 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;
 
 @Component
-public class AllPoFilterStrategy extends AbstractPoFilterStrategy {
+public class FilterPurchaseOrders extends AbstractPoFilterStrategy {
 
-    protected AllPoFilterStrategy(PurchaseOrderServiceHelper poServiceHelper, PurchaseOrderRepository purchaseOrderRepository) {
+    protected FilterPurchaseOrders(PurchaseOrderServiceHelper poServiceHelper, PurchaseOrderRepository purchaseOrderRepository) {
         super(poServiceHelper, purchaseOrderRepository);
     }
 

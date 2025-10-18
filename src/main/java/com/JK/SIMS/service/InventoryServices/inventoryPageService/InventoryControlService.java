@@ -4,7 +4,6 @@ import com.JK.SIMS.exceptionHandler.*;
 import com.JK.SIMS.models.IC_models.inventoryData.*;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
 import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;
-import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderResponseDto;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.views.SummarySalesOrderView;
 import com.JK.SIMS.models.PM_models.ProductCategories;
@@ -71,7 +70,7 @@ public class InventoryControlService {
                     metrics.getTotalCount(),
                     metrics.getLowStockCount(), // Checks against the VALID products only
                     poServiceInIc.getTotalValidPoSize(),
-                    soServiceInIc.getTotalValidOutgoingStockSize(),
+                    soServiceInIc.getWaitingStockSize(),
                     damageLossService.getDamageLossMetrics().getTotalReport(),
                     allPendingOrders
             );
@@ -259,7 +258,7 @@ public class InventoryControlService {
 
         // Handle Sales Orders
         boolean isSalesOrderType = "SALES_ORDER".equalsIgnoreCase(type);
-        boolean hasSalesOrderFilters = soStatus != null || category != null || dateOption != null;
+        boolean hasSalesOrderFilters = soStatus != null || dateOption != null;
 
         if (isSalesOrderType || hasSalesOrderFilters) {
             if (isSalesOrderType && !hasSalesOrderFilters) {
@@ -270,7 +269,7 @@ public class InventoryControlService {
             } else {
                 // Fetch filtered Sales Orders
                 PaginatedResponse<SummarySalesOrderView> salesOrders =
-                        soServiceInIc.filterSoProducts(soStatus, category, dateOption, startDate, endDate, page, size);
+                        soServiceInIc.filterSoProducts(soStatus, dateOption, startDate, endDate, page, size);
                 inventoryServiceHelper.fillWithSalesOrderView(combinedResults, salesOrders.getContent());
             }
         }

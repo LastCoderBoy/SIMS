@@ -1,17 +1,17 @@
-package com.JK.SIMS.service.purchaseOrderFilterLogic;
+package com.JK.SIMS.service.utilities.purchaseOrderFilterLogic;
 
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.repository.PurchaseOrder_repo.PurchaseOrderRepository;
 import com.JK.SIMS.service.utilities.PurchaseOrderServiceHelper;
-import com.JK.SIMS.service.purchaseOrderFilterLogic.filterSpecification.PurchaseOrderSpecification;
+import com.JK.SIMS.service.utilities.purchaseOrderFilterLogic.filterSpecification.PurchaseOrderSpecification;
 import jakarta.annotation.Nullable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;
 
 @Component
-public class PendingPoFilterStrategy extends AbstractPoFilterStrategy {
+public class FilterWaitingPurchaseOrders extends AbstractPoFilterStrategy {
 
-    protected PendingPoFilterStrategy(PurchaseOrderServiceHelper poServiceHelper, PurchaseOrderRepository purchaseOrderRepository) {
+    protected FilterWaitingPurchaseOrders(PurchaseOrderServiceHelper poServiceHelper, PurchaseOrderRepository purchaseOrderRepository) {
         super(poServiceHelper, purchaseOrderRepository);
     }
 

@@ -1,4 +1,4 @@
-package com.JK.SIMS.service.purchaseOrderSearchLogic;
+package com.JK.SIMS.service.utilities.purchaseOrderSearchLogic;
 
 import com.JK.SIMS.exceptionHandler.DatabaseException;
 import com.JK.SIMS.exceptionHandler.ServiceException;

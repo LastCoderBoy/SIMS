@@ -86,20 +86,21 @@ public class SoControllerInIc {
         throw new IllegalArgumentException("IcSo: cancelSalesOrder() Invalid Token provided.");
     }
 
-    // Search by Product Name, Category, Order Reference, Destination
+    // Search by Order Reference, Customer name
     @GetMapping("/search")
-    public ResponseEntity<?> searchSoProduct(@RequestParam(required = false) String text,
-                                             @RequestParam(defaultValue = "0") int page,
-                                             @RequestParam(defaultValue = "10") int size){
+    public ResponseEntity<?> searchInWaitingSalesOrders(@RequestParam(required = false) String text,
+                                                        @RequestParam(defaultValue = "0") int page,
+                                                        @RequestParam(defaultValue = "10") int size,
+                                                        @RequestParam(defaultValue = "orderReference") String sortBy,
+                                                        @RequestParam(defaultValue = "desc") String sortDir){
         logger.info("IcSo: searchProduct() calling...");
         PaginatedResponse<SummarySalesOrderView> dtoResponse =
-                soServiceInIc.searchInOutgoingSalesOrders(text, page, size);
+                soServiceInIc.searchInWaitingSalesOrders(text, page, size, sortBy, sortDir);
         return ResponseEntity.ok(dtoResponse);
     }
 
     @GetMapping("/filter")
-    public ResponseEntity<?> filterSoProductsByStatus(@RequestParam(required = false) String status,
-                                                      @RequestParam(required = false) String category,
+    public ResponseEntity<?> filterWaitingSalesOrders(@RequestParam(required = false) String status,
                                                       @RequestParam(required = false) String optionDate,
                                                       @RequestParam(required = false) LocalDate startDate,
                                                       @RequestParam(required = false) LocalDate endDate,
@@ -108,7 +109,6 @@ public class SoControllerInIc {
         logger.info("IcSo: filterProductsByStatus() calling...");
 
         SalesOrderStatus soStatus = null;
-        PurchaseOrderStatus poStatus = null;
         if (status != null) {
             try {
                 soStatus = SalesOrderStatus.valueOf(status.toUpperCase());
@@ -117,18 +117,8 @@ public class SoControllerInIc {
             }
         }
 
-        // Parse category (if provided)
-        ProductCategories productCategory = null;
-        if (category != null) {
-            try {
-                productCategory = ProductCategories.valueOf(category.toUpperCase());
-            } catch (IllegalArgumentException e) {
-                logger.warn("Invalid category value: {}", category);
-            }
-        }
-
         PaginatedResponse<SummarySalesOrderView> dtoResponse =
-                soServiceInIc.filterSoProducts(soStatus, productCategory, optionDate, startDate, endDate, page, size);
+                soServiceInIc.filterSoProducts(soStatus, optionDate, startDate, endDate, page, size);
         return ResponseEntity.ok(dtoResponse);
     }
 }

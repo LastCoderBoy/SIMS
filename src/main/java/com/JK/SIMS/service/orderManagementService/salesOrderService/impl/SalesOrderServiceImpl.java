@@ -21,6 +21,7 @@ import com.JK.SIMS.service.utilities.SalesOrderServiceHelper;
 import com.JK.SIMS.service.orderManagementService.salesOrderService.SalesOrderService;
 import com.JK.SIMS.service.productManagementService.PMServiceHelper;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
+import com.JK.SIMS.service.utilities.salesOrderSearchLogic.SoSearchStrategy;
 import jakarta.annotation.Nullable;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;
@@ -28,6 +29,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -56,13 +58,15 @@ public class SalesOrderServiceImpl implements SalesOrderService {
     private final StockManagementLogic stockManagementLogic;
     private final SalesOrderServiceHelper salesOrderServiceHelper;
     private final SecurityUtils securityUtils;
+    private final SoSearchStrategy soSearchStrategy;
 
     private final SalesOrderRepository salesOrderRepository;
     private final OrderItemRepository orderItemRepository;
     @Autowired
     public SalesOrderServiceImpl(GlobalServiceHelper globalServiceHelper, SalesOrderRepository salesOrderRepository,
                                  OrderItemRepository orderItemRepository, PMServiceHelper pmServiceHelper,
-                                 StockManagementLogic stockManagementLogic, SalesOrderServiceHelper salesOrderServiceHelper, SecurityUtils securityUtils) {
+                                 StockManagementLogic stockManagementLogic, SalesOrderServiceHelper salesOrderServiceHelper,
+                                 SecurityUtils securityUtils, @Qualifier("omSoSearchStrategy") SoSearchStrategy soSearchStrategy) {
         this.globalServiceHelper = globalServiceHelper;
         this.salesOrderRepository = salesOrderRepository;
         this.orderItemRepository = orderItemRepository;
@@ -70,6 +74,7 @@ public class SalesOrderServiceImpl implements SalesOrderService {
         this.stockManagementLogic = stockManagementLogic;
         this.salesOrderServiceHelper = salesOrderServiceHelper;
         this.securityUtils = securityUtils;
+        this.soSearchStrategy = soSearchStrategy;
     }
 
     @Override
@@ -387,55 +392,6 @@ public class SalesOrderServiceImpl implements SalesOrderService {
         }
     }
 
-    // Will be used in the SORT logic and the normal GET all logic.
-    // Can be only sorted using Status.
-    @Transactional(readOnly = true)
-    public PaginatedResponse<SalesOrderResponseDto> getAllSalesOrdersSorted(int page, int size, String sortBy, String sortDir,
-                                                                            Optional<SalesOrderStatus> status) {
-        try {
-
-            Sort sort = sortDir.equalsIgnoreCase("desc") ?
-                    Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
-            Pageable pageable = PageRequest.of(page, size, sort);
-
-            // If status is provided, filter by status; otherwise get all orders
-            Page<SalesOrder> orders = (status.isPresent()) ?
-                    salesOrderRepository.findByStatus(status.get(), pageable) :
-                    salesOrderRepository.findAll(pageable);
-
-            Page<SalesOrderResponseDto> dtoResponse = orders.map(salesOrderServiceHelper::convertToSalesOrderResponseDto);
-            return new PaginatedResponse<>(dtoResponse);
-
-        } catch (Exception e) {
-            logger.error("OS (getAllSalesOrdersSorted): Error fetching orders - {}", e.getMessage());
-            throw new ServiceException("Failed to fetch orders", e);
-        }
-    }
-
-    @Transactional(readOnly = true)
-    public PaginatedResponse<SalesOrderResponseDto> searchOutgoingStock(String text, int page, int size, Optional<SalesOrderStatus> status) {
-        try {
-            Optional<String> inputText = Optional.ofNullable(text);
-            if (inputText.isPresent() && !inputText.get().trim().isEmpty()) {
-                Pageable pageable = PageRequest.of(page, size, Sort.by("orderDate").ascending());
-                Page<SalesOrder> outgoingStockData = salesOrderRepository.searchOutgoingStock(
-                        inputText.get().trim().toLowerCase(),
-                        status.orElse(null),
-                        pageable
-                );
-
-                logger.info("OS (searchOutgoingStock): {} orders retrieved.", outgoingStockData.getContent().size());
-                Page<SalesOrderResponseDto> dtoResponse = outgoingStockData.map(salesOrderServiceHelper::convertToSalesOrderResponseDto);
-                return new PaginatedResponse<>(dtoResponse);
-            }
-            logger.info("OS (searchOutgoingStock): No search text provided. Retrieving first page with default size.");
-            return getAllSalesOrdersSorted(page, size, "orderDate", "asc", Optional.of(SalesOrderStatus.PENDING));
-        } catch (Exception e) {
-            logger.error("OS (searchOutgoingStock): Failed to retrieve outgoing stock data - {}", e.getMessage());
-            throw new ServiceException("Failed to retrieve outgoing stock data", e);
-        }
-    }
-
     private SalesOrder createSalesOrderEntity(SalesOrderRequestDto salesOrderRequestDto, String orderReference, String createdPerson ) {
         SalesOrder salesOrder = new SalesOrder();
         salesOrder.setOrderReference(orderReference);
@@ -465,12 +421,29 @@ public class SalesOrderServiceImpl implements SalesOrderService {
     }
 
 
-    // TODO: If goes over XXX number, go to XXXX numbers
+    @Override
+    @Transactional(readOnly = true)
+    public PaginatedResponse<SummarySalesOrderView> searchInSalesOrders(String text, int page, int size, String sortBy, String sortDirection) {
+        try {
+            globalServiceHelper.validatePaginationParameters(page, size);
+            if(text == null || text.trim().isEmpty()){
+                log.info("OM-SO searchInSalesOrders(): No search text provided, returning all orders");
+                return getAllSummarySalesOrders(sortBy, sortDirection, page, size);
+            }
+            Page<SalesOrder> salesOrderPage = soSearchStrategy.searchInSo(text, page, size, sortBy, sortDirection);
+            return salesOrderServiceHelper.transformToSummarySalesOrderView(salesOrderPage);
+        } catch (Exception e) {
+            log.error("OM-SO searchInSalesOrders(): Unexpected error occurred: {}", e.getMessage(), e);
+            throw new ServiceException("Internal Service Error occurred: ", e);
+        }
+    }
+
+    // Note that: the Order Reference max prefix num is "SO-yyyy-MM-dd-999"
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public String generateOrderReference(LocalDate now) {
         try {
             // Get the latest order reference for today with pessimistic lock
-            Optional<SalesOrder> lastOrderOpt = salesOrderRepository.findLatestOrderByReferencePattern(
+            Optional<SalesOrder> lastOrderOpt = salesOrderRepository.findLatestOrderWithPessimisticLock(
                     "SO-" + now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) + "%");
 
             DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");

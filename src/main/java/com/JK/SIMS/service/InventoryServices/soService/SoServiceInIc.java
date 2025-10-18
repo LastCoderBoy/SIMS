@@ -10,13 +10,12 @@ import com.JK.SIMS.models.IC_models.salesOrder.dtos.processSalesOrderDtos.Proces
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.views.SummarySalesOrderView;
 import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItem;
 import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItemStatus;
-import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.SalesOrder_Repo.SalesOrderRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
-import com.JK.SIMS.service.InventoryServices.soService.filterLogic.SalesOrderSpecification;
+import com.JK.SIMS.service.utilities.salesOrderFilterLogic.filterSpecification.SalesOrderSpecification;
 import com.JK.SIMS.service.InventoryServices.soService.processSalesOrder.StockOutProcessor;
-import com.JK.SIMS.service.InventoryServices.soService.searchLogic.SoStrategy;
+import com.JK.SIMS.service.utilities.salesOrderSearchLogic.SoSearchStrategy;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import com.JK.SIMS.service.utilities.SalesOrderServiceHelper;
 import jakarta.validation.constraints.Max;
@@ -48,13 +47,13 @@ public class SoServiceInIc {
     private final SalesOrderServiceHelper salesOrderServiceHelper;
     private final GlobalServiceHelper globalServiceHelper;
     private final StockManagementLogic stockManagementLogic;
-    private final SoStrategy searchStrategy;
+    private final SoSearchStrategy searchStrategy;
     private final StockOutProcessor stockOutProcessor;
 
     private final SalesOrderRepository salesOrderRepository;
     @Autowired
     public SoServiceInIc(Clock clock, SecurityUtils securityUtils, SalesOrderServiceHelper salesOrderServiceHelper, GlobalServiceHelper globalServiceHelper,
-                         StockManagementLogic stockManagementLogic, @Qualifier("icSoSearchStrategy") SoStrategy searchStrategy,
+                         StockManagementLogic stockManagementLogic, @Qualifier("icSoSearchStrategy") SoSearchStrategy searchStrategy,
                          StockOutProcessor stockOutProcessor, SalesOrderRepository salesOrderRepository) {
         this.clock = clock;
         this.securityUtils = securityUtils;
@@ -77,10 +76,10 @@ public class SoServiceInIc {
                     Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
             Pageable pageable = PageRequest.of(page, size, sort);
             Page<SalesOrder> salesOrders = salesOrderRepository.findAllWaitingSalesOrders(pageable);
+            log.info("IC-SO (getAllWaitingSalesOrders): Returning {} paginated data", salesOrders.getContent().size());
             return salesOrderServiceHelper.transformToSummarySalesOrderView(salesOrders);
-
         } catch (Exception e) {
-            log.error("OS (getAllSalesOrdersSorted): Error fetching orders - {}", e.getMessage());
+            log.error("IC-SO (getAllSalesOrdersSorted): Error fetching orders - {}", e.getMessage());
             throw new ServiceException("Failed to fetch orders", e);
         }
     }
@@ -160,20 +159,20 @@ public class SoServiceInIc {
 
     // Search by Customer Name or Order Reference ID
     @Transactional(readOnly = true)
-    public PaginatedResponse<SummarySalesOrderView> searchInOutgoingSalesOrders(String text, int page, int size){
+    public PaginatedResponse<SummarySalesOrderView> searchInWaitingSalesOrders(String text, int page, int size, String sortBy, String sortDir){
         try {
             globalServiceHelper.validatePaginationParameters(page, size);
             if(text == null || text.trim().isEmpty()){
-                log.warn("IcSo (searchInOutgoingSalesOrders): Search text is null or empty, returning all waiting orders.");
+                log.warn("IcSo (searchInWaitingSalesOrders): Search text is null or empty, returning all waiting orders.");
                 return getAllWaitingSalesOrders(page, size, "id", "asc");
             }
-            Page<SalesOrder> salesOrderPage = searchStrategy.searchInSo(text, page, size);
+            Page<SalesOrder> salesOrderPage = searchStrategy.searchInSo(text, page, size, sortBy, sortDir);
             return salesOrderServiceHelper.transformToSummarySalesOrderView(salesOrderPage);
         } catch (IllegalArgumentException ie) {
-            log.error("OS (searchInOutgoingSalesOrders): Invalid pagination parameters: {}", ie.getMessage());
+            log.error("OS (searchInWaitingSalesOrders): Invalid pagination parameters: {}", ie.getMessage());
             throw ie;
         } catch (Exception e) {
-            log.error("OS (searchInOutgoingSalesOrders): Error searching orders - {}", e.getMessage());
+            log.error("OS (searchInWaitingSalesOrders): Error searching orders - {}", e.getMessage());
             throw new ServiceException("Failed to search orders", e);
         }
     }
@@ -184,37 +183,18 @@ public class SoServiceInIc {
                 .orElseThrow(() -> new ResourceNotFoundException("SalesOrder not found"));
     }
 
-    // internal Helper methods
     @Transactional(readOnly = true)
-    public Long getTotalValidOutgoingStockSize() {
+    public Long getWaitingStockSize() {
         try {
-            return salesOrderRepository.getOutgoingValidStockSize();
+            return salesOrderRepository.getWaitingStockSize();
         } catch (Exception e) {
-            log.error("SO (totalOutgoingStockSize): Error getting outgoing stock size - {}", e.getMessage());
+            log.error("IC-SO (totalOutgoingStockSize): Error getting outgoing stock size - {}", e.getMessage());
             throw new ServiceException("Failed to get total outgoing stock size", e);
         }
     }
 
-    // Average Fulfill Time.
-    // Method for future reference.
     @Transactional(readOnly = true)
-    public int getAverageFulfillTime() {
-        try {
-            long totalEntities = salesOrderRepository.count();
-            if(totalEntities == 0) return 0;
-            long totalDeliveryDate = salesOrderRepository.calculateTotalDeliveryDate();
-            return (int) (totalDeliveryDate / totalEntities);
-        } catch (DataAccessException da) {
-            log.error("OS (getAverageFulfillTime): Failed to calculate average fulfill time: {}", da.getMessage(), da);
-            throw new DatabaseException("Failed to calculate average fulfill time", da);
-        } catch (Exception e) {
-            log.error("OS (getAverageFulfillTime): Error calculating average fulfill time: {}", e.getMessage());
-            throw new ServiceException("Failed to calculate average fulfill time", e);
-        }
-    }
-
-    @Transactional(readOnly = true)
-    public PaginatedResponse<SummarySalesOrderView> filterSoProducts(SalesOrderStatus status, ProductCategories category, String optionDate,
+    public PaginatedResponse<SummarySalesOrderView> filterSoProducts(SalesOrderStatus status, String optionDate,
                                                                      LocalDate startDate, LocalDate endDate, int page, int size) {
         try{
             globalServiceHelper.validatePaginationParameters(page, size);
@@ -227,12 +207,6 @@ public class SoServiceInIc {
             if(status != null){
                 specification = specification.and(
                         SalesOrderSpecification.byStatus(status));
-            }
-
-            // Filtering by category if provided
-            if (category != null) {
-                specification = specification.and(
-                        SalesOrderSpecification.hasProductCategory(category));
             }
 
             // Filtering by dates

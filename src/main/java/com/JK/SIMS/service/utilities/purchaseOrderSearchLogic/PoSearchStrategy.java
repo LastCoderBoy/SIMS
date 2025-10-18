@@ -1,4 +1,4 @@
-package com.JK.SIMS.service.purchaseOrderSearchLogic;
+package com.JK.SIMS.service.utilities.purchaseOrderSearchLogic;
 
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
 import org.springframework.data.domain.Page;

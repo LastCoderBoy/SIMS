@@ -15,4 +15,5 @@ public interface SalesOrderService {
     ApiResponse<String> updateSalesOrder(Long orderId, SalesOrderRequestDto salesOrderRequestDto, String jwtToken);
     ApiResponse<String> addItemsToSalesOrder(Long orderId, @Valid BulkOrderItemsRequestDto bulkOrderItemsRequestDto, String jwtToken);
     ApiResponse<String> removeItemFromSalesOrder(Long orderId, Long itemId, String jwtToken);
+    PaginatedResponse<SummarySalesOrderView> searchInSalesOrders(String text, int page, int size, String sortBy, String sortDirection);
 }

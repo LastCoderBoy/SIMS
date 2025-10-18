@@ -21,8 +21,8 @@ import com.JK.SIMS.service.confirmTokenService.ConfirmationTokenService;
 import com.JK.SIMS.service.email_service.EmailSender;
 import com.JK.SIMS.service.orderManagementService.purchaseOrderService.PurchaseOrderService;
 import com.JK.SIMS.service.productManagementService.PMServiceHelper;
-import com.JK.SIMS.service.purchaseOrderFilterLogic.PoFilterStrategy;
-import com.JK.SIMS.service.purchaseOrderSearchLogic.PoSearchStrategy;
+import com.JK.SIMS.service.utilities.purchaseOrderFilterLogic.PoFilterStrategy;
+import com.JK.SIMS.service.utilities.purchaseOrderSearchLogic.PoSearchStrategy;
 import com.JK.SIMS.service.supplierService.SupplierService;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import com.JK.SIMS.service.utilities.ProductCategoriesConverter;
@@ -75,7 +75,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                                     SupplierService supplierService, EmailSender emailSender, PMServiceHelper pmServiceHelper,
                                     ConfirmationTokenService confirmationTokenService, PurchaseOrderServiceHelper purchaseOrderServiceHelper,
                                     @Qualifier("omPoSearchStrategy") PoSearchStrategy poSearchStrategy, PurchaseOrderStatusConverter purchaseOrderStatusConverter,
-                                    @Qualifier("allPoFilterStrategy") PoFilterStrategy poFilterStrategy, ProductCategoriesConverter productCategoriesConverter) {
+                                    @Qualifier("filterPurchaseOrders") PoFilterStrategy poFilterStrategy, ProductCategoriesConverter productCategoriesConverter) {
         this.clock = clock;
         this.purchaseOrderRepository = purchaseOrderRepository;
         this.securityUtils = securityUtils;
@@ -194,13 +194,13 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             }
             return poFilterStrategy.filterPurchaseOrders(categoryValue, statusValue, pageable);
         } catch (DataAccessException da) {
-            logger.error("OM-PO (filterPurchaseOrders): Database error occurred: {}", da.getMessage(), da);
+            logger.error("OM-PO (FilterPurchaseOrders): Database error occurred: {}", da.getMessage(), da);
             throw new DatabaseException("Internal error", da);
         } catch (ValidationException ve){
-            logger.error("OM-PO (filterPurchaseOrders): Invalid filter provided: {}", ve.getMessage(), ve);
+            logger.error("OM-PO (FilterPurchaseOrders): Invalid filter provided: {}", ve.getMessage(), ve);
             throw new ValidationException("Invalid filter provided: " + ve.getMessage());
         } catch (Exception e) {
-            logger.error("OM-PO (filterPurchaseOrders): Unexpected error occurred: {}", e.getMessage(), e);
+            logger.error("OM-PO (FilterPurchaseOrders): Unexpected error occurred: {}", e.getMessage(), e);
             throw new ServiceException("Internal Service Error occurred:", e);
         }
     }

@@ -6,7 +6,6 @@ import lombok.NoArgsConstructor;
 
 import java.util.Date;
 
-// TODO: Try to use the class in the GlobalExceptionHandler
 @Data
 @AllArgsConstructor
 @NoArgsConstructor

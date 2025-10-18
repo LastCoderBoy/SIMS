@@ -1,4 +1,4 @@
-package com.JK.SIMS.service.purchaseOrderFilterLogic;
+package com.JK.SIMS.service.utilities.purchaseOrderFilterLogic;
 
 import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
@@ -9,7 +9,7 @@ import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.PurchaseOrder_repo.PurchaseOrderRepository;
 import com.JK.SIMS.service.utilities.PurchaseOrderServiceHelper;
-import com.JK.SIMS.service.purchaseOrderFilterLogic.filterSpecification.PurchaseOrderSpecification;
+import com.JK.SIMS.service.utilities.purchaseOrderFilterLogic.filterSpecification.PurchaseOrderSpecification;
 import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

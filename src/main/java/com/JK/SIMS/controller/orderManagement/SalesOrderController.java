@@ -3,6 +3,7 @@ package com.JK.SIMS.controller.orderManagement;
 import com.JK.SIMS.config.security.TokenUtils;
 import com.JK.SIMS.exceptionHandler.InvalidTokenException;
 import com.JK.SIMS.models.ApiResponse;
+import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderRequestDto;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.views.DetailedSalesOrderView;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.views.SummarySalesOrderView;
@@ -18,14 +19,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+
+import static com.JK.SIMS.service.utilities.EntityConstants.*;
+
 
 @RestController
 @Slf4j // will add a logger to the class
 @RequestMapping("/api/v1/products/manage-order/so")
 public class SalesOrderController {
-
-    private static final String DEFAULT_SORT_BY = "orderReference";
-    private static final String DEFAULT_SORT_DIRECTION = "asc";
 
     private final SoServiceInIc soServiceInIc;
     private final SalesOrderService salesOrderService;
@@ -36,7 +38,7 @@ public class SalesOrderController {
     }
 
     @GetMapping
-    public ResponseEntity<?> getAllSummarySalesOrders(@RequestParam(defaultValue = DEFAULT_SORT_BY) String sortBy,
+    public ResponseEntity<?> getAllSummarySalesOrders(@RequestParam(defaultValue = DEFAULT_SORT_BY_FOR_SO) String sortBy,
                                                       @RequestParam(defaultValue = DEFAULT_SORT_DIRECTION) String sortDirection,
                                                       @RequestParam(defaultValue = "0") int page,
                                                       @RequestParam(defaultValue = "10") int size){
@@ -131,10 +133,42 @@ public class SalesOrderController {
 
 
     // TODO: Search and Filter logics as well
-//    @GetMapping("/search")
-//    public ResponseEntity<?> searchIn
+    @GetMapping("/search")
+    public ResponseEntity<?> searchInSalesOrder(@RequestParam(required = false) String text,
+                                                @RequestParam(defaultValue = "0") int page,
+                                                @RequestParam(defaultValue = "10") int size,
+                                                @RequestParam(defaultValue = DEFAULT_SORT_BY_FOR_SO) String sortBy,
+                                                @RequestParam(defaultValue = DEFAULT_SORT_DIRECTION) String sortDirection){
+        log.info("OM-SO: searchInSalesOrders() calling...");
+        PaginatedResponse<SummarySalesOrderView> soResponse = salesOrderService.searchInSalesOrders(text, page, size, sortBy, sortDirection);
+        return new ResponseEntity<>(soResponse, HttpStatus.OK);
+    }
 
 
+    @GetMapping("/filter")
+    public ResponseEntity<?> filterSalesOrders(@RequestParam(required = false) String status,
+                                               @RequestParam(required = false) String optionDate,
+                                               @RequestParam(required = false) LocalDate startDate,
+                                               @RequestParam(required = false) LocalDate endDate,
+                                               @RequestParam(defaultValue = "0") int page,
+                                               @RequestParam(defaultValue = "10") int size,
+                                               @RequestParam(defaultValue = DEFAULT_SORT_BY_FOR_SO) String sortBy,
+                                               @RequestParam(defaultValue = DEFAULT_SORT_DIRECTION) String sortDirection){
+        log.info("OM-SO: filterSalesOrders() calling...");
+
+        SalesOrderStatus soStatus = null;
+        if (status != null) {
+            try {
+                soStatus = SalesOrderStatus.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid status value: {}", status);
+            }
+        }
+
+        PaginatedResponse<SummarySalesOrderView> dtoResponse =
+                soServiceInIc.filterSoProducts(soStatus, optionDate, startDate, endDate, page, size);
+        return ResponseEntity.ok(dtoResponse);
+    }
 }
 
 

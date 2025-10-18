@@ -1,4 +1,4 @@
-package com.JK.SIMS.service.InventoryServices.soService.filterLogic;
+package com.JK.SIMS.service.utilities.salesOrderFilterLogic.filterSpecification;
 
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;

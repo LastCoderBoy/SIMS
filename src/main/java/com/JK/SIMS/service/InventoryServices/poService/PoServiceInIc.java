@@ -14,7 +14,7 @@ import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.ReceiveStockRequestDto;
 import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.models.stockMovements.StockMovementReferenceType;
 import com.JK.SIMS.models.stockMovements.StockMovementType;
-import com.JK.SIMS.service.purchaseOrderFilterLogic.PoFilterStrategy;
+import com.JK.SIMS.service.utilities.purchaseOrderFilterLogic.PoFilterStrategy;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.PurchaseOrder_repo.PurchaseOrderRepository;
@@ -22,7 +22,7 @@ import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagemen
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
 import com.JK.SIMS.service.utilities.PurchaseOrderServiceHelper;
 import com.JK.SIMS.service.productManagementService.PMServiceHelper;
-import com.JK.SIMS.service.purchaseOrderSearchLogic.PoSearchStrategy;
+import com.JK.SIMS.service.utilities.purchaseOrderSearchLogic.PoSearchStrategy;
 import com.JK.SIMS.service.stockMovementService.StockMovementService;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import jakarta.validation.Valid;
@@ -65,7 +65,7 @@ public class PoServiceInIc {
     @Autowired
     public PoServiceInIc(Clock clock, PurchaseOrderRepository purchaseOrderRepository, SecurityUtils securityUtils, PurchaseOrderServiceHelper poServiceHelper,
                          @Qualifier("icPoSearchStrategy") PoSearchStrategy poSearchStrategy, GlobalServiceHelper globalServiceHelper,
-                         @Qualifier("pendingPoFilterStrategy") PoFilterStrategy poFilterStrategy, PMServiceHelper pmServiceHelper,
+                         @Qualifier("filterWaitingPurchaseOrders") PoFilterStrategy poFilterStrategy, PMServiceHelper pmServiceHelper,
                          StockManagementLogic stockManagementLogic, StockMovementService stockMovementService, InventoryServiceHelper inventoryServiceHelper) {
         this.clock = clock;
         this.purchaseOrderRepository = purchaseOrderRepository;

@@ -1,4 +1,4 @@
-package com.JK.SIMS.service.InventoryServices.soService.searchLogic;
+package com.JK.SIMS.service.utilities.salesOrderSearchLogic;
 
 import com.JK.SIMS.exceptionHandler.DatabaseException;
 import com.JK.SIMS.exceptionHandler.ServiceException;
@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Slf4j
-public class IcSoSearchStrategy implements SoStrategy{
+public class IcSoSearchStrategy implements SoSearchStrategy {
 
     private final SalesOrderRepository salesOrderRepository;
     @Autowired
@@ -25,16 +25,18 @@ public class IcSoSearchStrategy implements SoStrategy{
 
     // Search by Customer Name or Order Reference ID
     @Override
-    public Page<SalesOrder> searchInSo(String text, int page, int size) {
+    public Page<SalesOrder> searchInSo(String text, int page, int size, String sortBy, String sortDirection) {
         try {
-            Pageable pageable = PageRequest.of(page, size, Sort.by("id"));
+            Sort sort = sortDirection.equalsIgnoreCase("desc")
+                    ? Sort.by(sortBy).descending()
+                    : Sort.by(sortBy).ascending();
+            Pageable pageable = PageRequest.of(page, size, sort);
             log.info("IcSo (searchInSo): Search text provided. Searching for orders with text '{}'", text);
-            return salesOrderRepository.searchInOutgoingSalesOrders(text, pageable);
+            return salesOrderRepository.searchInWaitingSalesOrders(text, pageable);
         } catch (DataAccessException dae) {
             log.error("IcSo (searchInSo): Database error while searching orders", dae);
             throw new DatabaseException("IcSo (searchInSo): Error occurred while searching orders");
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             log.error("IcSo (searchInSo): Unexpected error while searching orders", e);
             throw new ServiceException("IcSo (searchInSo): Error occurred while searching orders");
         }

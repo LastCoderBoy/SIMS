@@ -99,7 +99,7 @@ public class PurchaseOrderController {
                                                   @RequestParam(defaultValue = "asc") String sortDirection,
                                                   @RequestParam(defaultValue = "0") int page,
                                                   @RequestParam(defaultValue = "10") int size){
-        logger.info("OM-PO: filterPurchaseOrders() calling...");
+        logger.info("OM-PO: FilterPurchaseOrders() calling...");
         PaginatedResponse<SummaryPurchaseOrderView> filterResponse =
                 purchaseOrderService.filterPurchaseOrders(category, status, sortBy, sortDirection, page, size);
         return ResponseEntity.ok(filterResponse);

@@ -1,11 +1,9 @@
 package com.JK.SIMS.exceptionHandler;
 
-import com.JK.SIMS.models.ApiResponse;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.coyote.BadRequestException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -19,151 +17,57 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
-    private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
     private static final String LOG_PREFIX = "APP: ";
 
+
+    private ResponseEntity<ErrorObject> handleException(Exception ex, HttpStatus status, String logMessage) {
+        log.warn(logMessage, ex.getMessage());
+        ErrorObject errorObject = new ErrorObject(
+                status.value(),
+                ex.getMessage(),
+                new Date()
+        );
+        return new ResponseEntity<>(errorObject, status);
+    }
+
+    private ResponseEntity<ErrorObject> handleException(Exception ex, HttpStatus status, LogLevel logLevel, String logMessage) {
+        if (logLevel == LogLevel.ERROR) {
+            log.error(logMessage, ex.getMessage());
+        } else {
+            log.warn(logMessage, ex.getMessage());
+        }
+        ErrorObject errorObject = new ErrorObject(
+                status.value(),
+                ex.getMessage(),
+                new Date()
+        );
+        return new ResponseEntity<>(errorObject, status);
+    }
+
+    // Client Errors (4xx)
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<String> handleHttpMessageNotReadableException(HttpMessageNotReadableException ex) {
-        logger.warn("{}Invalid JSON input: {}", LOG_PREFIX, ex.getMessage());
-        String errorMessage = "Invalid input data. Please check your request body.";
-        return new ResponseEntity<>(errorMessage, HttpStatus.BAD_REQUEST);
-    }
-
-    @ExceptionHandler(InventoryException.class)
-    public ResponseEntity<ErrorObject> handleInventoryException(InventoryException ex) {
-        logger.warn("{}Inventory operation failed: {}", LOG_PREFIX, ex.getMessage());
-        ErrorObject errorObject = new ErrorObject(
-                HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                ex.getMessage(),
-                new Date()
-        );
-
-        return new ResponseEntity<>(errorObject, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-
-    @ExceptionHandler(JwtAuthenticationException.class)
-    public ResponseEntity<ErrorObject> handleJwtAuthenticationException(JwtAuthenticationException ex) {
-        logger.warn("JWT Authentication error: {}", ex.getMessage());
-
-        ErrorObject errorObject = new ErrorObject(
-                HttpStatus.UNAUTHORIZED.value(),
-                ex.getMessage(),
-                new Date()
-        );
-
-        return new ResponseEntity<>(errorObject, HttpStatus.UNAUTHORIZED);
-    }
-
-    @ExceptionHandler(ExpiredJwtException.class)
-    public ResponseEntity<?> handleExpiredJwtException(ExpiredJwtException ex) {
-        logger.warn("JWT expired: {}", ex.getMessage());
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(new ApiResponse(false, "Token has expired"));
-    }
-
-    @ExceptionHandler(JwtException.class)
-    public ResponseEntity<?> handleJwtException(JwtException ex) {
-        logger.warn("JWT error: {}", ex.getMessage());
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(new ApiResponse(false, "Invalid token"));
-    }
-
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<?> handleAccessDeniedException(AccessDeniedException ex) {
-        logger.warn("{}Access denied: {}", LOG_PREFIX, ex.getMessage());
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(new ApiResponse(false, "You don't have permission to access this resource"));
+    public ResponseEntity<ErrorObject> handleHttpMessageNotReadableException(HttpMessageNotReadableException ex) {
+        return handleException(ex, HttpStatus.BAD_REQUEST,
+                "{}Invalid JSON input: {}");
     }
 
     @ExceptionHandler(ValidationException.class)
-    public ResponseEntity<?> handleValidationException(ValidationException ex) {
-        logger.warn("{}Validation error: {}", LOG_PREFIX, ex.getMessage());
-        ErrorObject errorObject = new ErrorObject(
-                HttpStatus.BAD_REQUEST.value(),
-                ex.getMessage(),
-                new Date()
-        );
-        return new ResponseEntity<>(errorObject, HttpStatus.BAD_REQUEST);
+    public ResponseEntity<ErrorObject> handleValidationException(ValidationException ex) {
+        return handleException(ex, HttpStatus.BAD_REQUEST,
+                "{}Validation error: {}");
     }
 
-    @ExceptionHandler(DatabaseException.class)
-    public ResponseEntity<?> handleDatabaseException(DatabaseException ex) {
-        logger.error("Database error: {}", ex.getMessage());
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ApiResponse<>(false, "Database error occurred"));
+    @ExceptionHandler({BadRequestException.class, InvalidTokenException.class, PasswordValidationException.class, InsufficientStockException.class})
+    public ResponseEntity<ErrorObject> handleBadRequestExceptions(Exception ex) {
+        return handleException(ex, HttpStatus.BAD_REQUEST,
+                "{}Bad request: {}");
     }
-
-    @ExceptionHandler(ServiceException.class)
-    public ResponseEntity<ErrorObject> handleServiceException(ServiceException ex) {
-        logger.error("Service error: {}", ex.getMessage());
-
-        ErrorObject errorObject = new ErrorObject(
-                HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                ex.getMessage(),
-                new Date()
-        );
-
-        return new ResponseEntity<>(errorObject, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-
-    @ExceptionHandler(AuthenticationFailedException.class)
-    public ResponseEntity<?> handleAuthenticationFailedException(AuthenticationFailedException ex) {
-        logger.warn("Authentication failed: {}", ex.getMessage());
-
-        ErrorObject errorObject = new ErrorObject(
-                HttpStatus.UNAUTHORIZED.value(),
-                ex.getMessage(),
-                new Date()
-        );
-
-        return new ResponseEntity<>(errorObject, HttpStatus.UNAUTHORIZED);
-    }
-
-    @ExceptionHandler(InvalidTokenException.class)
-    public ResponseEntity<?> handleInvalidTokenException(InvalidTokenException ex) {
-        logger.warn("Invalid token: {}", ex.getMessage());
-
-        ErrorObject errorObject = new ErrorObject(
-                HttpStatus.BAD_REQUEST.value(),
-                ex.getMessage(),
-                new Date()
-        );
-
-        return new ResponseEntity<>(errorObject, HttpStatus.BAD_REQUEST);
-    }
-
-    @ExceptionHandler(PasswordValidationException.class)
-    public ResponseEntity<?> handlePasswordValidationException(PasswordValidationException ex) {
-        logger.warn("Password validation failed: {}", ex.getMessage());
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ApiResponse(false, ex.getMessage()));
-    }
-
-    @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ErrorObject> handleResourceNotFoundException(ResourceNotFoundException ex) {
-        logger.warn("Resource not found: {}", ex.getMessage());
-
-        ErrorObject errorObject = new ErrorObject(
-                HttpStatus.NOT_FOUND.value(),
-                ex.getMessage(),
-                new Date()
-        );
-
-        return new ResponseEntity<>(errorObject, HttpStatus.NOT_FOUND);
-    }
-
-    @ExceptionHandler(BadRequestException.class)
-    public ResponseEntity<?> handleBadRequestException(BadRequestException ex){
-        logger.warn("Bad request: {}", ex.getMessage());
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ApiResponse(false, "Request failed!"));
-    }
-
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<?> handleMethodArgumentNotValidException(MethodArgumentNotValidException ex) {
-        logger.warn("{}Validation failed: {}", LOG_PREFIX, ex.getMessage());
+        log.warn("{}Validation failed: {}", LOG_PREFIX, ex.getMessage());
 
         Map<String, Object> response = new HashMap<>();
         Map<String, String> errors = new HashMap<>();
@@ -180,16 +84,49 @@ public class GlobalExceptionHandler {
                 .body(response);
     }
 
-    @ExceptionHandler(InsufficientStockException.class)
-    public ResponseEntity<ErrorObject> handleInsufficientStockException(InsufficientStockException ex) {
-        logger.warn("Insufficient stock exception: {}", ex.getMessage());
 
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ErrorObject> handleResourceNotFoundException(ResourceNotFoundException ex) {
+        return handleException(ex, HttpStatus.NOT_FOUND,
+                "{}Resource not found: {}");
+    }
+
+
+    // Authentication/Authorization Errors (401/403)
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorObject> handleAccessDeniedException(AccessDeniedException ex) {
+        return handleException(ex, HttpStatus.FORBIDDEN,
+                "{}Access denied: {}");
+    }
+
+    @ExceptionHandler({JwtAuthenticationException.class, ExpiredJwtException.class, JwtException.class, AuthenticationFailedException.class})
+    public ResponseEntity<ErrorObject> handleAuthenticationExceptions(Exception ex) {
+        return handleException(ex, HttpStatus.UNAUTHORIZED,
+                "{}Authentication error: {}");
+    }
+
+
+    // Server Errors (5xx)
+    @ExceptionHandler({DatabaseException.class, InventoryException.class})
+    public ResponseEntity<ErrorObject> handleServerExceptions(Exception ex) {
+        return handleException(ex, HttpStatus.INTERNAL_SERVER_ERROR, LogLevel.ERROR,
+                "{}Server error: {}");
+    }
+
+    @ExceptionHandler(ServiceException.class)
+    public ResponseEntity<ErrorObject> handleServiceException(ServiceException ex) {
+        return handleException(ex, HttpStatus.INTERNAL_SERVER_ERROR, LogLevel.ERROR,
+                "{}Service error: {}");
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorObject> handleGenericException(Exception ex) {
+        log.error("{}Unexpected error occurred: {}", LOG_PREFIX, ex.getMessage(), ex);
         ErrorObject errorObject = new ErrorObject(
-                HttpStatus.BAD_REQUEST.value(),
-                ex.getMessage(),
+                HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                "An unexpected error occurred. Please contact support.",
                 new Date()
         );
-
-        return new ResponseEntity<>(errorObject, HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(errorObject, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }
