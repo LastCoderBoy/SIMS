@@ -248,7 +248,8 @@ public class PoServiceInIc {
                 logger.warn("PO (searchInIncomingPurchaseOrders): Search text is null or empty, returning all incoming orders.");
                 return getAllPendingPurchaseOrders(page, size, DEFAULT_SORT_BY, DEFAULT_SORT_DIRECTION);
             }
-            return poSearchStrategy.searchInPos(text, page, size, sortBy, sortDirection);
+            Page<PurchaseOrder> purchaseOrderPage = poSearchStrategy.searchInPos(text, page, size, sortBy, sortDirection);
+            return poServiceHelper.transformToPaginatedSummaryView(purchaseOrderPage);
         } catch (Exception e) {
             logger.error("PO (searchInIncomingPurchaseOrders): Error searching orders - {}", e.getMessage());
             throw new ServiceException("Failed to search orders", e);

@@ -13,8 +13,6 @@ public class PendingOrdersResponseDto {
 
     private Long id;
     private String orderReference; // For SO: orderReference, for PO: poNumber
-    private String productName;
-    private String productCategory;
     private String type; // "SALES_ORDER" or "PURCHASE_ORDER"
     private String status;
     private LocalDateTime orderDate;

@@ -171,7 +171,8 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             logger.warn("PO (searchPurchaseOrders): Search text is null or empty, returning all incoming orders.");
             return getAllPurchaseOrders(page, size, sortBy, sortDirection);
         }
-        return poSearchStrategy.searchInPos(text, page, size, sortBy, sortDirection);
+        Page<PurchaseOrder> purchaseOrderPage = poSearchStrategy.searchInPos(text, page, size, sortBy, sortDirection);
+        return purchaseOrderServiceHelper.transformToPaginatedSummaryView(purchaseOrderPage);
     }
 
     @Override

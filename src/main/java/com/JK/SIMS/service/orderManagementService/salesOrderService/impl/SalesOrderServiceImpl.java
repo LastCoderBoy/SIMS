@@ -79,6 +79,7 @@ public class SalesOrderServiceImpl implements SalesOrderService {
             Sort sort = sortDirection.equalsIgnoreCase("desc") ?
                     Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
             Pageable pageable = PageRequest.of(page, size, sort);
+
             Page<SalesOrder> salesOrderPage = salesOrderRepository.findAll(pageable);
             log.info("OM-SO (getAllSummarySalesOrders): Returning {} paginated data", salesOrderPage.getContent().size());
             return salesOrderServiceHelper.transformToSummarySalesOrderView(salesOrderPage);
@@ -90,6 +91,25 @@ public class SalesOrderServiceImpl implements SalesOrderService {
             throw new ValidationException("Invalid sort field provided. Check your request");
         } catch (Exception e) {
             log.error("OM-SO (getAllSummarySalesOrders): Unexpected error occurred: {}", e.getMessage(), e);
+            throw new ServiceException("Internal Service Error occurred: ", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DetailedSalesOrderView getDetailsForSalesOrderId(Long orderId) {
+        try {
+            globalServiceHelper.validateOrderId(orderId, salesOrderRepository, "SalesOrder"); // might throw ValidationException
+            SalesOrder salesOrder = getSalesOrderById(orderId);
+            log.info("Returning detailed salesOrder view for ID: {}", orderId);
+            return new DetailedSalesOrderView(salesOrder);
+        } catch (ValidationException | ResourceNotFoundException e) {
+            throw e;
+        } catch (DataAccessException da) {
+            log.error("OM-SO (getDetailsForSalesOrderId): Database error occurred: {}", da.getMessage(), da);
+            throw new DatabaseException("Database error occurred, please contact the administration");
+        } catch (Exception e) {
+            log.error("OM-SO (getDetailsForSalesOrderId): Unexpected error occurred: {}", e.getMessage(), e);
             throw new ServiceException("Internal Service Error occurred: ", e);
         }
     }
@@ -258,7 +278,9 @@ public class SalesOrderServiceImpl implements SalesOrderService {
 
     @Transactional
     @Override
-    public ApiResponse<String> addItemsToSalesOrder(Long orderId, @Valid BulkOrderItemsRequestDto bulkOrderItemsRequestDto, String jwtToken){
+    public ApiResponse<String> addItemsToSalesOrder(Long orderId,
+                                                    @Valid BulkOrderItemsRequestDto bulkOrderItemsRequestDto,
+                                                    String jwtToken){
         try {
             SalesOrder salesOrder = getSalesOrderById(orderId);
             if (salesOrder.isFinalized()) {
@@ -484,30 +506,6 @@ public class SalesOrderServiceImpl implements SalesOrderService {
             log.error("OM-SO generateOrderReference(): Error generating order reference - {}", e.getMessage());
             throw new ServiceException("Failed to generate unique order reference", e);
         }
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public DetailedSalesOrderView getDetailsForSalesOrderId(Long orderId) {
-        try {
-            globalServiceHelper.validateOrderId(orderId, salesOrderRepository, "SalesOrder"); // might throw ValidationException
-            SalesOrder salesOrder = getSalesOrderById(orderId);
-            log.info("Returning detailed salesOrder view for ID: {}", orderId);
-            return new DetailedSalesOrderView(salesOrder);
-        } catch (ValidationException | ResourceNotFoundException e) {
-            throw e;
-        } catch (DataAccessException da) {
-            log.error("OM-SO (getDetailsForSalesOrderId): Database error occurred: {}", da.getMessage(), da);
-            throw new DatabaseException("Database error occurred, please contact the administration");
-        } catch (Exception e) {
-            log.error("OM-SO (getDetailsForSalesOrderId): Unexpected error occurred: {}", e.getMessage(), e);
-            throw new ServiceException("Internal Service Error occurred: ", e);
-        }
-    }
-
-    @Override
-    public ApiResponse<String> cancelSalesOrder(Long orderId, String jwtToken) {
-        return null;
     }
 
     @Transactional(readOnly = true)

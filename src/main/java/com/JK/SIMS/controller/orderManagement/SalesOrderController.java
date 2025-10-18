@@ -8,6 +8,7 @@ import com.JK.SIMS.models.IC_models.salesOrder.dtos.views.DetailedSalesOrderView
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.views.SummarySalesOrderView;
 import com.JK.SIMS.models.IC_models.salesOrder.orderItem.dtos.BulkOrderItemsRequestDto;
 import com.JK.SIMS.models.PaginatedResponse;
+import com.JK.SIMS.service.InventoryServices.soService.SoServiceInIc;
 import com.JK.SIMS.service.orderManagementService.salesOrderService.SalesOrderService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
@@ -23,17 +24,22 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/products/manage-order/so")
 public class SalesOrderController {
 
+    private static final String DEFAULT_SORT_BY = "orderReference";
+    private static final String DEFAULT_SORT_DIRECTION = "asc";
+
+    private final SoServiceInIc soServiceInIc;
     private final SalesOrderService salesOrderService;
     @Autowired
-    public SalesOrderController(SalesOrderService salesOrderService) {
+    public SalesOrderController(SoServiceInIc soServiceInIc, SalesOrderService salesOrderService) {
+        this.soServiceInIc = soServiceInIc;
         this.salesOrderService = salesOrderService;
     }
 
     @GetMapping
-    public ResponseEntity<PaginatedResponse<SummarySalesOrderView>> getAllSummarySalesOrders(@RequestParam(defaultValue = "orderReference") String sortBy,
-                                                                   @RequestParam(defaultValue = "asc") String sortDirection,
-                                                                   @RequestParam(defaultValue = "0") int page,
-                                                                   @RequestParam(defaultValue = "10") int size){
+    public ResponseEntity<?> getAllSummarySalesOrders(@RequestParam(defaultValue = DEFAULT_SORT_BY) String sortBy,
+                                                      @RequestParam(defaultValue = DEFAULT_SORT_DIRECTION) String sortDirection,
+                                                      @RequestParam(defaultValue = "0") int page,
+                                                      @RequestParam(defaultValue = "10") int size){
         log.info("OM-SO: getAllSummarySalesOrders() is calling...");
         PaginatedResponse<SummarySalesOrderView> summaryView =
                 salesOrderService.getAllSummarySalesOrders(sortBy, sortDirection, page, size);
@@ -116,7 +122,7 @@ public class SalesOrderController {
         log.info("OM-SO: cancelSalesOrder() calling...");
         if(token != null && !token.trim().isEmpty()) {
             String jwtToken = TokenUtils.extractToken(token);
-            ApiResponse<String> response = salesOrderService.cancelSalesOrder(orderId, jwtToken);
+            ApiResponse<Void> response = soServiceInIc.cancelSalesOrder(orderId, jwtToken);
             return new ResponseEntity<>(response, HttpStatus.OK);
         }
         log.error("OM-SO: cancelSalesOrder() Invalid Token provided. {}", token);
@@ -125,6 +131,8 @@ public class SalesOrderController {
 
 
     // TODO: Search and Filter logics as well
+//    @GetMapping("/search")
+//    public ResponseEntity<?> searchIn
 
 
 }

@@ -19,6 +19,7 @@ public class SummarySalesOrderView {
     private String destination;
     private SalesOrderStatus status;
     private LocalDateTime orderDate;
+    private LocalDateTime estimatedDeliveryDate;
     private String customerName;
     private Integer totalOrderedQuantity; // Sum of ordered quantities
     private BigDecimal totalAmount; // Sum of orderPrice * quantity
@@ -30,6 +31,7 @@ public class SummarySalesOrderView {
         this.destination = salesOrder.getDestination();
         this.status = salesOrder.getStatus();
         this.orderDate = salesOrder.getOrderDate();
+        this.estimatedDeliveryDate = salesOrder.getEstimatedDeliveryDate();
         this.customerName = salesOrder.getCustomerName();
         this.totalOrderedQuantity = salesOrder.getItems().stream().mapToInt(OrderItem::getQuantity).sum();
         this.totalAmount = salesOrder.getItems().stream()

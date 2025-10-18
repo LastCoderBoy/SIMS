@@ -60,9 +60,7 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long>, J
     JOIN i.product p
     WHERE o.status IN ('PARTIALLY_APPROVED', 'PENDING', 'PARTIALLY_SHIPPED')
       AND (
-        LOWER(p.name) LIKE LOWER(CONCAT('%', :text, '%'))
-       OR LOWER(p.category) LIKE LOWER(CONCAT('%', :text, '%'))
-       OR LOWER(o.destination) LIKE LOWER(CONCAT('%', :text, '%'))
+        LOWER(o.customerName) LIKE LOWER(CONCAT('%', :text, '%'))
        OR LOWER(o.orderReference) LIKE LOWER(CONCAT('%', :text, '%'))
        )
 """)

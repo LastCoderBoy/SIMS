@@ -7,6 +7,7 @@ import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderResponseDto;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.processSalesOrderDtos.ProcessSalesOrderRequestDto;
+import com.JK.SIMS.models.IC_models.salesOrder.dtos.views.SummarySalesOrderView;
 import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItem;
 import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItemStatus;
 import com.JK.SIMS.models.PM_models.ProductCategories;
@@ -68,7 +69,7 @@ public class SoServiceInIc {
     // Will be used in the SORT logic and the normal GET all logic.
     // Can be only sorted using Status.
     @Transactional(readOnly = true)
-    public PaginatedResponse<SalesOrderResponseDto> getAllWaitingSalesOrders(@Min(0) int page,
+    public PaginatedResponse<SummarySalesOrderView> getAllWaitingSalesOrders(@Min(0) int page,
                                                                              @Min(1) @Max(100) int size,
                                                                              String sortBy, String sortDir) {
         try {
@@ -76,9 +77,7 @@ public class SoServiceInIc {
                     Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
             Pageable pageable = PageRequest.of(page, size, sort);
             Page<SalesOrder> salesOrders = salesOrderRepository.findAllWaitingSalesOrders(pageable);
-
-            Page<SalesOrderResponseDto> dtoResponse = salesOrders.map(salesOrderServiceHelper::convertToSalesOrderResponseDto);
-            return new PaginatedResponse<>(dtoResponse);
+            return salesOrderServiceHelper.transformToSummarySalesOrderView(salesOrders);
 
         } catch (Exception e) {
             log.error("OS (getAllSalesOrdersSorted): Error fetching orders - {}", e.getMessage());
@@ -143,7 +142,7 @@ public class SoServiceInIc {
                         item.setStatus(OrderItemStatus.CANCELLED);
                     }
                 }
-
+                // Set the base fields
                 salesOrder.setStatus(SalesOrderStatus.CANCELLED);
                 salesOrder.setLastUpdate(GlobalServiceHelper.now(clock));
                 salesOrder.setCancelledBy(cancelledBy);
@@ -159,15 +158,17 @@ public class SoServiceInIc {
         }
     }
 
+    // Search by Customer Name or Order Reference ID
     @Transactional(readOnly = true)
-    public PaginatedResponse<SalesOrderResponseDto> searchInOutgoingSalesOrders(String text, int page, int size){
+    public PaginatedResponse<SummarySalesOrderView> searchInOutgoingSalesOrders(String text, int page, int size){
         try {
             globalServiceHelper.validatePaginationParameters(page, size);
             if(text == null || text.trim().isEmpty()){
                 log.warn("IcSo (searchInOutgoingSalesOrders): Search text is null or empty, returning all waiting orders.");
                 return getAllWaitingSalesOrders(page, size, "id", "asc");
             }
-            return searchStrategy.searchInSo(text, page, size);
+            Page<SalesOrder> salesOrderPage = searchStrategy.searchInSo(text, page, size);
+            return salesOrderServiceHelper.transformToSummarySalesOrderView(salesOrderPage);
         } catch (IllegalArgumentException ie) {
             log.error("OS (searchInOutgoingSalesOrders): Invalid pagination parameters: {}", ie.getMessage());
             throw ie;
@@ -213,7 +214,7 @@ public class SoServiceInIc {
     }
 
     @Transactional(readOnly = true)
-    public PaginatedResponse<SalesOrderResponseDto> filterSoProducts(SalesOrderStatus status, ProductCategories category, String optionDate,
+    public PaginatedResponse<SummarySalesOrderView> filterSoProducts(SalesOrderStatus status, ProductCategories category, String optionDate,
                                                                      LocalDate startDate, LocalDate endDate, int page, int size) {
         try{
             globalServiceHelper.validatePaginationParameters(page, size);
@@ -249,8 +250,7 @@ public class SoServiceInIc {
             // Database call and conversion to DTO
             Pageable pageable = PageRequest.of(page, size);
             Page<SalesOrder> entityResponse = salesOrderRepository.findAll(specification, pageable);
-            Page<SalesOrderResponseDto> dtoResponse = entityResponse.map(salesOrderServiceHelper::convertToSalesOrderResponseDto);
-            return new PaginatedResponse<>(dtoResponse);
+            return salesOrderServiceHelper.transformToSummarySalesOrderView(entityResponse);
 
         } catch (IllegalArgumentException ie) {
             log.error("OS (filterSoProductsByStatus): Invalid pagination parameters: {}", ie.getMessage());

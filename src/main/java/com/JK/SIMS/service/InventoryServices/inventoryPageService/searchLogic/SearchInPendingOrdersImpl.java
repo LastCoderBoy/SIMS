@@ -2,15 +2,16 @@ package com.JK.SIMS.service.InventoryServices.inventoryPageService.searchLogic;
 
 import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.models.IC_models.inventoryData.PendingOrdersResponseDto;
-import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;
-import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderResponseDto;
+import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
+import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
-import com.JK.SIMS.service.purchaseOrderSearchLogic.PoSearchStrategy;
 import com.JK.SIMS.service.InventoryServices.soService.searchLogic.SoStrategy;
+import com.JK.SIMS.service.purchaseOrderSearchLogic.PoSearchStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
@@ -35,26 +36,26 @@ public class SearchInPendingOrdersImpl implements PendingOrdersSearchStrategy {
         this.inventoryServiceHelper = inventoryServiceHelper;
     }
 
+    // Search method which is used for the pending SO and PO orders
     @Override
     @Transactional(readOnly = true)
     public PaginatedResponse<PendingOrdersResponseDto> searchInPendingOrders(String text, int page, int size) {
         try {
             // Search in Sales Orders
-            PaginatedResponse<SalesOrderResponseDto> pendingSalesOrdersResult =
-                    soStrategy.searchInSo(text, page, size);
+            Page<SalesOrder> salesOrderPage = soStrategy.searchInSo(text, page, size);
 
             // Search in Purchase Orders
             String defaultSortByForPo = "product.name";
-            PaginatedResponse<SummaryPurchaseOrderView> pendingPurchaseOrdersResult =
+            Page<PurchaseOrder> purchaseOrderPage =
                     poSearchStrategy.searchInPos(text, page, size, defaultSortByForPo, "asc");
 
             // Combine the results
             List<PendingOrdersResponseDto> combinedResults = new ArrayList<>();
-            inventoryServiceHelper.fillWithSalesOrders(combinedResults, pendingSalesOrdersResult.getContent());
-            inventoryServiceHelper.fillWithPurchaseOrders(combinedResults, pendingPurchaseOrdersResult.getContent());
+            inventoryServiceHelper.fillWithSalesOrders(combinedResults, salesOrderPage.getContent());
+            inventoryServiceHelper.fillWithPurchaseOrders(combinedResults, purchaseOrderPage.getContent());
 
             // Return with correct pagination metadata
-            long totalResults = pendingSalesOrdersResult.getTotalElements() + pendingPurchaseOrdersResult.getTotalElements();
+            long totalResults = salesOrderPage.getTotalElements() + purchaseOrderPage.getTotalElements();
             logger.info("IcPendingOrders: searchInPendingOrders() returning {} results", combinedResults.size());
             return new PaginatedResponse<>(
                     new PageImpl<>(

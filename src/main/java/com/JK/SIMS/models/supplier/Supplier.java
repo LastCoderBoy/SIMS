@@ -17,7 +17,7 @@ public class Supplier {
     private Long id;
 
     @Column(nullable = false, unique = true)
-    private String name; // e.g., "Toys Distributors Inc."
+    private String name; // sample: "Toys Distributors Inc."
 
     private String contactPerson; // e.g., "John Doe"
 

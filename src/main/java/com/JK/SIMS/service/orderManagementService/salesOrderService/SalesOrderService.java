@@ -13,7 +13,6 @@ public interface SalesOrderService {
     DetailedSalesOrderView getDetailsForSalesOrderId(Long orderId);
     ApiResponse<String> createOrder(@Valid SalesOrderRequestDto salesOrderRequestDto, String jwtToken);
     ApiResponse<String> updateSalesOrder(Long orderId, SalesOrderRequestDto salesOrderRequestDto, String jwtToken);
-    ApiResponse<String> cancelSalesOrder(Long orderId, String jwtToken);
     ApiResponse<String> addItemsToSalesOrder(Long orderId, @Valid BulkOrderItemsRequestDto bulkOrderItemsRequestDto, String jwtToken);
     ApiResponse<String> removeItemFromSalesOrder(Long orderId, Long itemId, String jwtToken);
 }

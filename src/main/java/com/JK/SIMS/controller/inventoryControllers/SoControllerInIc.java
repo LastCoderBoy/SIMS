@@ -6,6 +6,7 @@ import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderResponseDto;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.processSalesOrderDtos.ProcessSalesOrderRequestDto;
+import com.JK.SIMS.models.IC_models.salesOrder.dtos.views.SummarySalesOrderView;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryServices.soService.SoServiceInIc;
@@ -42,7 +43,7 @@ public class SoControllerInIc {
 
         logger.info("IcSo: getAllWaitingSalesOrders() fetching orders - page: {}, size: {}, sortBy: {}, sortDir: {}",
                 page, size, sortBy, sortDir);
-        PaginatedResponse<SalesOrderResponseDto> orders =
+        PaginatedResponse<SummarySalesOrderView> orders =
                 soServiceInIc.getAllWaitingSalesOrders(page, size, sortBy, sortDir);
         return ResponseEntity.ok(orders);
     }
@@ -88,19 +89,20 @@ public class SoControllerInIc {
     // Search by Product Name, Category, Order Reference, Destination
     @GetMapping("/search")
     public ResponseEntity<?> searchSoProduct(@RequestParam(required = false) String text,
-                                           @RequestParam(defaultValue = "0") int page,
-                                           @RequestParam(defaultValue = "10") int size){
+                                             @RequestParam(defaultValue = "0") int page,
+                                             @RequestParam(defaultValue = "10") int size){
         logger.info("IcSo: searchProduct() calling...");
-        PaginatedResponse<SalesOrderResponseDto> dtoResponse = soServiceInIc.searchInOutgoingSalesOrders(text, page, size);
+        PaginatedResponse<SummarySalesOrderView> dtoResponse =
+                soServiceInIc.searchInOutgoingSalesOrders(text, page, size);
         return ResponseEntity.ok(dtoResponse);
     }
 
     @GetMapping("/filter")
-    public ResponseEntity<?> filterSoProductsByStatus( @RequestParam(required = false) String status,
-                                                       @RequestParam(required = false) String category,
-                                                       @RequestParam(required = false) String optionDate,
-                                                       @RequestParam(required = false) LocalDate startDate,
-                                                       @RequestParam(required = false) LocalDate endDate,
+    public ResponseEntity<?> filterSoProductsByStatus(@RequestParam(required = false) String status,
+                                                      @RequestParam(required = false) String category,
+                                                      @RequestParam(required = false) String optionDate,
+                                                      @RequestParam(required = false) LocalDate startDate,
+                                                      @RequestParam(required = false) LocalDate endDate,
                                                       @RequestParam(defaultValue = "0") int page,
                                                       @RequestParam(defaultValue = "10") int size){
         logger.info("IcSo: filterProductsByStatus() calling...");
@@ -125,7 +127,7 @@ public class SoControllerInIc {
             }
         }
 
-        PaginatedResponse<SalesOrderResponseDto> dtoResponse =
+        PaginatedResponse<SummarySalesOrderView> dtoResponse =
                 soServiceInIc.filterSoProducts(soStatus, productCategory, optionDate, startDate, endDate, page, size);
         return ResponseEntity.ok(dtoResponse);
     }

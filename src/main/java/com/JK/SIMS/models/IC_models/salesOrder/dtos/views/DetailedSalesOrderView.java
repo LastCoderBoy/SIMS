@@ -22,13 +22,13 @@ public class DetailedSalesOrderView {
     private String destination;
     private SalesOrderStatus status;
     private LocalDateTime orderDate;
+    private LocalDateTime estimatedDeliveryDate;
     private String customerName;
     private Integer totalItems; // Sum of quantities
     private BigDecimal totalAmount; // Sum of orderPrice * quantity
     private Integer totalApprovedQuantity;
 
     // New fields
-    private LocalDateTime estimatedDeliveryDate;
     private LocalDateTime deliveryDate;
     private List<OrderItemResponseDto> items; // Nested DTO for OrderItem
     private String confirmedBy;
@@ -40,6 +40,7 @@ public class DetailedSalesOrderView {
         this.destination = salesOrder.getDestination();
         this.status = salesOrder.getStatus();
         this.orderDate = salesOrder.getOrderDate();
+        this.estimatedDeliveryDate = salesOrder.getEstimatedDeliveryDate();
         this.customerName = salesOrder.getCustomerName();
         this.totalItems = salesOrder.getItems().stream().mapToInt(OrderItem::getQuantity).sum();
         this.totalAmount = salesOrder.getItems().stream()
@@ -48,7 +49,6 @@ public class DetailedSalesOrderView {
         this.totalApprovedQuantity = salesOrder.getItems().stream().mapToInt(OrderItem::getApprovedQuantity).sum();
 
         // Set up New fields
-        this.estimatedDeliveryDate = salesOrder.getEstimatedDeliveryDate();
         this.deliveryDate = salesOrder.getDeliveryDate();
         this.items = salesOrder.getItems().stream()
                 .map(item -> new OrderItemResponseDto(

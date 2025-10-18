@@ -5,8 +5,12 @@ import com.JK.SIMS.models.IC_models.inventoryData.InventoryControlData;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataDto;
 import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataStatus;
 import com.JK.SIMS.models.IC_models.inventoryData.PendingOrdersResponseDto;
+import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;
+import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderResponseDto;
+import com.JK.SIMS.models.IC_models.salesOrder.dtos.views.SummarySalesOrderView;
+import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItem;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.stockMovements.StockMovementReferenceType;
 import com.JK.SIMS.repository.InventoryControl_repo.IC_repository;
@@ -87,33 +91,29 @@ public class InventoryServiceHelper {
         }
     }
 
-//    public void fillWithPurchaseOrders(List<PendingOrdersResponseDto> combinedPendingOrders,
-//                                        List<PurchaseOrderResponseDto> pendingPurchaseOrders){
-//        for(PurchaseOrderResponseDto po : pendingPurchaseOrders){
-//            PendingOrdersResponseDto pendingOrder = new PendingOrdersResponseDto(
-//                    po.getId(),
-//                    po.getPoNumber(),
-//                    po.getProductName(),
-//                    po.getProductCategory().toString(),
-//                    StockMovementReferenceType.PURCHASE_ORDER.toString(),
-//                    po.getStatus().toString(),
-//                    po.getOrderDate().atStartOfDay(),
-//                    po.getExpectedArrivalDate().atStartOfDay(),
-//                    po.getSupplierName(),
-//                    po.getOrderedQuantity()
-//            );
-//            combinedPendingOrders.add(pendingOrder);
-//        }
-//    }
-
     public void fillWithPurchaseOrders(List<PendingOrdersResponseDto> combinedPendingOrders,
+                                       List<PurchaseOrder> pendingPurchaseOrders){
+        for(PurchaseOrder po : pendingPurchaseOrders){
+            PendingOrdersResponseDto pendingOrder = new PendingOrdersResponseDto(
+                    po.getId(),
+                    po.getPONumber(),
+                    StockMovementReferenceType.PURCHASE_ORDER.toString(),
+                    po.getStatus().toString(),
+                    po.getOrderDate() != null ? po.getOrderDate().atStartOfDay() : null,
+                    po.getExpectedArrivalDate() != null ? po.getExpectedArrivalDate().atStartOfDay() : null,
+                    po.getSupplier().getName(),
+                    po.getOrderedQuantity()
+            );
+            combinedPendingOrders.add(pendingOrder);
+        }
+    }
+
+    public void fillWithPurchaseOrderView(List<PendingOrdersResponseDto> combinedPendingOrders,
                                        List<SummaryPurchaseOrderView> pendingPurchaseOrders){
         for(SummaryPurchaseOrderView po : pendingPurchaseOrders){
             PendingOrdersResponseDto pendingOrder = new PendingOrdersResponseDto(
                     po.getId(),
                     po.getPoNumber(),
-                    po.getProductName(),
-                    po.getProductCategory().toString(),
                     StockMovementReferenceType.PURCHASE_ORDER.toString(),
                     po.getStatus().toString(),
                     po.getOrderDate() != null ? po.getOrderDate().atStartOfDay() : null,
@@ -125,19 +125,34 @@ public class InventoryServiceHelper {
         }
     }
 
-    public void fillWithSalesOrders(List<PendingOrdersResponseDto> combinedPendingOrders, List<SalesOrderResponseDto> pendingSalesOrders){
+    public void fillWithSalesOrders(List<PendingOrdersResponseDto> combinedPendingOrders,
+                                    List<SalesOrder> pendingSalesOrders){
         pendingSalesOrders.forEach(so ->
                 combinedPendingOrders.add(new PendingOrdersResponseDto(
                         so.getId(),
                         so.getOrderReference(),
-                        null,
-                        null,
                         StockMovementReferenceType.SALES_ORDER.toString(),
                         so.getStatus().toString(),
                         so.getOrderDate(),
                         so.getEstimatedDeliveryDate(),
                         so.getCustomerName(),
-                        salesOrderServiceHelper.totalSalesOrderQuantity(so.getItems())
+                        so.getItems().stream().mapToInt(OrderItem::getQuantity).sum()
+                ))
+        );
+    }
+
+    public void fillWithSalesOrderView(List<PendingOrdersResponseDto> combinedPendingOrders,
+                                    List<SummarySalesOrderView> pendingSalesOrders){
+        pendingSalesOrders.forEach(so ->
+                combinedPendingOrders.add(new PendingOrdersResponseDto(
+                        so.getId(),
+                        so.getOrderReference(),
+                        StockMovementReferenceType.SALES_ORDER.toString(),
+                        so.getStatus().toString(),
+                        so.getOrderDate(),
+                        so.getEstimatedDeliveryDate(),
+                        so.getCustomerName(),
+                        so.getTotalOrderedQuantity()
                 ))
         );
     }

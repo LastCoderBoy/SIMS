@@ -2,14 +2,9 @@ package com.JK.SIMS.service.purchaseOrderSearchLogic;
 
 import com.JK.SIMS.exceptionHandler.DatabaseException;
 import com.JK.SIMS.exceptionHandler.ServiceException;
-import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
-import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;
-import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.PurchaseOrder_repo.PurchaseOrderRepository;
-import com.JK.SIMS.service.utilities.PurchaseOrderServiceHelper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
@@ -20,33 +15,29 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
+@Slf4j
 public class OmPoSearchStrategy implements PoSearchStrategy {
-    private static final Logger logger = LoggerFactory.getLogger(OmPoSearchStrategy.class);
-
     private final PurchaseOrderRepository purchaseOrderRepository;
-    private final PurchaseOrderServiceHelper poServiceHelper;
     @Autowired
-    public OmPoSearchStrategy(PurchaseOrderRepository purchaseOrderRepository, PurchaseOrderServiceHelper poServiceHelper) {
+    public OmPoSearchStrategy(PurchaseOrderRepository purchaseOrderRepository) {
         this.purchaseOrderRepository = purchaseOrderRepository;
-        this.poServiceHelper = poServiceHelper;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public PaginatedResponse<SummaryPurchaseOrderView> searchInPos(String text, int page, int size, String sortBy, String sortDirection) {
-        if (text == null || text.isEmpty()) {
-            logger.warn("OmPo (searchProduct): Search text is null or empty");
-            throw new ValidationException("Search text cannot be empty");
-        }
+    public Page<PurchaseOrder> searchInPos(String text, int page, int size, String sortBy, String sortDirection) {
         try {
-            Pageable pageable = PageRequest.of(page, size, Sort.by("product.name"));
-            Page<PurchaseOrder> searchEntityResponse = purchaseOrderRepository.searchOrders(text.trim().toLowerCase(), pageable);
-            return poServiceHelper.transformToPaginatedSummaryView(searchEntityResponse);
+            Sort sort = sortDirection.equalsIgnoreCase("desc")
+                    ? Sort.by(sortBy).descending()
+                    : Sort.by(sortBy).ascending();
+            Pageable pageable = PageRequest.of(page, size, sort);
+            log.info("OmPo searchInPos(): search text: {} is provided", text);
+            return purchaseOrderRepository.searchOrders(text.trim().toLowerCase(), pageable);
         } catch (DataAccessException dae) {
-            logger.error("OmPo (searchProduct): Database error while searching products", dae);
+            log.error("OmPo (searchProduct): Database error while searching products", dae);
             throw new DatabaseException("Error occurred while searching products");
         } catch (Exception e) {
-            logger.error("OmPo (searchProduct): Unexpected error while searching products", e);
+            log.error("OmPo (searchProduct): Unexpected error while searching products", e);
             throw new ServiceException("Internal Service occurred, please contact the administration");
         }
     }
