@@ -2,6 +2,8 @@ package com.JK.SIMS.controller.orderManagement;
 
 import com.JK.SIMS.config.security.TokenUtils;
 import com.JK.SIMS.exceptionHandler.InvalidTokenException;
+import com.JK.SIMS.exceptionHandler.ServiceException;
+import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderRequestDto;
@@ -13,6 +15,7 @@ import com.JK.SIMS.service.InventoryServices.soService.SoServiceInIc;
 import com.JK.SIMS.service.orderManagementService.salesOrderService.SalesOrderService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +25,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 
 import static com.JK.SIMS.service.utilities.EntityConstants.*;
+import static com.JK.SIMS.service.utilities.GlobalServiceHelper.getOptionDateValue;
 
 
 @RestController
@@ -131,8 +135,6 @@ public class SalesOrderController {
         throw new InvalidTokenException("Invalid Token provided. Please re-login.");
     }
 
-
-    // TODO: Search and Filter logics as well
     @GetMapping("/search")
     public ResponseEntity<?> searchInSalesOrder(@RequestParam(required = false) String text,
                                                 @RequestParam(defaultValue = "0") int page,
@@ -156,18 +158,26 @@ public class SalesOrderController {
                                                @RequestParam(defaultValue = DEFAULT_SORT_DIRECTION) String sortDirection){
         log.info("OM-SO: filterSalesOrders() calling...");
 
-        SalesOrderStatus soStatus = null;
-        if (status != null) {
-            try {
-                soStatus = SalesOrderStatus.valueOf(status.toUpperCase());
-            } catch (IllegalArgumentException e) {
-                log.warn("Invalid status value: {}", status);
+        try {
+            SalesOrderStatus statusValue = null;
+            if (status != null) {
+                try {
+                    statusValue = SalesOrderStatus.valueOf(status.toUpperCase());
+                } catch (IllegalArgumentException e) {
+                    log.warn("OM-SO filterSalesOrders(): Invalid status value: {}", status);
+                    throw new IllegalArgumentException("Invalid status value provided: " + status);
+                }
             }
+            String optionDateValue = getOptionDateValue(optionDate); // might throw IllegalArgumentException
+            PaginatedResponse<SummarySalesOrderView> summaryResponse =
+                    salesOrderService.filterSalesOrders(statusValue, optionDateValue, startDate, endDate, page, size, sortBy, sortDirection);
+            return new ResponseEntity<>(summaryResponse, HttpStatus.OK);
+        } catch (IllegalArgumentException e) {
+            throw new ValidationException("Invalid filter parameters: " + e.getMessage());
+        } catch (Exception e) {
+            log.error("OM-SO filterSalesOrders(): Error filtering orders - {}", e.getMessage());
+            throw new ServiceException("Failed to filter orders", e);
         }
-
-        PaginatedResponse<SummarySalesOrderView> dtoResponse =
-                soServiceInIc.filterSoProducts(soStatus, optionDate, startDate, endDate, page, size);
-        return ResponseEntity.ok(dtoResponse);
     }
 }
 

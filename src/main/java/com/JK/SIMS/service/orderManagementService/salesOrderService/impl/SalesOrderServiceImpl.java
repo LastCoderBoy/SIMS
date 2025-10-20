@@ -3,13 +3,14 @@ package com.JK.SIMS.service.orderManagementService.salesOrderService.impl;
 import com.JK.SIMS.config.security.SecurityUtils;
 import com.JK.SIMS.exceptionHandler.*;
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.IC_models.salesOrder.*;
+import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
+import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderAdjustments;
+import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderRequestDto;
-import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderResponseDto;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.views.DetailedSalesOrderView;
 import com.JK.SIMS.models.IC_models.salesOrder.dtos.views.SummarySalesOrderView;
-import com.JK.SIMS.models.IC_models.salesOrder.orderItem.dtos.BulkOrderItemsRequestDto;
 import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItem;
+import com.JK.SIMS.models.IC_models.salesOrder.orderItem.dtos.BulkOrderItemsRequestDto;
 import com.JK.SIMS.models.IC_models.salesOrder.orderItem.dtos.OrderItemRequestDto;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
@@ -17,10 +18,11 @@ import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.SalesOrder_Repo.OrderItemRepository;
 import com.JK.SIMS.repository.SalesOrder_Repo.SalesOrderRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
-import com.JK.SIMS.service.utilities.SalesOrderServiceHelper;
 import com.JK.SIMS.service.orderManagementService.salesOrderService.SalesOrderService;
 import com.JK.SIMS.service.productManagementService.PMServiceHelper;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
+import com.JK.SIMS.service.utilities.SalesOrderServiceHelper;
+import com.JK.SIMS.service.utilities.salesOrderFilterLogic.SoFilterStrategy;
 import com.JK.SIMS.service.utilities.salesOrderSearchLogic.SoSearchStrategy;
 import jakarta.annotation.Nullable;
 import jakarta.validation.ConstraintViolationException;
@@ -33,9 +35,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -59,6 +59,7 @@ public class SalesOrderServiceImpl implements SalesOrderService {
     private final SalesOrderServiceHelper salesOrderServiceHelper;
     private final SecurityUtils securityUtils;
     private final SoSearchStrategy soSearchStrategy;
+    private final SoFilterStrategy soFilterStrategy;
 
     private final SalesOrderRepository salesOrderRepository;
     private final OrderItemRepository orderItemRepository;
@@ -66,7 +67,8 @@ public class SalesOrderServiceImpl implements SalesOrderService {
     public SalesOrderServiceImpl(GlobalServiceHelper globalServiceHelper, SalesOrderRepository salesOrderRepository,
                                  OrderItemRepository orderItemRepository, PMServiceHelper pmServiceHelper,
                                  StockManagementLogic stockManagementLogic, SalesOrderServiceHelper salesOrderServiceHelper,
-                                 SecurityUtils securityUtils, @Qualifier("omSoSearchStrategy") SoSearchStrategy soSearchStrategy) {
+                                 SecurityUtils securityUtils, @Qualifier("omSoSearchStrategy") SoSearchStrategy soSearchStrategy,
+                                 @Qualifier("filterSalesOrders") SoFilterStrategy soFilterStrategy) {
         this.globalServiceHelper = globalServiceHelper;
         this.salesOrderRepository = salesOrderRepository;
         this.orderItemRepository = orderItemRepository;
@@ -75,16 +77,14 @@ public class SalesOrderServiceImpl implements SalesOrderService {
         this.salesOrderServiceHelper = salesOrderServiceHelper;
         this.securityUtils = securityUtils;
         this.soSearchStrategy = soSearchStrategy;
+        this.soFilterStrategy = soFilterStrategy;
     }
 
     @Override
     @Transactional(readOnly = true)
     public PaginatedResponse<SummarySalesOrderView> getAllSummarySalesOrders(String sortBy, String sortDirection, int page, int size) {
         try {
-            Sort sort = sortDirection.equalsIgnoreCase("desc") ?
-                    Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
-            Pageable pageable = PageRequest.of(page, size, sort);
-
+            Pageable pageable = globalServiceHelper.preparePageable(page, size, sortBy, sortDirection);
             Page<SalesOrder> salesOrderPage = salesOrderRepository.findAll(pageable);
             log.info("OM-SO (getAllSummarySalesOrders): Returning {} paginated data", salesOrderPage.getContent().size());
             return salesOrderServiceHelper.transformToSummarySalesOrderView(salesOrderPage);
@@ -438,7 +438,29 @@ public class SalesOrderServiceImpl implements SalesOrderService {
         }
     }
 
-    // Note that: the Order Reference max prefix num is "SO-yyyy-MM-dd-999"
+    @Override
+    @Transactional(readOnly = true)
+    public PaginatedResponse<SummarySalesOrderView> filterSalesOrders(SalesOrderStatus statusValue, String optionDateValue,
+                                                                      LocalDate startDate, LocalDate endDate,
+                                                                      int page, int size, String sortBy, String sortDirection){
+        try{
+            // Validate and prepare the pageable
+            Pageable pageable = globalServiceHelper.preparePageable(page, size, sortBy, sortDirection);
+
+            // Filter the orders
+            Page<SalesOrder> salesOrderPage =
+                    soFilterStrategy.filterSalesOrders(statusValue, optionDateValue, startDate, endDate, pageable);
+            return salesOrderServiceHelper.transformToSummarySalesOrderView(salesOrderPage);
+        } catch (IllegalArgumentException e) {
+            log.error("OM-SO filterSalesOrders(): Invalid filter parameters: {}", e.getMessage(), e);
+            throw new ValidationException("Invalid filter parameters: " + e.getMessage());
+        } catch (Exception e) {
+            log.error("OM-SO filterSalesOrders(): Unexpected error occurred: {}", e.getMessage(), e);
+            throw new ServiceException("Internal Service Error occurred: ", e);
+        }
+    }
+
+    // Note that: the Order Reference max prefix number is "SO-yyyy-MM-dd-999"
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public String generateOrderReference(LocalDate now) {
         try {

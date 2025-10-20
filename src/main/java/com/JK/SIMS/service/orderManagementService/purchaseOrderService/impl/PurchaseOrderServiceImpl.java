@@ -231,7 +231,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         );
     }
 
-    // TODO: Set the expectedArrivalDate from the Supplier side.
     private void saveAndRequestPurchaseOrder(PurchaseOrder order) {
         purchaseOrderRepository.save(order);
         ConfirmationToken confirmationToken = confirmationTokenService.createConfirmationToken(order);

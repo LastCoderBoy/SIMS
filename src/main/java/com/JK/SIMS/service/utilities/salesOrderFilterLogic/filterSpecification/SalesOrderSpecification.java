@@ -15,7 +15,8 @@ public class SalesOrderSpecification {
         return (root, query, criteriaBuilder) ->
                 root.get("status").in(
                         SalesOrderStatus.PENDING,
-                        SalesOrderStatus.APPROVED
+                        SalesOrderStatus.PARTIALLY_SHIPPED,
+                        SalesOrderStatus.PARTIALLY_APPROVED
                 );
     }
 
@@ -37,16 +38,5 @@ public class SalesOrderSpecification {
                 default -> null;
             };
         };
-    }
-
-    public static Specification<SalesOrder> hasProductCategory(ProductCategories category) {
-        return ((root, query, criteriaBuilder) -> {
-            if (category == null) return null;
-            // Join SalesOrder -> OrderItem -> ProductsForPM
-            Join<SalesOrder, OrderItem> itemJoin = root.join("items");
-            Join<OrderItem, ProductsForPM> productJoin = itemJoin.join("product");
-
-            return criteriaBuilder.equal(productJoin.get("category"), category);
-        });
     }
 }

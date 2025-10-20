@@ -22,6 +22,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 
+import static com.JK.SIMS.service.utilities.EntityConstants.*;
+import static com.JK.SIMS.service.utilities.GlobalServiceHelper.getOptionDateValue;
+
 @RestController
 @RequestMapping("/api/v1/products/inventory/sales-order")
 public class SoControllerInIc {
@@ -105,7 +108,9 @@ public class SoControllerInIc {
                                                       @RequestParam(required = false) LocalDate startDate,
                                                       @RequestParam(required = false) LocalDate endDate,
                                                       @RequestParam(defaultValue = "0") int page,
-                                                      @RequestParam(defaultValue = "10") int size){
+                                                      @RequestParam(defaultValue = "10") int size,
+                                                      @RequestParam(defaultValue = DEFAULT_SORT_BY_FOR_SO) String sortBy,
+                                                      @RequestParam(defaultValue = DEFAULT_SORT_DIRECTION) String sortDirection){
         logger.info("IcSo: filterProductsByStatus() calling...");
 
         SalesOrderStatus soStatus = null;
@@ -117,8 +122,9 @@ public class SoControllerInIc {
             }
         }
 
+        String optionDateValue = getOptionDateValue(optionDate);
         PaginatedResponse<SummarySalesOrderView> dtoResponse =
-                soServiceInIc.filterSoProducts(soStatus, optionDate, startDate, endDate, page, size);
+                soServiceInIc.filterSoProducts(soStatus, optionDateValue, startDate, endDate, page, size, sortBy, sortDirection);
         return ResponseEntity.ok(dtoResponse);
     }
 }

@@ -7,7 +7,11 @@ import com.JK.SIMS.config.security.JWTService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.coyote.BadRequestException;
 import org.apache.poi.ss.formula.functions.T;
+import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -71,4 +75,26 @@ public class GlobalServiceHelper {
         if(value == null) return false;
         return enumClass.isInstance(value);
     }
+
+    public static @Nullable String getOptionDateValue(String optionDate) {
+        String optionDateValue = null;
+        if(optionDate != null && !optionDate.trim().isEmpty()){
+            switch (optionDate.trim().toLowerCase()) {
+                case "orderdate" -> optionDateValue = "orderDate";
+                case "deliverydate" -> optionDateValue = "deliveryDate";
+                case "estimateddeliverydate" -> optionDateValue = "estimatedDeliveryDate";
+                default -> throw new IllegalArgumentException("Invalid optionDate value provided: " + optionDate);
+            }
+        }
+        return optionDateValue;
+    }
+
+    public Pageable preparePageable(int page, int size, String sortBy, String sortDirection) {
+        validatePaginationParameters(page, size);
+        Sort sort = sortDirection.equalsIgnoreCase("desc")
+                ? Sort.by(sortBy).descending()
+                : Sort.by(sortBy).ascending();
+        return PageRequest.of(page, size, sort);
+    }
+
 }

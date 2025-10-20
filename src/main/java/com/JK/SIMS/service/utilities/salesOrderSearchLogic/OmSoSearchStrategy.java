@@ -3,6 +3,7 @@ package com.JK.SIMS.service.utilities.salesOrderSearchLogic;
 import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
 import com.JK.SIMS.repository.SalesOrder_Repo.SalesOrderRepository;
+import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -15,19 +16,18 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class OmSoSearchStrategy implements SoSearchStrategy {
 
+    private final GlobalServiceHelper globalServiceHelper;
     private final SalesOrderRepository salesOrderRepository;
     @Autowired
-    public OmSoSearchStrategy(SalesOrderRepository salesOrderRepository) {
+    public OmSoSearchStrategy(GlobalServiceHelper globalServiceHelper, SalesOrderRepository salesOrderRepository) {
+        this.globalServiceHelper = globalServiceHelper;
         this.salesOrderRepository = salesOrderRepository;
     }
 
     @Override
     public Page<SalesOrder> searchInSo(String text, int page, int size, String sortBy, String sortDirection) {
         try {
-            Sort sort = sortDirection.equalsIgnoreCase("desc")
-                    ? Sort.by(sortBy).descending()
-                    : Sort.by(sortBy).ascending();
-            Pageable pageable = PageRequest.of(page, size, sort);
+            Pageable pageable = globalServiceHelper.preparePageable(page, size, sortBy, sortDirection);
             log.info("OM-SO searchInSo(): Search text provided. Searching for orders with text '{}'", text);
             return salesOrderRepository.searchInSalesOrders(text, pageable);
         } catch (Exception e) {
