@@ -1,11 +1,10 @@
 package com.JK.SIMS.controller.inventoryControllers;
 
-import com.JK.SIMS.config.security.SecurityUtils;
 import com.JK.SIMS.exceptionHandler.InvalidTokenException;
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.IC_models.damage_loss.DamageLossDTO;
-import com.JK.SIMS.models.IC_models.damage_loss.DamageLossDTORequest;
-import com.JK.SIMS.models.IC_models.damage_loss.DamageLossPageResponse;
+import com.JK.SIMS.models.damage_loss.DamageLossDTO;
+import com.JK.SIMS.models.damage_loss.DamageLossDTORequest;
+import com.JK.SIMS.models.damage_loss.DamageLossPageResponse;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryServices.damageLossService.DamageLossService;
 import com.JK.SIMS.config.security.TokenUtils;

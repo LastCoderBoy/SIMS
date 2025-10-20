@@ -1,9 +1,9 @@
 package com.JK.SIMS.service.InventoryServices.inventoryPageService.searchLogic;
 
 import com.JK.SIMS.exceptionHandler.ServiceException;
-import com.JK.SIMS.models.IC_models.inventoryData.PendingOrdersResponseDto;
-import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
-import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
+import com.JK.SIMS.models.inventoryData.PendingOrdersResponseDto;
+import com.JK.SIMS.models.purchaseOrder.PurchaseOrder;
+import com.JK.SIMS.models.salesOrder.SalesOrder;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
 import com.JK.SIMS.service.utilities.purchaseOrderSearchLogic.PoSearchStrategy;

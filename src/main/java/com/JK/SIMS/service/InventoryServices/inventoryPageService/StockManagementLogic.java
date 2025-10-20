@@ -4,7 +4,7 @@ import com.JK.SIMS.exceptionHandler.DatabaseException;
 import com.JK.SIMS.exceptionHandler.InsufficientStockException;
 import com.JK.SIMS.exceptionHandler.ResourceNotFoundException;
 import com.JK.SIMS.exceptionHandler.ServiceException;
-import com.JK.SIMS.models.IC_models.inventoryData.InventoryControlData;
+import com.JK.SIMS.models.inventoryData.InventoryControlData;
 import com.JK.SIMS.repository.InventoryControl_repo.IC_repository;
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
 import lombok.extern.slf4j.Slf4j;

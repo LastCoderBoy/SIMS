@@ -1,8 +1,8 @@
 package com.JK.SIMS.repository.InventoryControl_repo;
 
-import com.JK.SIMS.models.IC_models.inventoryData.InventoryControlData;
-import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataStatus;
-import com.JK.SIMS.models.IC_models.inventoryData.InventoryMetrics;
+import com.JK.SIMS.models.inventoryData.InventoryControlData;
+import com.JK.SIMS.models.inventoryData.InventoryDataStatus;
+import com.JK.SIMS.models.inventoryData.InventoryMetrics;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import jakarta.persistence.LockModeType;
 import jakarta.transaction.Transactional;

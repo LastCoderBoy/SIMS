@@ -2,12 +2,10 @@ package com.JK.SIMS.controller.inventoryControllers;
 
 import com.JK.SIMS.config.security.TokenUtils;
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
-import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
-import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderResponseDto;
-import com.JK.SIMS.models.IC_models.salesOrder.dtos.processSalesOrderDtos.ProcessSalesOrderRequestDto;
-import com.JK.SIMS.models.IC_models.salesOrder.dtos.views.SummarySalesOrderView;
-import com.JK.SIMS.models.PM_models.ProductCategories;
+import com.JK.SIMS.models.salesOrder.SalesOrderStatus;
+import com.JK.SIMS.models.salesOrder.dtos.SalesOrderResponseDto;
+import com.JK.SIMS.models.salesOrder.dtos.processSalesOrderDtos.ProcessSalesOrderRequestDto;
+import com.JK.SIMS.models.salesOrder.dtos.views.SummarySalesOrderView;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryServices.soService.SoServiceInIc;
 import jakarta.validation.Valid;

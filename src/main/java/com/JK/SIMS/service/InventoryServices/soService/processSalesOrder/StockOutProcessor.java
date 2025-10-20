@@ -1,6 +1,6 @@
 package com.JK.SIMS.service.InventoryServices.soService.processSalesOrder;
 
-import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
+import com.JK.SIMS.models.salesOrder.SalesOrder;
 
 import java.util.Map;
 

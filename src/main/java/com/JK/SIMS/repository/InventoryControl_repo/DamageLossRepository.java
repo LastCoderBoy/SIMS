@@ -1,8 +1,8 @@
 package com.JK.SIMS.repository.InventoryControl_repo;
 
-import com.JK.SIMS.models.IC_models.damage_loss.DamageLoss;
-import com.JK.SIMS.models.IC_models.damage_loss.DamageLossMetrics;
-import com.JK.SIMS.models.IC_models.damage_loss.LossReason;
+import com.JK.SIMS.models.damage_loss.DamageLoss;
+import com.JK.SIMS.models.damage_loss.DamageLossMetrics;
+import com.JK.SIMS.models.damage_loss.LossReason;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

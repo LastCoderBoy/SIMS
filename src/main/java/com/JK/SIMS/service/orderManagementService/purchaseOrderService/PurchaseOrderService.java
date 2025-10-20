@@ -1,9 +1,9 @@
 package com.JK.SIMS.service.orderManagementService.purchaseOrderService;
 
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.PurchaseOrderRequestDto;
-import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.views.DetailsPurchaseOrderView;
-import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;
+import com.JK.SIMS.models.purchaseOrder.dtos.PurchaseOrderRequestDto;
+import com.JK.SIMS.models.purchaseOrder.dtos.views.DetailsPurchaseOrderView;
+import com.JK.SIMS.models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.models.PaginatedResponse;
 import org.apache.coyote.BadRequestException;
 

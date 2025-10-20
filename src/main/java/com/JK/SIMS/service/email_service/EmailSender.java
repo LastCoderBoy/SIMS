@@ -1,7 +1,7 @@
 package com.JK.SIMS.service.email_service;
 
-import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
-import com.JK.SIMS.models.IC_models.purchaseOrder.confirmationToken.ConfirmationToken;
+import com.JK.SIMS.models.purchaseOrder.PurchaseOrder;
+import com.JK.SIMS.models.purchaseOrder.confirmationToken.ConfirmationToken;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;

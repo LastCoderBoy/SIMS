@@ -1,9 +1,9 @@
 package com.JK.SIMS.service.confirmTokenService;
 
-import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
-import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
-import com.JK.SIMS.models.IC_models.purchaseOrder.confirmationToken.ConfirmationToken;
-import com.JK.SIMS.models.IC_models.purchaseOrder.confirmationToken.ConfirmationTokenStatus;
+import com.JK.SIMS.models.purchaseOrder.PurchaseOrder;
+import com.JK.SIMS.models.purchaseOrder.PurchaseOrderStatus;
+import com.JK.SIMS.models.purchaseOrder.confirmationToken.ConfirmationToken;
+import com.JK.SIMS.models.purchaseOrder.confirmationToken.ConfirmationTokenStatus;
 import com.JK.SIMS.repository.confirmationTokenRepo.ConfirmationTokenRepository;
 import com.JK.SIMS.service.utilities.PurchaseOrderServiceHelper;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;

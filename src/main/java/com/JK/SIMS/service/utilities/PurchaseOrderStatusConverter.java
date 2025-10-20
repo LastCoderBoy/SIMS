@@ -1,7 +1,7 @@
 package com.JK.SIMS.service.utilities;
 
 import com.JK.SIMS.exceptionHandler.ValidationException;
-import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
+import com.JK.SIMS.models.purchaseOrder.PurchaseOrderStatus;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.stereotype.Component;
 

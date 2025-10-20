@@ -1,6 +1,6 @@
 package com.JK.SIMS.service.email_service;
 
-import com.JK.SIMS.models.IC_models.inventoryData.InventoryControlData;
+import com.JK.SIMS.models.inventoryData.InventoryControlData;
 import com.JK.SIMS.repository.InventoryControl_repo.IC_repository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

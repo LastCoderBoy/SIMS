@@ -1,7 +1,7 @@
 package com.JK.SIMS.repository.SalesOrder_Repo;
 
-import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
-import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
+import com.JK.SIMS.models.salesOrder.SalesOrder;
+import com.JK.SIMS.models.salesOrder.SalesOrderStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -24,18 +24,18 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long>, J
 
     Page<SalesOrder> findByStatus(SalesOrderStatus status, Pageable pageable);
 
-    @Query(value = "SELECT COUNT(*) FROM sales_order WHERE status IN ('PARTIALLY_APPROVED', 'PENDING', 'PARTIALLY_SHIPPED')", nativeQuery = true)
+    @Query(value = "SELECT COUNT(*) FROM sales_order WHERE status IN ('PARTIALLY_APPROVED', 'PENDING', 'PARTIALLY_DELIVERED')", nativeQuery = true)
     Long getWaitingStockSize();
 
-    @Query("SELECT so FROM SalesOrder so WHERE so.status IN ('PARTIALLY_APPROVED', 'PENDING', 'PARTIALLY_SHIPPED')")
+    @Query("SELECT so FROM SalesOrder so WHERE so.status IN ('PARTIALLY_APPROVED', 'PENDING', 'PARTIALLY_DELIVERED')")
     Page<SalesOrder> findAllWaitingSalesOrders(Pageable pageable);
 
-    @Query("SELECT so FROM SalesOrder so WHERE so.status IN ('PARTIALLY_APPROVED', 'PENDING', 'PARTIALLY_SHIPPED') " +
+    @Query("SELECT so FROM SalesOrder so WHERE so.status IN ('PARTIALLY_APPROVED', 'PENDING', 'PARTIALLY_DELIVERED') " +
             "AND so.estimatedDeliveryDate < :twoDaysFromNow")
     Page<SalesOrder> findAllUrgentSalesOrders(Pageable pageable, @Param("twoDaysFromNow") LocalDateTime twoDaysFromNow);
 
     @Query(value = "SELECT SUM(DATEDIFF(estimated_delivery_date, order_date)) " +
-            "FROM sales_order WHERE status IN ('PARTIALLY_APPROVED', 'PENDING', 'PARTIALLY_SHIPPED')",
+            "FROM sales_order WHERE status IN ('PARTIALLY_APPROVED', 'PENDING', 'PARTIALLY_DELIVERED')",
             nativeQuery = true)
     long calculateTotalDeliveryDate();
 
@@ -43,7 +43,7 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long>, J
     SELECT DISTINCT o FROM SalesOrder o
     JOIN o.items i
     JOIN i.product p
-    WHERE o.status IN ('PARTIALLY_APPROVED', 'PENDING', 'PARTIALLY_SHIPPED')
+    WHERE o.status IN ('PARTIALLY_APPROVED', 'PENDING', 'PARTIALLY_DELIVERED')
       AND (
         LOWER(o.customerName) LIKE LOWER(CONCAT('%', :text, '%'))
        OR LOWER(o.orderReference) LIKE LOWER(CONCAT('%', :text, '%'))

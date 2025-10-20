@@ -1,7 +1,7 @@
 package com.JK.SIMS.service.utilities.purchaseOrderFilterLogic.filterSpecification;
 
-import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
-import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
+import com.JK.SIMS.models.purchaseOrder.PurchaseOrder;
+import com.JK.SIMS.models.purchaseOrder.PurchaseOrderStatus;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import jakarta.persistence.criteria.Join;

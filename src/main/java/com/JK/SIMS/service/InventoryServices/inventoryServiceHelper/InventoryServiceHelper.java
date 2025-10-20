@@ -1,16 +1,15 @@
 package com.JK.SIMS.service.InventoryServices.inventoryServiceHelper;
 
 import com.JK.SIMS.exceptionHandler.ValidationException;
-import com.JK.SIMS.models.IC_models.inventoryData.InventoryControlData;
-import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataDto;
-import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataStatus;
-import com.JK.SIMS.models.IC_models.inventoryData.PendingOrdersResponseDto;
-import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
-import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;
-import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
-import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderResponseDto;
-import com.JK.SIMS.models.IC_models.salesOrder.dtos.views.SummarySalesOrderView;
-import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItem;
+import com.JK.SIMS.models.inventoryData.InventoryControlData;
+import com.JK.SIMS.models.inventoryData.InventoryDataDto;
+import com.JK.SIMS.models.inventoryData.InventoryDataStatus;
+import com.JK.SIMS.models.inventoryData.PendingOrdersResponseDto;
+import com.JK.SIMS.models.purchaseOrder.PurchaseOrder;
+import com.JK.SIMS.models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;
+import com.JK.SIMS.models.salesOrder.SalesOrder;
+import com.JK.SIMS.models.salesOrder.dtos.views.SummarySalesOrderView;
+import com.JK.SIMS.models.salesOrder.orderItem.OrderItem;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.stockMovements.StockMovementReferenceType;
 import com.JK.SIMS.repository.InventoryControl_repo.IC_repository;

@@ -1,12 +1,12 @@
 package com.JK.SIMS.service.email_service.impl;
 
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.IC_models.inventoryData.InventoryControlData;
-import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataStatus;
-import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
-import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
-import com.JK.SIMS.models.IC_models.purchaseOrder.confirmationToken.ConfirmationToken;
-import com.JK.SIMS.models.IC_models.purchaseOrder.confirmationToken.ConfirmationTokenStatus;
+import com.JK.SIMS.models.inventoryData.InventoryControlData;
+import com.JK.SIMS.models.inventoryData.InventoryDataStatus;
+import com.JK.SIMS.models.purchaseOrder.PurchaseOrder;
+import com.JK.SIMS.models.purchaseOrder.PurchaseOrderStatus;
+import com.JK.SIMS.models.purchaseOrder.confirmationToken.ConfirmationToken;
+import com.JK.SIMS.models.purchaseOrder.confirmationToken.ConfirmationTokenStatus;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.repository.PurchaseOrder_repo.PurchaseOrderRepository;

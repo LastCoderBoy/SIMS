@@ -1,8 +1,8 @@
 package com.JK.SIMS.controller.confirmationToken_control;
 
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.IC_models.purchaseOrder.confirmationToken.ConfirmationToken;
-import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.ConfirmPoRequestDto;
+import com.JK.SIMS.models.purchaseOrder.confirmationToken.ConfirmationToken;
+import com.JK.SIMS.models.purchaseOrder.dtos.ConfirmPoRequestDto;
 import com.JK.SIMS.service.confirmTokenService.ConfirmationTokenService;
 import com.JK.SIMS.service.email_service.EmailServiceForPo;
 import jakarta.validation.Valid;

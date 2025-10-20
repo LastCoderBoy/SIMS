@@ -1,7 +1,7 @@
 package com.JK.SIMS.service.utilities.salesOrderFilterLogic;
 
-import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
-import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
+import com.JK.SIMS.models.salesOrder.SalesOrder;
+import com.JK.SIMS.models.salesOrder.SalesOrderStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 

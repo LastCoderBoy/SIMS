@@ -1,6 +1,6 @@
 package com.JK.SIMS.service.utilities.purchaseOrderFilterLogic;
 
-import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
+import com.JK.SIMS.models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.repository.PurchaseOrder_repo.PurchaseOrderRepository;
 import com.JK.SIMS.service.utilities.PurchaseOrderServiceHelper;
 import com.JK.SIMS.service.utilities.purchaseOrderFilterLogic.filterSpecification.PurchaseOrderSpecification;

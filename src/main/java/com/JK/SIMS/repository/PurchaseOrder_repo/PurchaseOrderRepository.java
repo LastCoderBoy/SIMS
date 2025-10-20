@@ -1,6 +1,6 @@
 package com.JK.SIMS.repository.PurchaseOrder_repo;
 
-import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
+import com.JK.SIMS.models.purchaseOrder.PurchaseOrder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

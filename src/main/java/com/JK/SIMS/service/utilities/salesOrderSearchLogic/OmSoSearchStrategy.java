@@ -1,15 +1,13 @@
 package com.JK.SIMS.service.utilities.salesOrderSearchLogic;
 
 import com.JK.SIMS.exceptionHandler.ServiceException;
-import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
+import com.JK.SIMS.models.salesOrder.SalesOrder;
 import com.JK.SIMS.repository.SalesOrder_Repo.SalesOrderRepository;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
 @Component

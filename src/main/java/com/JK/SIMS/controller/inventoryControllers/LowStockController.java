@@ -1,7 +1,7 @@
 package com.JK.SIMS.controller.inventoryControllers;
 
 
-import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataDto;
+import com.JK.SIMS.models.inventoryData.InventoryDataDto;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryServices.lowStockService.LowStockService;

@@ -1,8 +1,8 @@
 package com.JK.SIMS.controller.inventoryControllers;
 
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.IC_models.inventoryData.InventoryControlData;
-import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataDto;
+import com.JK.SIMS.models.inventoryData.InventoryControlData;
+import com.JK.SIMS.models.inventoryData.InventoryDataDto;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryServices.totalItemsService.TotalItemsService;
 import jakarta.servlet.http.HttpServletResponse;

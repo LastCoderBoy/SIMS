@@ -1,6 +1,6 @@
 package com.JK.SIMS.service.utilities;
 
-import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataDto;
+import com.JK.SIMS.models.inventoryData.InventoryDataDto;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.poi.ss.usermodel.CellStyle;

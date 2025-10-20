@@ -1,11 +1,11 @@
 package com.JK.SIMS.service.orderManagementService.salesOrderService;
 
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
-import com.JK.SIMS.models.IC_models.salesOrder.dtos.SalesOrderRequestDto;
-import com.JK.SIMS.models.IC_models.salesOrder.dtos.views.DetailedSalesOrderView;
-import com.JK.SIMS.models.IC_models.salesOrder.dtos.views.SummarySalesOrderView;
-import com.JK.SIMS.models.IC_models.salesOrder.orderItem.dtos.BulkOrderItemsRequestDto;
+import com.JK.SIMS.models.salesOrder.SalesOrderStatus;
+import com.JK.SIMS.models.salesOrder.dtos.SalesOrderRequestDto;
+import com.JK.SIMS.models.salesOrder.dtos.views.DetailedSalesOrderView;
+import com.JK.SIMS.models.salesOrder.dtos.views.SummarySalesOrderView;
+import com.JK.SIMS.models.salesOrder.orderItem.dtos.BulkOrderItemsRequestDto;
 import com.JK.SIMS.models.PaginatedResponse;
 import jakarta.validation.Valid;
 

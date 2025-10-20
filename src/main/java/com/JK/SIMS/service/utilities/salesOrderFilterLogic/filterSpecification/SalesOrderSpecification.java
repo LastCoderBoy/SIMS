@@ -1,11 +1,7 @@
 package com.JK.SIMS.service.utilities.salesOrderFilterLogic.filterSpecification;
 
-import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
-import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
-import com.JK.SIMS.models.IC_models.salesOrder.orderItem.OrderItem;
-import com.JK.SIMS.models.PM_models.ProductCategories;
-import com.JK.SIMS.models.PM_models.ProductsForPM;
-import jakarta.persistence.criteria.Join;
+import com.JK.SIMS.models.salesOrder.SalesOrder;
+import com.JK.SIMS.models.salesOrder.SalesOrderStatus;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDate;
@@ -15,7 +11,7 @@ public class SalesOrderSpecification {
         return (root, query, criteriaBuilder) ->
                 root.get("status").in(
                         SalesOrderStatus.PENDING,
-                        SalesOrderStatus.PARTIALLY_SHIPPED,
+                        SalesOrderStatus.PARTIALLY_DELIVERED,
                         SalesOrderStatus.PARTIALLY_APPROVED
                 );
     }

@@ -1,14 +1,14 @@
 package com.JK.SIMS.service.InventoryServices.inventoryPageService;
 
 import com.JK.SIMS.exceptionHandler.*;
-import com.JK.SIMS.models.IC_models.inventoryData.*;
-import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
-import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;
-import com.JK.SIMS.models.IC_models.salesOrder.SalesOrderStatus;
-import com.JK.SIMS.models.IC_models.salesOrder.dtos.views.SummarySalesOrderView;
+import com.JK.SIMS.models.purchaseOrder.PurchaseOrderStatus;
+import com.JK.SIMS.models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;
+import com.JK.SIMS.models.salesOrder.SalesOrderStatus;
+import com.JK.SIMS.models.salesOrder.dtos.views.SummarySalesOrderView;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
+import com.JK.SIMS.models.inventoryData.*;
 import com.JK.SIMS.repository.InventoryControl_repo.IC_repository;
 import com.JK.SIMS.service.InventoryServices.damageLossService.DamageLossService;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.searchLogic.PendingOrdersSearchStrategy;

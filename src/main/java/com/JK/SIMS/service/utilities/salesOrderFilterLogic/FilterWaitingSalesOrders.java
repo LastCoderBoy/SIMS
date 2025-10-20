@@ -1,6 +1,6 @@
 package com.JK.SIMS.service.utilities.salesOrderFilterLogic;
 
-import com.JK.SIMS.models.IC_models.salesOrder.SalesOrder;
+import com.JK.SIMS.models.salesOrder.SalesOrder;
 import com.JK.SIMS.repository.SalesOrder_Repo.SalesOrderRepository;
 import com.JK.SIMS.service.utilities.salesOrderFilterLogic.filterSpecification.SalesOrderSpecification;
 import org.jetbrains.annotations.Nullable;

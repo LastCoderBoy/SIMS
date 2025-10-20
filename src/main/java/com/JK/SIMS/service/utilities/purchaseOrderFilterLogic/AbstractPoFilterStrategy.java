@@ -2,9 +2,9 @@ package com.JK.SIMS.service.utilities.purchaseOrderFilterLogic;
 
 import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
-import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrder;
-import com.JK.SIMS.models.IC_models.purchaseOrder.PurchaseOrderStatus;
-import com.JK.SIMS.models.IC_models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;
+import com.JK.SIMS.models.purchaseOrder.PurchaseOrder;
+import com.JK.SIMS.models.purchaseOrder.PurchaseOrderStatus;
+import com.JK.SIMS.models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.PurchaseOrder_repo.PurchaseOrderRepository;

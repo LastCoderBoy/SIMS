@@ -1,7 +1,7 @@
 package com.JK.SIMS.service.InventoryServices.totalItemsService.filterLogic;
 
-import com.JK.SIMS.models.IC_models.inventoryData.InventoryControlData;
-import com.JK.SIMS.models.IC_models.inventoryData.InventoryDataStatus;
+import com.JK.SIMS.models.inventoryData.InventoryControlData;
+import com.JK.SIMS.models.inventoryData.InventoryDataStatus;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import jakarta.persistence.criteria.Join;
