@@ -1,6 +1,7 @@
 package com.JK.SIMS.models.salesOrder;
 
 import com.JK.SIMS.models.salesOrder.orderItem.OrderItem;
+import com.JK.SIMS.models.salesOrder.qrcode.SalesOrderQRCode;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -11,8 +12,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Data
-@ToString(exclude = "items")
-@EqualsAndHashCode(exclude = "items")
+@ToString(exclude = {"items", "qrCode"})
+@EqualsAndHashCode(exclude = {"items", "qrCode"})
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
@@ -62,8 +63,13 @@ public class SalesOrder {
     @Column(name = "last_updated")
     private LocalDateTime lastUpdate;
 
+    // ***** Relationships *****
     @OneToMany(mappedBy = "salesOrder", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> items = new ArrayList<>();
+
+    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "qr_code_id", unique = true)
+    private SalesOrderQRCode qrCode;
 
     public SalesOrder(String orderReference, String destination, SalesOrderStatus status, List<OrderItem> items){
         this.orderReference = orderReference;
@@ -87,8 +93,13 @@ public class SalesOrder {
         item.setSalesOrder(null);
     }
 
+    public void setQrCode(SalesOrderQRCode qrCode) {
+        this.qrCode = qrCode;
+        qrCode.setSalesOrder(this);
+    }
+
     public boolean isFinalized() {
-        return this.status == SalesOrderStatus.COMPLETED || this.status == SalesOrderStatus.CANCELLED
-                || this.status == SalesOrderStatus.DELIVERED || this.status == SalesOrderStatus.APPROVED;
+        return this.status == SalesOrderStatus.CANCELLED || this.status == SalesOrderStatus.DELIVERED
+                || this.status == SalesOrderStatus.APPROVED;
     }
 }

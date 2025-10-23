@@ -7,7 +7,7 @@ public enum SalesOrderStatus {
 
     //  ******* Complete statuses *******
     APPROVED, // After PENDING, when it is confirmed in the IC, will be on this status
-    DELIVERED, // When the order is shipped, will be on this status
-    COMPLETED, // When the customer confirms the order receive, will be on this status
+    DELIVERY_IN_PROCESS, // It will be updated by scanning the QR code in the SalesOrder
+    DELIVERED, // When the order is shipped, will be on this status. Will be updated by scanning the QR code
     CANCELLED // When the order is cancelled, will be on this status
 }
