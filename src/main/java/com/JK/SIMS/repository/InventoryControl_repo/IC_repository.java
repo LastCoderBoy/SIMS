@@ -25,7 +25,7 @@ public interface IC_repository extends JpaRepository<InventoryControlData, Strin
     void deleteByProduct_ProductID(@Param("productId") String productId);
 
     @Query("""
-        SELECT new com.JK.SIMS.models.IC_models.inventoryData.InventoryMetrics(
+        SELECT new com.JK.SIMS.models.inventoryData.InventoryMetrics(
             COUNT(*),
             COUNT(CASE WHEN i.currentStock <= i.minLevel AND i.status != 'INVALID' THEN 1 ELSE NULL END)
         )

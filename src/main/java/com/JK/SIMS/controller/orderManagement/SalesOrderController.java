@@ -13,6 +13,7 @@ import com.JK.SIMS.models.salesOrder.orderItem.dtos.BulkOrderItemsRequestDto;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryServices.soService.SoServiceInIc;
 import com.JK.SIMS.service.orderManagementService.salesOrderService.SalesOrderService;
+import com.JK.SIMS.service.utilities.SalesOrderServiceHelper;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +26,7 @@ import java.time.LocalDate;
 
 import static com.JK.SIMS.service.utilities.EntityConstants.*;
 import static com.JK.SIMS.service.utilities.GlobalServiceHelper.getOptionDateValue;
+import static com.JK.SIMS.service.utilities.SalesOrderServiceHelper.validateSalesOrderStatus;
 
 
 @RestController
@@ -158,15 +160,7 @@ public class SalesOrderController {
         log.info("OM-SO: filterSalesOrders() calling...");
 
         try {
-            SalesOrderStatus statusValue = null;
-            if (status != null) {
-                try {
-                    statusValue = SalesOrderStatus.valueOf(status.toUpperCase());
-                } catch (IllegalArgumentException e) {
-                    log.warn("OM-SO filterSalesOrders(): Invalid status value: {}", status);
-                    throw new IllegalArgumentException("Invalid status value provided: " + status);
-                }
-            }
+            SalesOrderStatus statusValue = validateSalesOrderStatus(status);
             String optionDateValue = getOptionDateValue(optionDate); // might throw IllegalArgumentException
             PaginatedResponse<SummarySalesOrderView> summaryResponse =
                     salesOrderService.filterSalesOrders(statusValue, optionDateValue, startDate, endDate, page, size, sortBy, sortDirection);

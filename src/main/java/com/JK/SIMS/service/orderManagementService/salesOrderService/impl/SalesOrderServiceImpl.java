@@ -15,8 +15,8 @@ import com.JK.SIMS.models.salesOrder.orderItem.dtos.OrderItemRequestDto;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
-import com.JK.SIMS.repository.SalesOrder_Repo.OrderItemRepository;
-import com.JK.SIMS.repository.SalesOrder_Repo.SalesOrderRepository;
+import com.JK.SIMS.repository.salesOrderRepo.OrderItemRepository;
+import com.JK.SIMS.repository.salesOrderRepo.SalesOrderRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
 import com.JK.SIMS.service.orderManagementService.salesOrderService.SalesOrderService;
 import com.JK.SIMS.service.productManagementService.PMServiceHelper;
@@ -380,7 +380,7 @@ public class SalesOrderServiceImpl implements SalesOrderService {
             stockManagementLogic.releaseReservation(itemToRemove.getProduct().getProductID(), itemToRemove.getQuantity());
             salesOrder.removeOrderItem(itemToRemove);
             // After removing update the status
-            salesOrderServiceHelper.updateSalesOrderStatus(salesOrder);
+            salesOrderServiceHelper.updateSoStatusBasedOnItemQuantity(salesOrder);
             salesOrderRepository.save(salesOrder);
             logger.info("OM-SO removeItemFromSalesOrder(): Item {} removed from Sales Order {}", itemId, salesOrder.getOrderReference());
             return new ApiResponse<>(true, "Item removed successfully");

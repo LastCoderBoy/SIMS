@@ -13,7 +13,7 @@ import org.springframework.stereotype.Repository;
 public interface DamageLossRepository extends JpaRepository<DamageLoss, Integer> {
 
     @Query("""
-        SELECT new com.JK.SIMS.models.IC_models.damage_loss.DamageLossMetrics(
+        SELECT new com.JK.SIMS.models.damage_loss.DamageLossMetrics(
             COUNT(*),
             SUM(dl.quantityLost),
             SUM(dl.lossValue)

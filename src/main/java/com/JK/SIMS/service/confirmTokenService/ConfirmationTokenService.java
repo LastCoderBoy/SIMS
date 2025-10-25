@@ -19,7 +19,8 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
+
+import static com.JK.SIMS.service.utilities.GlobalServiceHelper.generateToken;
 
 @Service
 @AllArgsConstructor
@@ -33,7 +34,7 @@ public class ConfirmationTokenService {
 
     @Transactional
     public ConfirmationToken createConfirmationToken(PurchaseOrder order){
-        String token = generateConfirmationToken();
+        String token = generateToken();
         ConfirmationToken confirmationToken = new ConfirmationToken(
                 token,
                 GlobalServiceHelper.now(clock),
@@ -118,10 +119,5 @@ public class ConfirmationTokenService {
         data.put("message", message);
         data.put("alertClass", alertClass);
         return data;
-    }
-
-
-    private String generateConfirmationToken(){
-        return UUID.randomUUID().toString();
     }
 }

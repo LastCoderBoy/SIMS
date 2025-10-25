@@ -115,7 +115,7 @@ public class SalesOrderServiceHelper {
         }
     }
 
-    public void updateOrderItemStatus(OrderItem orderItem, int approvedQuantity) {
+    public void updateOrderItemFulfillStatus(OrderItem orderItem, int approvedQuantity) {
         if ( approvedQuantity < orderItem.getQuantity()) {
             orderItem.setStatus(OrderItemStatus.PARTIALLY_APPROVED);
             log.info("OrderProcessor updateOrderStatus(): Updated status of OrderItem {} - productID: {} to PARTIALLY_APPROVED", orderItem.getId(), orderItem.getProduct().getProductID());
@@ -125,8 +125,21 @@ public class SalesOrderServiceHelper {
         }
     }
 
+    public static SalesOrderStatus validateSalesOrderStatus(String status) {
+        SalesOrderStatus statusValue = null;
+        if (status != null) {
+            try {
+                statusValue = SalesOrderStatus.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                log.warn("OM-SO filterSalesOrders(): Invalid status value: {}", status);
+                throw new IllegalArgumentException("Invalid status value provided: " + status);
+            }
+        }
+        return statusValue;
+    }
+
     // Keep in Pending if all items are not approved yet
-    public void updateSalesOrderStatus(SalesOrder salesOrder) {
+    public void updateSoStatusBasedOnItemQuantity(SalesOrder salesOrder) {
         boolean allApproved = allItemsFulfilled(salesOrder);
         boolean anyApproved = salesOrder.getItems().stream()
                 .anyMatch(item -> item.getStatus() == OrderItemStatus.APPROVED);

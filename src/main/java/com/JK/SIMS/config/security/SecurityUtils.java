@@ -1,5 +1,6 @@
 package com.JK.SIMS.config.security;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.apache.coyote.BadRequestException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
@@ -30,6 +31,14 @@ public class SecurityUtils {
             throw new BadRequestException("Invalid JWT token: Cannot determine user.");
         }
         return username;
+    }
+
+    public String extractClientIp(HttpServletRequest request) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isEmpty()) {
+            return forwarded.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 
 }

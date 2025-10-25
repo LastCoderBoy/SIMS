@@ -1,4 +1,4 @@
-package com.JK.SIMS.repository.SalesOrder_Repo;
+package com.JK.SIMS.repository.salesOrderRepo;
 
 import com.JK.SIMS.models.salesOrder.SalesOrder;
 import com.JK.SIMS.models.salesOrder.SalesOrderStatus;

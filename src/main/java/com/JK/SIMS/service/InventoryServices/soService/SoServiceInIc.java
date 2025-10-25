@@ -11,7 +11,7 @@ import com.JK.SIMS.models.salesOrder.dtos.views.SummarySalesOrderView;
 import com.JK.SIMS.models.salesOrder.orderItem.OrderItem;
 import com.JK.SIMS.models.salesOrder.orderItem.OrderItemStatus;
 import com.JK.SIMS.models.PaginatedResponse;
-import com.JK.SIMS.repository.SalesOrder_Repo.SalesOrderRepository;
+import com.JK.SIMS.repository.salesOrderRepo.SalesOrderRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
 import com.JK.SIMS.service.InventoryServices.soService.processSalesOrder.StockOutProcessor;
 import com.JK.SIMS.service.utilities.salesOrderFilterLogic.SoFilterStrategy;

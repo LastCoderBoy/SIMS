@@ -3,12 +3,8 @@ package com.JK.SIMS.service.utilities;
 import com.JK.SIMS.exceptionHandler.ResourceNotFoundException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.PM_models.ProductStatus;
-import com.JK.SIMS.config.security.JWTService;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.coyote.BadRequestException;
-import org.apache.poi.ss.formula.functions.T;
 import org.jetbrains.annotations.Nullable;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -19,18 +15,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.UUID;
 
 @Component
 @Slf4j
 public class GlobalServiceHelper {
 
     //TODO: Use abstract inheritance for common logic serives
-
-    public final JWTService jwtService;
-    @Autowired
-    public GlobalServiceHelper(JWTService jwtService) {
-        this.jwtService = jwtService;
-    }
 
     public static boolean amongInvalidStatus(ProductStatus status) {
         return status.equals(ProductStatus.RESTRICTED) ||
@@ -95,6 +86,11 @@ public class GlobalServiceHelper {
                 ? Sort.by(sortBy).descending()
                 : Sort.by(sortBy).ascending();
         return PageRequest.of(page, size, sort);
+    }
+
+
+    public static String generateToken(){
+        return UUID.randomUUID().toString();
     }
 
 }

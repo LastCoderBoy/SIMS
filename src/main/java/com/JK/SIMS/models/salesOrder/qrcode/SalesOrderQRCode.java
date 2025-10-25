@@ -30,16 +30,16 @@ public class SalesOrderQRCode {
     @Column
     private LocalDateTime lastScannedAt;
 
-    @Column
-    private String scannedBy; // username of the scanner (linked to SIMS user)
-
-    @Column
-    private String location;
+//    @Column
+//    private String location;
 
     @Column(nullable = false, unique = true)
     private String qrToken; // unique secure token for identifying scans
 
     // ***** Scanner details *****
+    @Column
+    private String scannedBy; // username of the scanner (linked to SIMS user)
+
     @Column(length = 45)
     private String ipAddress; // last scanner IP
 

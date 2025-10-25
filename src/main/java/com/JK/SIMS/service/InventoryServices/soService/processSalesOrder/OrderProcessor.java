@@ -66,7 +66,7 @@ public abstract class OrderProcessor {
                 stockManagementLogic.fulfillReservation(item.getProduct().getProductID(), approvedQty);
 
                 // Update the status after fulfillment
-                salesOrderServiceHelper.updateOrderItemStatus(item, approvedQty);
+                salesOrderServiceHelper.updateOrderItemFulfillStatus(item, approvedQty);
 
                 // set the fulfilled field
                 item.setApprovedQuantity(item.getApprovedQuantity() + approvedQty);
@@ -78,7 +78,7 @@ public abstract class OrderProcessor {
                 );
             }
 
-            salesOrderServiceHelper.updateSalesOrderStatus(salesOrder);
+            salesOrderServiceHelper.updateSoStatusBasedOnItemQuantity(salesOrder);
             log.info("OrderProcessor processOrder(): Returning updated SalesOrder: {}", salesOrder.getOrderReference());
             return salesOrder;
         } catch (InsufficientStockException e) {
