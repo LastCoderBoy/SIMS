@@ -1,0 +1,8 @@
+# Copy this file to application-local.properties and fill in your actual credentials
+# application-local.properties is ignored by git
+
+# AWS Configuration
+aws.access-key=YOUR_ACCESS_KEY_HERE
+aws.secret-key=YOUR_SECRET_KEY_HERE
+aws.region=YOUR_REGION_HERE
+aws.s3.bucket-name=your-bucket-name
