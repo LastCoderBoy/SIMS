@@ -14,7 +14,7 @@ import java.time.LocalDate;
 public interface SalesOrderService {
     PaginatedResponse<SummarySalesOrderView> getAllSummarySalesOrders(String sortBy, String sortDirection, int page, int size);
     DetailedSalesOrderView getDetailsForSalesOrderId(Long orderId);
-    ApiResponse<String> createOrder(@Valid SalesOrderRequestDto salesOrderRequestDto, String jwtToken);
+    ApiResponse<String> createSalesOrder(@Valid SalesOrderRequestDto salesOrderRequestDto, String jwtToken);
     ApiResponse<String> updateSalesOrder(Long orderId, SalesOrderRequestDto salesOrderRequestDto, String jwtToken);
     ApiResponse<String> addItemsToSalesOrder(Long orderId, @Valid BulkOrderItemsRequestDto bulkOrderItemsRequestDto, String jwtToken);
     ApiResponse<String> removeItemFromSalesOrder(Long orderId, Long itemId, String jwtToken);

@@ -9,8 +9,8 @@ import com.JK.SIMS.models.salesOrder.dtos.SalesOrderResponseDto;
 import com.JK.SIMS.models.salesOrder.dtos.views.SummarySalesOrderView;
 import com.JK.SIMS.models.salesOrder.orderItem.OrderItem;
 import com.JK.SIMS.models.salesOrder.orderItem.OrderItemStatus;
-import com.JK.SIMS.models.salesOrder.orderItem.dtos.OrderItemRequestDto;
-import com.JK.SIMS.models.salesOrder.orderItem.dtos.OrderItemResponseDto;
+import com.JK.SIMS.models.salesOrder.orderItem.dtos.OrderItemRequest;
+import com.JK.SIMS.models.salesOrder.orderItem.dtos.OrderItemResponse;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -30,7 +30,7 @@ public class SalesOrderServiceHelper {
 
     public SalesOrderResponseDto convertToSalesOrderResponseDto(SalesOrder salesOrder) {
         try {
-            List<OrderItemResponseDto> itemDtos = salesOrder.getItems().stream()
+            List<OrderItemResponse> itemDtos = salesOrder.getItems().stream()
                     .map(this::convertToOrderItemResponseDto)
                     .collect(Collectors.toList());
 
@@ -61,15 +61,15 @@ public class SalesOrderServiceHelper {
         return items.stream().map(OrderItem::getOrderPrice).reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    public Integer totalSalesOrderQuantity(List<OrderItemResponseDto> orderedItems){
-        return orderedItems.stream().mapToInt(OrderItemResponseDto::getQuantity).sum();
+    public Integer totalSalesOrderQuantity(List<OrderItemResponse> orderedItems){
+        return orderedItems.stream().mapToInt(OrderItemResponse::getQuantity).sum();
     }
 
-    private OrderItemResponseDto convertToOrderItemResponseDto(OrderItem item) {
+    private OrderItemResponse convertToOrderItemResponseDto(OrderItem item) {
         try {
             ProductsForPM product = item.getProduct();
 
-            return new OrderItemResponseDto(
+            return new OrderItemResponse(
                     item.getId(),
                     product.getProductID(),
                     product.getName(),
@@ -96,10 +96,10 @@ public class SalesOrderServiceHelper {
         return new SummarySalesOrderView(order);
     }
 
-    public void validateSalesOrderItems(List<OrderItemRequestDto> requestedOrderItems) {
+    public void validateSalesOrderItems(List<OrderItemRequest> requestedOrderItems) {
         // Check for duplicate products in the same order
         Set<String> productIds = new HashSet<>();
-        for (OrderItemRequestDto item : requestedOrderItems) {
+        for (OrderItemRequest item : requestedOrderItems) {
             if (!productIds.add(item.getProductId())) {
                 throw new ValidationException("OM-SO validateSoRequestForCreate(): Duplicate product found in order: " + item.getProductId());
             }

@@ -13,7 +13,6 @@ import com.JK.SIMS.models.salesOrder.orderItem.dtos.BulkOrderItemsRequestDto;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryServices.soService.SoServiceInIc;
 import com.JK.SIMS.service.orderManagementService.salesOrderService.SalesOrderService;
-import com.JK.SIMS.service.utilities.SalesOrderServiceHelper;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -64,13 +63,13 @@ public class SalesOrderController {
     @PreAuthorize("@securityUtils.hasAccess()")
     public ResponseEntity<?> createOrder(@Valid @RequestBody SalesOrderRequestDto salesOrderRequestDto,
                                          @RequestHeader("Authorization") String token){
-        log.info("OM-SO createOrder() is calling...");
+        log.info("OM-SO createSalesOrder() is calling...");
         if(token != null && !token.trim().isEmpty()) {
             String jwtToken = TokenUtils.extractToken(token);
-            ApiResponse<String> response = salesOrderService.createOrder(salesOrderRequestDto, jwtToken);
+            ApiResponse<String> response = salesOrderService.createSalesOrder(salesOrderRequestDto, jwtToken);
             return new ResponseEntity<>(response, HttpStatus.CREATED);
         }
-        log.error("OM-SO createOrder() Invalid Token provided. {}", token);
+        log.error("OM-SO createSalesOrder() Invalid Token provided. {}", token);
         throw new InvalidTokenException("Invalid Token provided. Please re-login.");
     }
 

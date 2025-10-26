@@ -3,6 +3,9 @@ package com.JK.SIMS.service.orderManagementService.salesOrderService.impl;
 import com.JK.SIMS.config.security.SecurityUtils;
 import com.JK.SIMS.exceptionHandler.*;
 import com.JK.SIMS.models.ApiResponse;
+import com.JK.SIMS.models.PM_models.ProductStatus;
+import com.JK.SIMS.models.PM_models.ProductsForPM;
+import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.salesOrder.SalesOrder;
 import com.JK.SIMS.models.salesOrder.SalesOrderAdjustments;
 import com.JK.SIMS.models.salesOrder.SalesOrderStatus;
@@ -11,10 +14,7 @@ import com.JK.SIMS.models.salesOrder.dtos.views.DetailedSalesOrderView;
 import com.JK.SIMS.models.salesOrder.dtos.views.SummarySalesOrderView;
 import com.JK.SIMS.models.salesOrder.orderItem.OrderItem;
 import com.JK.SIMS.models.salesOrder.orderItem.dtos.BulkOrderItemsRequestDto;
-import com.JK.SIMS.models.salesOrder.orderItem.dtos.OrderItemRequestDto;
-import com.JK.SIMS.models.PM_models.ProductStatus;
-import com.JK.SIMS.models.PM_models.ProductsForPM;
-import com.JK.SIMS.models.PaginatedResponse;
+import com.JK.SIMS.models.salesOrder.orderItem.dtos.OrderItemRequest;
 import com.JK.SIMS.repository.salesOrderRepo.OrderItemRepository;
 import com.JK.SIMS.repository.salesOrderRepo.SalesOrderRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
@@ -22,8 +22,10 @@ import com.JK.SIMS.service.orderManagementService.salesOrderService.SalesOrderSe
 import com.JK.SIMS.service.productManagementService.PMServiceHelper;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import com.JK.SIMS.service.utilities.SalesOrderServiceHelper;
+import com.JK.SIMS.service.utilities.qrCode.QrCodeUtil;
 import com.JK.SIMS.service.utilities.salesOrderFilterLogic.SoFilterStrategy;
 import com.JK.SIMS.service.utilities.salesOrderSearchLogic.SoSearchStrategy;
+import com.google.zxing.WriterException;
 import jakarta.annotation.Nullable;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;
@@ -41,6 +43,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -57,6 +60,7 @@ public class SalesOrderServiceImpl implements SalesOrderService {
     private final PMServiceHelper pmServiceHelper;
     private final StockManagementLogic stockManagementLogic;
     private final SalesOrderServiceHelper salesOrderServiceHelper;
+    private final QrCodeUtil qrCodeUtil;
     private final SecurityUtils securityUtils;
     private final SoSearchStrategy soSearchStrategy;
     private final SoFilterStrategy soFilterStrategy;
@@ -66,7 +70,7 @@ public class SalesOrderServiceImpl implements SalesOrderService {
     @Autowired
     public SalesOrderServiceImpl(GlobalServiceHelper globalServiceHelper, SalesOrderRepository salesOrderRepository,
                                  OrderItemRepository orderItemRepository, PMServiceHelper pmServiceHelper,
-                                 StockManagementLogic stockManagementLogic, SalesOrderServiceHelper salesOrderServiceHelper,
+                                 StockManagementLogic stockManagementLogic, SalesOrderServiceHelper salesOrderServiceHelper, QrCodeUtil qrCodeUtil,
                                  SecurityUtils securityUtils, @Qualifier("omSoSearchStrategy") SoSearchStrategy soSearchStrategy,
                                  @Qualifier("filterSalesOrders") SoFilterStrategy soFilterStrategy) {
         this.globalServiceHelper = globalServiceHelper;
@@ -75,6 +79,7 @@ public class SalesOrderServiceImpl implements SalesOrderService {
         this.pmServiceHelper = pmServiceHelper;
         this.stockManagementLogic = stockManagementLogic;
         this.salesOrderServiceHelper = salesOrderServiceHelper;
+        this.qrCodeUtil = qrCodeUtil;
         this.securityUtils = securityUtils;
         this.soSearchStrategy = soSearchStrategy;
         this.soFilterStrategy = soFilterStrategy;
@@ -122,8 +127,9 @@ public class SalesOrderServiceImpl implements SalesOrderService {
 
     @Override
     @Transactional
-    public ApiResponse<String> createOrder(@Valid SalesOrderRequestDto salesOrderRequestDto, String jwtToken) {
+    public ApiResponse<String> createSalesOrder(@Valid SalesOrderRequestDto salesOrderRequestDto, String jwtToken) {
         List<OrderItem> reservedItems = new ArrayList<>();
+        boolean success = false;
         try {
             // Validate the request and Create the Entity
             salesOrderServiceHelper.validateSalesOrderItems(salesOrderRequestDto.getOrderItems());
@@ -135,34 +141,38 @@ public class SalesOrderServiceImpl implements SalesOrderService {
             populateSalesOrderWithItems(salesOrder, salesOrderRequestDto.getOrderItems());
             reservedItems.addAll(salesOrder.getItems()); // Track reserved items
 
-            salesOrderRepository.save(salesOrder); // This might fail
-            logger.info("OM-SO createOrder(): SalesOrder created successfully with reference ID: {}", orderReference);
+            salesOrderRepository.save(salesOrder); // This still might fail
+            success = true;
+            logger.info("OM-SO createSalesOrder(): SalesOrder created successfully with reference ID: {}", orderReference);
             return new ApiResponse<>(true, "SalesOrder created successfully and it is under APPROVED status");
-
         } catch (ValidationException | InsufficientStockException | ResourceNotFoundException e) {
-            // Expected business exceptions - rollback reservations
-            rollbackReservations(reservedItems);
-            logger.error("OM-SO createOrder(): Validation error - {}", e.getMessage());
+            logger.error("OM-SO createSalesOrder(): Validation error - {}", e.getMessage());
             throw e;
         } catch (DataIntegrityViolationException e) {
-            // Unexpected constraint violation - rollback reservations
-            rollbackReservations(reservedItems);
             if (e.getCause() instanceof ConstraintViolationException) {
                 logger.warn("SalesOrder reference collision detected");
             }
-            logger.error("OM-SO createOrder(): Data integrity error - {}", e.getMessage());
+            logger.error("OM-SO createSalesOrder(): Data integrity error - {}", e.getMessage());
             throw new DatabaseException("Failed to save the order due to data integrity violation", e);
         } catch (DataAccessException dae) {
-            // Database errors - rollback reservations
-            rollbackReservations(reservedItems);
-            logger.error("OM-SO createOrder(): Database error - {}", dae.getMessage());
-            throw new DatabaseException("OM-SO createOrder(): Failed to save the order to the database.", dae);
+            logger.error("OM-SO createSalesOrder(): Database error - {}", dae.getMessage());
+            throw new DatabaseException("OM-SO createSalesOrder(): Failed to save the order to the database.", dae);
         } catch (Exception e) {
-            // Any other unexpected error - rollback reservations
-            rollbackReservations(reservedItems);
-            logger.error("OM-SO createOrder(): Unexpected error - {}", e.getMessage());
+            logger.error("OM-SO createSalesOrder(): Unexpected error - {}", e.getMessage());
             throw new ServiceException("Internal Service error occurred while creating the order.", e);
+        } finally {
+            // Any other unexpected error - rollback reservations
+            if(!success && !reservedItems.isEmpty()) {
+                rollbackReservations(reservedItems);
+            }
         }
+    }
+
+    private void generateAndLinkQrCode(SalesOrder salesOrder) throws IOException, WriterException {
+        String secureToken = GlobalServiceHelper.generateToken();
+        String qrData = "http://localhost:8080/api/v1/products/manage-order/so/qr/" + secureToken;
+        byte[] qrImageBytes = qrCodeUtil.generateQrCodeImage(qrData, 250, 250);
+        // TODO: Need to complete
     }
 
     private void rollbackReservations(List<OrderItem> reservedItems) {
@@ -217,7 +227,7 @@ public class SalesOrderServiceImpl implements SalesOrderService {
         Optional.ofNullable(customerName).ifPresent(name -> orderToBeUpdated.setCustomerName(name.trim()));
     }
 
-    private void updateItemQuantity(SalesOrder salesOrder, List<OrderItemRequestDto> orderItemsDto) {
+    private void updateItemQuantity(SalesOrder salesOrder, List<OrderItemRequest> orderItemsDto) {
         log.debug("List {}", orderItemsDto); // debug
         if (orderItemsDto == null || orderItemsDto.isEmpty()) {
             return; // Nothing to update
@@ -232,7 +242,7 @@ public class SalesOrderServiceImpl implements SalesOrderService {
         // Track stock adjustments for rollback
         List<SalesOrderAdjustments> stockAdjustments = new ArrayList<>();
         try {
-            for(OrderItemRequestDto itemDto : orderItemsDto) {
+            for(OrderItemRequest itemDto : orderItemsDto) {
                 String productId = itemDto.getProductId();
                 if(existingItemsMap.containsKey(productId)){
                     OrderItem existingItem = existingItemsMap.get(productId);
@@ -321,15 +331,15 @@ public class SalesOrderServiceImpl implements SalesOrderService {
      * from a method that already has an active transaction.
      *
      * @param salesOrder The sales order to populate
-     * @param orderItemRequestDtoList List of order items to add
+     * @param orderItemRequestList List of order items to add
      * @throws ValidationException if product is not active
      * @throws InsufficientStockException if stock is insufficient
      * @throws ResourceNotFoundException if product/inventory not found
      */
-    private void populateSalesOrderWithItems(SalesOrder salesOrder, List<OrderItemRequestDto> orderItemRequestDtoList){
-        List<OrderItem> items = new ArrayList<>();
+    private void populateSalesOrderWithItems(SalesOrder salesOrder, List<OrderItemRequest> orderItemRequestList){
+        List<OrderItem> reservationItemList = new ArrayList<>();
         try {
-            for (OrderItemRequestDto itemDto : orderItemRequestDtoList ) {
+            for (OrderItemRequest itemDto : orderItemRequestList) {
                 ProductsForPM product = pmServiceHelper.findProductById(itemDto.getProductId());
 
                 // Validate the ordered Product Status
@@ -339,17 +349,17 @@ public class SalesOrderServiceImpl implements SalesOrderService {
                 // Reserve stock atomically - throws "InsufficientStockException" if insufficient stock
                 stockManagementLogic.reserveStock(product.getProductID(), itemDto.getQuantity());
 
-                // Create and Add OrderItem to SalesOrder
+                // Create and Add OrderItem to Reservation List
                 OrderItem orderItem = createOrderItem(product, itemDto.getQuantity());
-                items.add(orderItem);
+                reservationItemList.add(orderItem);
             }
             // Add all OrderItems to the SalesOrder after successful reservation
-            for(OrderItem item : items) {
+            for(OrderItem item : reservationItemList) {
                 salesOrder.addOrderItem(item);
             }
         } catch (Exception e) {
             // Rollback the reservations if any error occurred
-            rollbackReservations(items);
+            rollbackReservations(reservationItemList);
             log.error("OM-SO populateSalesOrderWithItems(): Error - {}", e.getMessage());
             throw e;
         }

@@ -3,7 +3,7 @@ package com.JK.SIMS.models.salesOrder.dtos.views;
 import com.JK.SIMS.models.salesOrder.SalesOrder;
 import com.JK.SIMS.models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.salesOrder.orderItem.OrderItem;
-import com.JK.SIMS.models.salesOrder.orderItem.dtos.OrderItemResponseDto;
+import com.JK.SIMS.models.salesOrder.orderItem.dtos.OrderItemResponse;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -30,7 +30,7 @@ public class DetailedSalesOrderView {
 
     // New fields
     private LocalDateTime deliveryDate;
-    private List<OrderItemResponseDto> items; // Nested DTO for OrderItem
+    private List<OrderItemResponse> items; // Nested DTO for OrderItem
     private String confirmedBy;
     private LocalDateTime lastUpdate;
 
@@ -51,7 +51,7 @@ public class DetailedSalesOrderView {
         // Set up New fields
         this.deliveryDate = salesOrder.getDeliveryDate();
         this.items = salesOrder.getItems().stream()
-                .map(item -> new OrderItemResponseDto(
+                .map(item -> new OrderItemResponse(
                         item.getId(),
                         item.getProduct().getProductID(),
                         item.getProduct().getName(),

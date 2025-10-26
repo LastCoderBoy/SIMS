@@ -15,8 +15,6 @@ import java.io.IOException;
 public class QrCodeUtil {
 
     public byte[] generateQrCodeImage(String data, int width, int height) throws WriterException, IOException {
-//        String secureToken = GlobalServiceHelper.generateToken();
-//        String qrData = "http://localhost:8080/api/v1/products/manage-order/so/qr/" + secureToken;
 
         QRCodeWriter qrCodeWriter = new QRCodeWriter();
         BitMatrix bitMatrix = qrCodeWriter.encode(data, BarcodeFormat.QR_CODE, width, height);

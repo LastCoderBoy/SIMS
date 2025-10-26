@@ -11,10 +11,10 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@Table(name = "sales_order_qr_codes")
 public class SalesOrderQRCode {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -45,7 +45,6 @@ public class SalesOrderQRCode {
 
     @Column(length = 255)
     private String userAgent; // "Chrome on Windows" etc.
-
 
     // ***** Relationship detail *****
     @OneToOne(mappedBy = "qrCode")

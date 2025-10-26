@@ -8,5 +8,5 @@ import java.util.List;
 @Data
 public class BulkOrderItemsRequestDto {
     @NotEmpty(message = "Order items are required")
-    List<OrderItemRequestDto> orderItems;
+    List<OrderItemRequest> orderItems;
 }

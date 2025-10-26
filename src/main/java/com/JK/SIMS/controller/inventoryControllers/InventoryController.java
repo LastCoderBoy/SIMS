@@ -81,7 +81,7 @@ public class InventoryController {
             throw new IllegalArgumentException("IC: bulkStockOutOrders() Invalid Token provided.");
         }
         String jwtToken = TokenUtils.extractToken(token);
-        ApiResponse<Void> response = soServiceInIc.processOrderRequest(request, jwtToken);
+        ApiResponse<Void> response = soServiceInIc.processSalesOrder(request, jwtToken);
         return ResponseEntity.ok(response);
     }
 

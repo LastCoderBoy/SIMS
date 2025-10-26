@@ -1,7 +1,7 @@
 package com.JK.SIMS.models.salesOrder.dtos;
 
 import com.JK.SIMS.models.salesOrder.SalesOrderStatus;
-import com.JK.SIMS.models.salesOrder.orderItem.dtos.OrderItemResponseDto;
+import com.JK.SIMS.models.salesOrder.orderItem.dtos.OrderItemResponse;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -24,6 +24,6 @@ public class SalesOrderResponseDto {
     private LocalDateTime deliveryDate;
     private LocalDateTime lastUpdate;
     private BigDecimal totalAmount;
-    private List<OrderItemResponseDto> items;
+    private List<OrderItemResponse> items;
 }
 

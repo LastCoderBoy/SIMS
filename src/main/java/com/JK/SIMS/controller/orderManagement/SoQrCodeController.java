@@ -1,10 +1,8 @@
 package com.JK.SIMS.controller.orderManagement;
 
-import com.JK.SIMS.config.security.SecurityUtils;
 import com.JK.SIMS.config.security.TokenUtils;
 import com.JK.SIMS.exceptionHandler.InvalidTokenException;
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.UM_models.Roles;
 import com.JK.SIMS.models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.salesOrder.dtos.views.DetailedSalesOrderView;
 import com.JK.SIMS.service.orderManagementService.salesOrderService.SoQrCodeService;

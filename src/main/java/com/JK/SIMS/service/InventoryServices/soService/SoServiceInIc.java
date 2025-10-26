@@ -105,7 +105,7 @@ public class SoServiceInIc {
 
     // STOCK OUT button
     @Transactional
-    public ApiResponse<Void> processOrderRequest(ProcessSalesOrderRequestDto requestDto, String jwtToken){
+    public ApiResponse<Void> processSalesOrder(ProcessSalesOrderRequestDto requestDto, String jwtToken){
         try {
             String confirmedPerson = securityUtils.validateAndExtractUsername(jwtToken);
             SalesOrder salesOrder = getSalesOrderById(requestDto.getOrderId());
@@ -174,8 +174,7 @@ public class SoServiceInIc {
         }
     }
 
-    @Transactional(readOnly = true)
-    public SalesOrder getSalesOrderById(Long orderId) {
+    private SalesOrder getSalesOrderById(Long orderId) {
         return salesOrderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("SalesOrder not found"));
     }
