@@ -15,7 +15,6 @@ import java.io.IOException;
 public class QrCodeUtil {
 
     public byte[] generateQrCodeImage(String data, int width, int height) throws WriterException, IOException {
-
         QRCodeWriter qrCodeWriter = new QRCodeWriter();
         BitMatrix bitMatrix = qrCodeWriter.encode(data, BarcodeFormat.QR_CODE, width, height);
         try (ByteArrayOutputStream pngOutputStream = new ByteArrayOutputStream()) {

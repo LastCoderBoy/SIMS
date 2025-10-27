@@ -15,23 +15,22 @@ import com.JK.SIMS.models.salesOrder.dtos.views.SummarySalesOrderView;
 import com.JK.SIMS.models.salesOrder.orderItem.OrderItem;
 import com.JK.SIMS.models.salesOrder.orderItem.dtos.BulkOrderItemsRequestDto;
 import com.JK.SIMS.models.salesOrder.orderItem.dtos.OrderItemRequest;
+import com.JK.SIMS.models.salesOrder.qrcode.SalesOrderQRCode;
 import com.JK.SIMS.repository.salesOrderRepo.OrderItemRepository;
 import com.JK.SIMS.repository.salesOrderRepo.SalesOrderRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
+import com.JK.SIMS.service.awsService.S3Service;
 import com.JK.SIMS.service.orderManagementService.salesOrderService.SalesOrderService;
+import com.JK.SIMS.service.orderManagementService.salesOrderService.SoQrCodeService;
 import com.JK.SIMS.service.productManagementService.PMServiceHelper;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import com.JK.SIMS.service.utilities.SalesOrderServiceHelper;
-import com.JK.SIMS.service.utilities.qrCode.QrCodeUtil;
 import com.JK.SIMS.service.utilities.salesOrderFilterLogic.SoFilterStrategy;
 import com.JK.SIMS.service.utilities.salesOrderSearchLogic.SoSearchStrategy;
-import com.google.zxing.WriterException;
 import jakarta.annotation.Nullable;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataAccessException;
@@ -43,7 +42,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -54,35 +52,34 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 public class SalesOrderServiceImpl implements SalesOrderService {
-    private static final Logger logger = LoggerFactory.getLogger(SalesOrderServiceImpl.class);
 
     private final GlobalServiceHelper globalServiceHelper;
     private final PMServiceHelper pmServiceHelper;
     private final StockManagementLogic stockManagementLogic;
     private final SalesOrderServiceHelper salesOrderServiceHelper;
-    private final QrCodeUtil qrCodeUtil;
     private final SecurityUtils securityUtils;
     private final SoSearchStrategy soSearchStrategy;
     private final SoFilterStrategy soFilterStrategy;
+    private final SoQrCodeService soQrCodeService;
 
     private final SalesOrderRepository salesOrderRepository;
     private final OrderItemRepository orderItemRepository;
     @Autowired
     public SalesOrderServiceImpl(GlobalServiceHelper globalServiceHelper, SalesOrderRepository salesOrderRepository,
                                  OrderItemRepository orderItemRepository, PMServiceHelper pmServiceHelper,
-                                 StockManagementLogic stockManagementLogic, SalesOrderServiceHelper salesOrderServiceHelper, QrCodeUtil qrCodeUtil,
+                                 StockManagementLogic stockManagementLogic, SalesOrderServiceHelper salesOrderServiceHelper,
                                  SecurityUtils securityUtils, @Qualifier("omSoSearchStrategy") SoSearchStrategy soSearchStrategy,
-                                 @Qualifier("filterSalesOrders") SoFilterStrategy soFilterStrategy) {
+                                 @Qualifier("filterSalesOrders") SoFilterStrategy soFilterStrategy, SoQrCodeService soQrCodeService) {
         this.globalServiceHelper = globalServiceHelper;
         this.salesOrderRepository = salesOrderRepository;
         this.orderItemRepository = orderItemRepository;
         this.pmServiceHelper = pmServiceHelper;
         this.stockManagementLogic = stockManagementLogic;
         this.salesOrderServiceHelper = salesOrderServiceHelper;
-        this.qrCodeUtil = qrCodeUtil;
         this.securityUtils = securityUtils;
         this.soSearchStrategy = soSearchStrategy;
         this.soFilterStrategy = soFilterStrategy;
+        this.soQrCodeService = soQrCodeService;
     }
 
     @Override
@@ -129,13 +126,26 @@ public class SalesOrderServiceImpl implements SalesOrderService {
     @Transactional
     public ApiResponse<String> createSalesOrder(@Valid SalesOrderRequestDto salesOrderRequestDto, String jwtToken) {
         List<OrderItem> reservedItems = new ArrayList<>();
+        String qrCodeS3Key = null; // Track S3 key for rollback
         boolean success = false;
         try {
             // Validate the request and Create the Entity
             salesOrderServiceHelper.validateSalesOrderItems(salesOrderRequestDto.getOrderItems());
             String user = securityUtils.validateAndExtractUsername(jwtToken);
             String orderReference = generateOrderReference(LocalDate.now());
-            SalesOrder salesOrder = createSalesOrderEntity(salesOrderRequestDto, orderReference, user);
+
+            // Create the QR Code and upload to the AWS S3 bucket
+            SalesOrderQRCode salesOrderQRCode = soQrCodeService.generateAndLinkQrCode(orderReference);
+            qrCodeS3Key = "qr-codes/" + orderReference + ".png"; // Tracking
+
+
+            // Create the SalesOrder entity and link the QR Code
+            SalesOrder salesOrder = createSalesOrderEntity(
+                    salesOrderRequestDto,
+                    orderReference,
+                    user,
+                    salesOrderQRCode
+            );
 
             // Process each item with stock reservation
             populateSalesOrderWithItems(salesOrder, salesOrderRequestDto.getOrderItems());
@@ -143,36 +153,68 @@ public class SalesOrderServiceImpl implements SalesOrderService {
 
             salesOrderRepository.save(salesOrder); // This still might fail
             success = true;
-            logger.info("OM-SO createSalesOrder(): SalesOrder created successfully with reference ID: {}", orderReference);
-            return new ApiResponse<>(true, "SalesOrder created successfully and it is under APPROVED status");
+            log.info("OM-SO createSalesOrder(): SalesOrder created successfully with reference ID: {}", orderReference);
+            return new ApiResponse<>(true, "SalesOrder created successfully and it is under PENDING status");
         } catch (ValidationException | InsufficientStockException | ResourceNotFoundException e) {
-            logger.error("OM-SO createSalesOrder(): Validation error - {}", e.getMessage());
+            log.error("OM-SO createSalesOrder(): Validation error - {}", e.getMessage());
             throw e;
         } catch (DataIntegrityViolationException e) {
             if (e.getCause() instanceof ConstraintViolationException) {
-                logger.warn("SalesOrder reference collision detected");
+                log.warn("SalesOrder reference collision detected");
             }
-            logger.error("OM-SO createSalesOrder(): Data integrity error - {}", e.getMessage());
+            log.error("OM-SO createSalesOrder(): Data integrity error - {}", e.getMessage());
             throw new DatabaseException("Failed to save the order due to data integrity violation", e);
         } catch (DataAccessException dae) {
-            logger.error("OM-SO createSalesOrder(): Database error - {}", dae.getMessage());
+            log.error("OM-SO createSalesOrder(): Database error - {}", dae.getMessage());
             throw new DatabaseException("OM-SO createSalesOrder(): Failed to save the order to the database.", dae);
         } catch (Exception e) {
-            logger.error("OM-SO createSalesOrder(): Unexpected error - {}", e.getMessage());
+            log.error("OM-SO createSalesOrder(): Unexpected error - {}", e.getMessage());
             throw new ServiceException("Internal Service error occurred while creating the order.", e);
         } finally {
             // Any other unexpected error - rollback reservations
-            if(!success && !reservedItems.isEmpty()) {
-                rollbackReservations(reservedItems);
+            if (!success) {
+                // Rollback stock reservations
+                if (!reservedItems.isEmpty()) {
+                    rollbackReservations(reservedItems);
+                }
+                // Rollback S3 upload
+                if (qrCodeS3Key != null) {
+                    rollbackS3Upload(qrCodeS3Key);
+                }
             }
         }
     }
 
-    private void generateAndLinkQrCode(SalesOrder salesOrder) throws IOException, WriterException {
-        String secureToken = GlobalServiceHelper.generateToken();
-        String qrData = "http://localhost:8080/api/v1/products/manage-order/so/qr/" + secureToken;
-        byte[] qrImageBytes = qrCodeUtil.generateQrCodeImage(qrData, 250, 250);
-        // TODO: Need to complete
+    private void rollbackS3Upload(String s3Key) {
+        try {
+            soQrCodeService.deleteQrCodeFromS3(s3Key);
+            log.info("Successfully rolled back S3 upload for key: {}", s3Key);
+        } catch (Exception e) {
+            log.error("Failed to rollback S3 upload for key {}: {}", s3Key, e.getMessage());
+        }
+    }
+
+    private SalesOrder createSalesOrderEntity(SalesOrderRequestDto salesOrderRequestDto, String orderReference,
+                                              String createdPerson, SalesOrderQRCode salesOrderQRCode) {
+        SalesOrder salesOrder = new SalesOrder();
+        salesOrder.setOrderReference(orderReference);
+        salesOrder.setDestination(salesOrderRequestDto.getDestination().trim());
+        salesOrder.setStatus(SalesOrderStatus.PENDING);
+        salesOrder.setCreatedBy(createdPerson);
+        salesOrder.setCustomerName(salesOrderRequestDto.getCustomerName().trim());
+
+        // Calculate estimated delivery date (7 business days)
+        LocalDateTime estimatedDelivery = LocalDateTime.now().plusDays(7);
+        salesOrder.setEstimatedDeliveryDate(estimatedDelivery);
+
+        // Link the QR Code to the SalesOrder (will save the QR Code entity as well)
+        salesOrder.setQrCode(salesOrderQRCode);
+
+        // Initialize items to avoid null pointer exception
+        salesOrder.setItems(new ArrayList<>());
+
+        log.debug("OM-SO createSalesOrderEntity(): Created salesOrder entity with reference {}", orderReference);
+        return salesOrder;
     }
 
     private void rollbackReservations(List<OrderItem> reservedItems) {
@@ -182,9 +224,9 @@ public class SalesOrderServiceImpl implements SalesOrderService {
                         item.getProduct().getProductID(),
                         item.getQuantity()
                 );
-                logger.debug("Rolled back reservation for product: {}", item.getProduct().getProductID());
+                log.debug("Rolled back reservation for product: {}", item.getProduct().getProductID());
             } catch (Exception rollbackEx) {
-                logger.error("Failed to rollback reservation for product {}: {}",
+                log.error("Failed to rollback reservation for product {}: {}",
                         item.getProduct().getProductID(), rollbackEx.getMessage());
             }
         }
@@ -296,6 +338,8 @@ public class SalesOrderServiceImpl implements SalesOrderService {
     public ApiResponse<String> addItemsToSalesOrder(Long orderId,
                                                     @Valid BulkOrderItemsRequestDto bulkOrderItemsRequestDto,
                                                     String jwtToken){
+        List<OrderItem> newlyAddedItems = new ArrayList<>();
+        boolean success = false;
         try {
             SalesOrder salesOrder = getSalesOrderById(orderId);
             if (salesOrder.isFinalized()) {
@@ -305,23 +349,38 @@ public class SalesOrderServiceImpl implements SalesOrderService {
             salesOrderServiceHelper.validateSalesOrderItems(bulkOrderItemsRequestDto.getOrderItems());
             String updatedUser = securityUtils.validateAndExtractUsername(jwtToken);
 
+            // Keep track of how many items existed before adding new ones
+            int initialItemCount = salesOrder.getItems().size();
+
             // Process and add items with stock reservation
             populateSalesOrderWithItems(salesOrder, bulkOrderItemsRequestDto.getOrderItems());
 
+            // Identify only the newly added items for potential rollback
+            if (salesOrder.getItems().size() > initialItemCount) {
+                newlyAddedItems.addAll(salesOrder.getItems().subList(initialItemCount, salesOrder.getItems().size()));
+            }
+
             salesOrder.setUpdatedBy(updatedUser);
             salesOrderRepository.save(salesOrder);
-            logger.info("OM-SO addItemsToSalesOrder(): New Items added to Sales Order: {}", salesOrder.getOrderReference());
+            success = true;
+            log.info("OM-SO addItemsToSalesOrder(): New Items added to Sales Order: {}", salesOrder.getOrderReference());
             return new ApiResponse<>(true, "Order Item(s) added successfully");
 
         } catch (ValidationException | InsufficientStockException | ResourceNotFoundException e) {
-            logger.error("OM-SO addItemsToSalesOrder(): Error - {}", e.getMessage());
+            log.error("OM-SO addItemsToSalesOrder(): Error - {}", e.getMessage());
             throw e;
         } catch (DataAccessException dae) {
-            logger.error("OM-SO addItemsToSalesOrder(): Database error - {}", dae.getMessage());
+            log.error("OM-SO addItemsToSalesOrder(): Database error - {}", dae.getMessage());
             throw new DatabaseException("OM-SO addItemsToSalesOrder(): Failed to add items to the order.", dae);
         } catch (Exception e) {
-            logger.error("OM-SO addItemsToSalesOrder(): Unexpected error - {}", e.getMessage());
+            log.error("OM-SO addItemsToSalesOrder(): Unexpected error - {}", e.getMessage());
             throw new ServiceException("Internal Service error occurred while adding items to the order.", e);
+        } finally {
+            // This is the crucial part: if the operation failed, clean up the reservations
+            if (!success && !newlyAddedItems.isEmpty()) {
+                log.warn("Operation failed. Rolling back reservations for newly added items to order ID: {}", orderId);
+                rollbackReservations(newlyAddedItems);
+            }
         }
     }
 
@@ -337,31 +396,20 @@ public class SalesOrderServiceImpl implements SalesOrderService {
      * @throws ResourceNotFoundException if product/inventory not found
      */
     private void populateSalesOrderWithItems(SalesOrder salesOrder, List<OrderItemRequest> orderItemRequestList){
-        List<OrderItem> reservationItemList = new ArrayList<>();
-        try {
-            for (OrderItemRequest itemDto : orderItemRequestList) {
-                ProductsForPM product = pmServiceHelper.findProductById(itemDto.getProductId());
+        for (OrderItemRequest itemDto : orderItemRequestList) {
+            ProductsForPM product = pmServiceHelper.findProductById(itemDto.getProductId());
 
-                // Validate the ordered Product Status
-                if (product.getStatus() != ProductStatus.ACTIVE && product.getStatus() != ProductStatus.ON_ORDER) {
-                    throw new ValidationException("Product '" + product.getName() + " ID: " + product.getProductID() + " is not active.");
-                }
-                // Reserve stock atomically - throws "InsufficientStockException" if insufficient stock
-                stockManagementLogic.reserveStock(product.getProductID(), itemDto.getQuantity());
+            // Validate product status
+            if (product.getStatus() != ProductStatus.ACTIVE && product.getStatus() != ProductStatus.ON_ORDER) {
+                throw new ValidationException("Product '" + product.getName() + " ID: " + product.getProductID() + " is not active.");
+            }
 
-                // Create and Add OrderItem to Reservation List
-                OrderItem orderItem = createOrderItem(product, itemDto.getQuantity());
-                reservationItemList.add(orderItem);
-            }
-            // Add all OrderItems to the SalesOrder after successful reservation
-            for(OrderItem item : reservationItemList) {
-                salesOrder.addOrderItem(item);
-            }
-        } catch (Exception e) {
-            // Rollback the reservations if any error occurred
-            rollbackReservations(reservationItemList);
-            log.error("OM-SO populateSalesOrderWithItems(): Error - {}", e.getMessage());
-            throw e;
+            // Reserve stock - throws exception if insufficient
+            stockManagementLogic.reserveStock(product.getProductID(), itemDto.getQuantity());
+
+            // Create and add OrderItem
+            OrderItem orderItem = createOrderItem(product, itemDto.getQuantity());
+            salesOrder.addOrderItem(orderItem);
         }
     }
 
@@ -392,7 +440,7 @@ public class SalesOrderServiceImpl implements SalesOrderService {
             // After removing update the status
             salesOrderServiceHelper.updateSoStatusBasedOnItemQuantity(salesOrder);
             salesOrderRepository.save(salesOrder);
-            logger.info("OM-SO removeItemFromSalesOrder(): Item {} removed from Sales Order {}", itemId, salesOrder.getOrderReference());
+            log.info("OM-SO removeItemFromSalesOrder(): Item {} removed from Sales Order {}", itemId, salesOrder.getOrderReference());
             return new ApiResponse<>(true, "Item removed successfully");
         } catch (ResourceNotFoundException | ValidationException e) {
             throw e;
@@ -400,25 +448,6 @@ public class SalesOrderServiceImpl implements SalesOrderService {
             log.error("OM-SO removeItemFromSalesOrder(): Unexpected error - {}", e.getMessage());
             throw new ServiceException("Internal error removing item", e);
         }
-    }
-
-    private SalesOrder createSalesOrderEntity(SalesOrderRequestDto salesOrderRequestDto, String orderReference, String createdPerson ) {
-        SalesOrder salesOrder = new SalesOrder();
-        salesOrder.setOrderReference(orderReference);
-        salesOrder.setDestination(salesOrderRequestDto.getDestination().trim());
-        salesOrder.setStatus(SalesOrderStatus.PENDING);
-        salesOrder.setCreatedBy(createdPerson);
-        salesOrder.setCustomerName(salesOrderRequestDto.getCustomerName().trim());
-
-        // Calculate estimated delivery date (7 business days)
-        LocalDateTime estimatedDelivery = LocalDateTime.now().plusDays(7);
-        salesOrder.setEstimatedDeliveryDate(estimatedDelivery);
-
-        // To avoid null pointer exception
-        salesOrder.setItems(new ArrayList<>());
-
-        log.debug("OM-SO createSalesOrderEntity(): Created salesOrder entity with reference {}", orderReference);
-        return salesOrder;
     }
 
     private OrderItem createOrderItem(ProductsForPM product, Integer orderedQuantity) {

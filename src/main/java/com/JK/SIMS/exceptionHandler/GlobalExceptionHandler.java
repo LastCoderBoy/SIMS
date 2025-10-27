@@ -10,6 +10,8 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 
 import java.nio.file.AccessDeniedException;
 import java.util.Date;
@@ -105,6 +107,18 @@ public class GlobalExceptionHandler {
                 "{}Authentication error: {}");
     }
 
+    @ExceptionHandler(NoSuchKeyException.class)
+    public ResponseEntity<ErrorObject> handleNoSuchKeyException(NoSuchKeyException ex) {
+        return handleException(ex, HttpStatus.NOT_FOUND,
+                "{}S3 object not found: {}");
+    }
+
+    @ExceptionHandler(NoSuchBucketException.class)
+    public ResponseEntity<ErrorObject> handleNoSuchBucketException(NoSuchBucketException ex) {
+        return handleException(ex, HttpStatus.NOT_FOUND,
+                "{}S3 bucket not found: {}");
+    }
+
 
     // Server Errors (5xx)
     @ExceptionHandler({DatabaseException.class, InventoryException.class})
@@ -128,5 +142,12 @@ public class GlobalExceptionHandler {
                 new Date()
         );
         return new ResponseEntity<>(errorObject, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    // Custom S3Exception (for your wrapper)
+    @ExceptionHandler(S3Exception.class)
+    public ResponseEntity<ErrorObject> handleCustomS3Exception(S3Exception ex) {
+        return handleException(ex, HttpStatus.INTERNAL_SERVER_ERROR, LogLevel.ERROR,
+                "{}Custom S3 error: {}");
     }
 }

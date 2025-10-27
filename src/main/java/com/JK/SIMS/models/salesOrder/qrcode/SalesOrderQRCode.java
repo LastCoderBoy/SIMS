@@ -1,6 +1,7 @@
 package com.JK.SIMS.models.salesOrder.qrcode;
 
 import com.JK.SIMS.models.salesOrder.SalesOrder;
+import com.JK.SIMS.service.awsService.S3Service;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -8,6 +9,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 
 @Entity
@@ -20,21 +22,18 @@ public class SalesOrderQRCode {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
-    private String qrCodeUrl; // Full S3 URL (e.g. https://s3.amazonaws.com/bucket/...
+    @Column(name = "qr_token", unique = true, nullable = false, length = 100)
+    private String qrToken; // unique secure token for identifying scans
+
+    @Column(name = "qr_code_s3_key", nullable = false, length = 500)
+    private String qrCodeS3Key; // S3 key for the QR code image
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime generatedAt;
 
-    @Column
-    private LocalDateTime lastScannedAt;
-
-//    @Column
-//    private String location;
-
-    @Column(nullable = false, unique = true)
-    private String qrToken; // unique secure token for identifying scans
+    @Column(name = "last_scanned_at")
+    private LocalDateTime lastScannedAt; // When the QR code was last scanned
 
     // ***** Scanner details *****
     @Column
@@ -48,7 +47,19 @@ public class SalesOrderQRCode {
 
     // ***** Relationship detail *****
     @OneToOne(mappedBy = "qrCode")
-    @JsonIgnore  // avoid infinite loop
+    @JsonIgnore  // Avoid infinite loop in JSON serialization
     private SalesOrder salesOrder;
 
+
+    /**
+     * Helper method to get a temporary URL for the QR code
+     * This should be called from a service layer, not directly
+     */
+    @Transient
+    public String getQrCodeUrl(S3Service s3Service, Duration duration) {
+        if (qrCodeS3Key != null) {
+            return s3Service.generatePresignedUrl(qrCodeS3Key, duration);
+        }
+        return null;
+    }
 }
