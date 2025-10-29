@@ -70,7 +70,7 @@ public class DamageLossService {
     }
 
     @Transactional
-    public void addDamageLoss(DamageLossDTORequest dtoRequest, String jwtToken) {
+    public void addDamageLoss(DamageLossRequest dtoRequest, String jwtToken) {
         try {
             validateDamageLossDto(dtoRequest);
 
@@ -96,7 +96,7 @@ public class DamageLossService {
     }
 
     @Transactional
-    public ApiResponse<DamageLoss> updateDamageLossProduct(Integer id, DamageLossDTORequest request) throws BadRequestException {
+    public ApiResponse<DamageLoss> updateDamageLossProduct(Integer id, DamageLossRequest request) throws BadRequestException {
         try {
             DamageLoss report = getDamageLossById(id);
             if (request == null || isRequestEmpty(request)) {
@@ -169,7 +169,7 @@ public class DamageLossService {
     }
 
     @Transactional(readOnly = true)
-    public PaginatedResponse<DamageLossDTO> searchProduct(String text, int page, int size) {
+    public PaginatedResponse<DamageLossResponse> searchProduct(String text, int page, int size) {
         try {
             Optional<String> inputText = Optional.ofNullable((text));
             if (inputText.isPresent() && !inputText.get().trim().isEmpty()) {
@@ -188,7 +188,7 @@ public class DamageLossService {
     }
 
     @Transactional(readOnly = true)
-    public PaginatedResponse<DamageLossDTO> filterProducts(String reason, String sortBy, String sortDirection, int page, int size) {
+    public PaginatedResponse<DamageLossResponse> filterProducts(String reason, String sortBy, String sortDirection, int page, int size) {
         try {
             // Parse sort direction
             Sort.Direction direction = sortDirection.equalsIgnoreCase("desc") ?
@@ -227,7 +227,7 @@ public class DamageLossService {
                 .orElseThrow(() -> new BadRequestException("DL (getDamageLossById): Report not found for ID: " + id));
     }
 
-    private void validateDamageLossDto(DamageLossDTORequest dto){
+    private void validateDamageLossDto(DamageLossRequest dto){
         List<String> errors = new ArrayList<>();
         if(dto != null){
             if(dto.sku() == null){
@@ -258,7 +258,7 @@ public class DamageLossService {
         }
     }
 
-    private DamageLoss convertToEntity(DamageLossDTORequest dto, InventoryControlData inventoryControlData, String user) {
+    private DamageLoss convertToEntity(DamageLossRequest dto, InventoryControlData inventoryControlData, String user) {
         BigDecimal price = inventoryControlData.getPmProduct().getPrice();
         BigDecimal lossValue = price.multiply(BigDecimal.valueOf(dto.quantityLost()));
 
@@ -288,12 +288,12 @@ public class DamageLossService {
                 quantityToRestore, product.getSKU(), updatedStock);
     }
 
-    private PaginatedResponse<DamageLossDTO> getAllDamageLoss(int page, int size) {
+    private PaginatedResponse<DamageLossResponse> getAllDamageLoss(int page, int size) {
         try {
             Pageable pageable = PageRequest.of(page, size, Sort.by("icProduct.pmProduct.name").ascending());
             Page<DamageLoss> dbResponse = damageLoss_repository.findAll(pageable);
 
-            PaginatedResponse<DamageLossDTO> dtoResult = transformToPaginatedDTO(dbResponse);
+            PaginatedResponse<DamageLossResponse> dtoResult = transformToPaginatedDTO(dbResponse);
             logger.info("DL (getAllDamageLoss): Returning {} paginated data", dtoResult.getContent().size());
             return dtoResult;
         } catch (DataAccessException de) {
@@ -303,23 +303,23 @@ public class DamageLossService {
         }
     }
 
-    private boolean isRequestEmpty(DamageLossDTORequest request) {
+    private boolean isRequestEmpty(DamageLossRequest request) {
         return request.sku() == null &&
                 request.lossDate() == null &&
                 request.quantityLost() == null &&
                 request.reason() == null;
     }
 
-    private PaginatedResponse<DamageLossDTO> transformToPaginatedDTO(Page<DamageLoss> dbResponse) {
-        PaginatedResponse<DamageLossDTO> result = new PaginatedResponse<>();
+    private PaginatedResponse<DamageLossResponse> transformToPaginatedDTO(Page<DamageLoss> dbResponse) {
+        PaginatedResponse<DamageLossResponse> result = new PaginatedResponse<>();
         result.setContent(dbResponse.getContent().stream().map(this::convertToDTO).toList());
         result.setTotalElements(dbResponse.getTotalElements());
         result.setTotalPages(dbResponse.getTotalPages());
         return result;
     }
 
-    private DamageLossDTO convertToDTO(DamageLoss damageLoss) {
-        return new DamageLossDTO(
+    private DamageLossResponse convertToDTO(DamageLoss damageLoss) {
+        return new DamageLossResponse(
                 damageLoss.getId(),
                 damageLoss.getIcProduct().getPmProduct().getName(),
                 damageLoss.getIcProduct().getPmProduct().getCategory(),

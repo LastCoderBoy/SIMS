@@ -2,8 +2,8 @@ package com.JK.SIMS.controller.inventoryControllers;
 
 import com.JK.SIMS.exceptionHandler.InvalidTokenException;
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.damage_loss.DamageLossDTO;
-import com.JK.SIMS.models.damage_loss.DamageLossDTORequest;
+import com.JK.SIMS.models.damage_loss.DamageLossResponse;
+import com.JK.SIMS.models.damage_loss.DamageLossRequest;
 import com.JK.SIMS.models.damage_loss.DamageLossPageResponse;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryServices.damageLossService.DamageLossService;
@@ -42,7 +42,7 @@ public class DamageLossController {
     @PostMapping
     @PreAuthorize("@securityUtils.hasAccess()")
     public ResponseEntity<?> addDamageLoss(
-            @RequestBody DamageLossDTORequest dtoRequest,
+            @RequestBody DamageLossRequest dtoRequest,
             @RequestHeader("Authorization") String token) throws AccessDeniedException {
         // Only the Admin or Managers can add Damage/Loss report
         if(token != null && !token.trim().isEmpty()) {
@@ -58,7 +58,7 @@ public class DamageLossController {
 
     @PutMapping("/{id}")
     @PreAuthorize("@securityUtils.hasAccess()")
-    public ResponseEntity<?> updateDamageLossProduct(@PathVariable Integer id, @RequestBody DamageLossDTORequest request) throws BadRequestException, AccessDeniedException {
+    public ResponseEntity<?> updateDamageLossProduct(@PathVariable Integer id, @RequestBody DamageLossRequest request) throws BadRequestException, AccessDeniedException {
         ApiResponse response = damageLossService.updateDamageLossProduct(id, request);
         return ResponseEntity.ok(response);
     }
@@ -76,7 +76,7 @@ public class DamageLossController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size){
         logger.info("DL: searchProduct() calling...");
-        PaginatedResponse<DamageLossDTO> dtoResponse = damageLossService.searchProduct(text, page, size);
+        PaginatedResponse<DamageLossResponse> dtoResponse = damageLossService.searchProduct(text, page, size);
         return ResponseEntity.ok(dtoResponse);
     }
 
@@ -88,7 +88,7 @@ public class DamageLossController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         logger.info("IC: filterProducts() calling with page {} and size {}...", page, size);
-        PaginatedResponse<DamageLossDTO> filteredDTOs = damageLossService.filterProducts(reason, sortBy, sortDirection, page, size);
+        PaginatedResponse<DamageLossResponse> filteredDTOs = damageLossService.filterProducts(reason, sortBy, sortDirection, page, size);
         return ResponseEntity.ok(filteredDTOs);
     }
 }

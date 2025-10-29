@@ -10,7 +10,9 @@ import com.JK.SIMS.models.salesOrder.SalesOrder;
 import com.JK.SIMS.models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.salesOrder.dtos.views.DetailedSalesOrderView;
 import com.JK.SIMS.models.salesOrder.qrcode.SalesOrderQRCode;
+import com.JK.SIMS.models.salesOrder.qrcode.dtos.QrCodeUrlResponse;
 import com.JK.SIMS.repository.salesOrderQrRepo.SalesOrderQrRepository;
+import com.JK.SIMS.repository.salesOrderRepo.SalesOrderRepository;
 import com.JK.SIMS.service.awsService.S3Service;
 import com.JK.SIMS.service.orderManagementService.salesOrderService.SoQrCodeService;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
@@ -20,33 +22,41 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.coyote.BadRequestException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.time.Clock;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
 @Slf4j
 public class SoQrCodeServiceImpl implements SoQrCodeService {
 
-    private final List<SalesOrderStatus> validUpdateStatusList = List.of(SalesOrderStatus.DELIVERY_IN_PROCESS, SalesOrderStatus.DELIVERED);
-    private final Clock clock;
+    @Value( "${app.backend.base-url}")
+    private String baseUrl;
 
+    private final List<SalesOrderStatus> validUpdateStatusList = List.of(
+            SalesOrderStatus.DELIVERY_IN_PROCESS, SalesOrderStatus.DELIVERED);
+    private final Clock clock;
     private final QrCodeUtil qrCodeUtil;
-    private final SalesOrderQrRepository salesOrderQrRepository;
     private final SecurityUtils securityUtils;
     private final S3Service s3Service;
 
+    private final SalesOrderRepository salesOrderRepository;
+    private final SalesOrderQrRepository salesOrderQrRepository;
+
     @Autowired
-    public SoQrCodeServiceImpl(Clock clock, QrCodeUtil qrCodeUtil, SalesOrderQrRepository salesOrderQrRepository, SecurityUtils securityUtils, S3Service s3Service) {
+    public SoQrCodeServiceImpl(Clock clock, QrCodeUtil qrCodeUtil, SalesOrderQrRepository salesOrderQrRepository, SecurityUtils securityUtils, S3Service s3Service, SalesOrderRepository salesOrderRepository) {
         this.clock = clock;
         this.qrCodeUtil = qrCodeUtil;
         this.salesOrderQrRepository = salesOrderQrRepository;
         this.securityUtils = securityUtils;
         this.s3Service = s3Service;
+        this.salesOrderRepository = salesOrderRepository;
     }
 
     @Override
@@ -104,9 +114,32 @@ public class SoQrCodeServiceImpl implements SoQrCodeService {
     }
 
     @Override
+    public QrCodeUrlResponse getPresignedQrCodeUrl(Long salesOrderId){
+        try {
+            SalesOrder salesOrder = getSalesOrderById(salesOrderId); // might throw ResourceNotFoundException
+
+            // Get the associated QR code entity and its S3 key
+            SalesOrderQRCode soQrEntity = salesOrder.getQrCode();
+            if (soQrEntity == null || soQrEntity.getQrCodeS3Key() == null) {
+                throw new ResourceNotFoundException("QR Code not found for SalesOrder ID: " + salesOrderId);
+            }
+            String s3Key = soQrEntity.getQrCodeS3Key();
+            String qrImageUrl = s3Service.generatePresignedUrl(s3Key, Duration.ofMinutes(5));
+
+            // Create the QrResponse Entity
+            LocalDateTime expiryTime = LocalDateTime.now(clock).plusMinutes(5);
+            return new QrCodeUrlResponse(qrImageUrl, salesOrder.getOrderReference(), expiryTime);
+        } catch (ResourceNotFoundException rnfe){
+            throw rnfe;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
     public SalesOrderQRCode generateAndLinkQrCode(String orderReference) throws IOException, WriterException {
         String secureToken = GlobalServiceHelper.generateToken();
-        String qrData = "http://localhost:8080/api/v1/products/manage-order/so/qr/" + secureToken;
+        String qrData = baseUrl + "/api/v1/products/manage-order/so/qr/" + secureToken;
         byte[] qrImageBytes = qrCodeUtil.generateQrCodeImage(qrData, 250, 250);
 
         // Define a unique object key (filename) for S3
@@ -118,26 +151,6 @@ public class SoQrCodeServiceImpl implements SoQrCodeService {
         salesOrderQRCode.setQrCodeS3Key(uploadedS3Key);
         salesOrderQRCode.setQrToken(secureToken);
         return salesOrderQRCode; // the Cascade setting will automatically save the entity
-    }
-
-    /**
-     * Get temporary URL for accessing the QR code image
-     * Call this when you need to display or share the QR code
-     *
-     * @param s3Key The S3 key from the QR code entity
-     * @param duration How long the URL should be valid
-     * @return Temporary pre-signed URL
-     */
-    @Override
-    public String getQrCodeUrl(String s3Key, Duration duration) {
-        return s3Service.generatePresignedUrl(s3Key, duration);
-    }
-
-    /**
-     * Get QR code URL with default 7-day validity
-     */
-    public String getQrCodeUrl(String s3Key) {
-        return getQrCodeUrl(s3Key, Duration.ofDays(7));
     }
 
     /**
@@ -185,5 +198,10 @@ public class SoQrCodeServiceImpl implements SoQrCodeService {
             return validUpdateStatusList.contains(newStatusValue);
         }
         return false;
+    }
+
+    private SalesOrder getSalesOrderById(Long orderId) {
+        return salesOrderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("SalesOrder with ID: " + orderId + " not found"));
     }
 }

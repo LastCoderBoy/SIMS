@@ -5,7 +5,7 @@ import com.JK.SIMS.models.PM_models.ProductCategories;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-public record DamageLossDTO (
+public record DamageLossResponse(
         Integer id,
         String productName,
         ProductCategories category,

@@ -115,8 +115,8 @@ public class SoServiceInIc {
             salesOrderRepository.save(updatedSalesOrder);
             log.info("OS (processOrderedProduct): SalesOrder {} processed successfully", updatedSalesOrder.getOrderReference());
             return new ApiResponse<>(true, "SalesOrder processed successfully");
-        } catch (InventoryException ie){
-            throw ie;
+        } catch (InventoryException | ResourceNotFoundException exc){
+            throw exc;
         } catch (Exception e) {
             log.error("OS (processOrderedProduct): Error processing order - {}", e.getMessage());
             throw new ServiceException("Internal Service Error, failed to process order", e);
@@ -176,7 +176,7 @@ public class SoServiceInIc {
 
     private SalesOrder getSalesOrderById(Long orderId) {
         return salesOrderRepository.findById(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException("SalesOrder not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("SalesOrder with ID: " + orderId + " not found"));
     }
 
     @Transactional(readOnly = true)

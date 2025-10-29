@@ -6,24 +6,23 @@ import com.JK.SIMS.exceptionHandler.ResourceNotFoundException;
 import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.inventoryData.InventoryControlData;
-import com.JK.SIMS.models.inventoryData.InventoryDataStatus;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductManagementDTO;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
+import com.JK.SIMS.models.inventoryData.InventoryControlData;
+import com.JK.SIMS.models.inventoryData.InventoryDataStatus;
 import com.JK.SIMS.repository.ProductManagement_repo.PM_repository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.InventoryControlService;
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
 import com.JK.SIMS.service.utilities.ExcelReporterHelper;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.coyote.BadRequestException;
 import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
@@ -40,9 +39,8 @@ import static com.JK.SIMS.service.productManagementService.PMServiceHelper.*;
 import static com.JK.SIMS.service.utilities.GlobalServiceHelper.amongInvalidStatus;
 
 @Service
+@Slf4j
 public class ProductManagementService {
-
-    private static final Logger logger = LoggerFactory.getLogger(ProductManagementService.class);
 
     private final PM_repository pmRepository;
     private final InventoryControlService icService;
@@ -73,7 +71,7 @@ public class ProductManagementService {
             Pageable pageable = PageRequest.of(page, size, Sort.by("productID").ascending());
             Page<ProductsForPM> allProducts = pmRepository.findAll(pageable);
             PaginatedResponse<ProductManagementDTO> dtoPaginatedResponse = transformToDTOPaginatedResponse(allProducts);
-            logger.info("PM (getAllProducts): Retrieved {} products from database.", allProducts.getTotalElements());
+            log.info("PM (getAllProducts): Retrieved {} products from database.", allProducts.getTotalElements());
             return dtoPaginatedResponse;
         } catch (DataAccessException e) {
             throw new DatabaseException("PM (getAllProducts): Failed to retrieve products from database", e);
@@ -108,7 +106,7 @@ public class ProductManagementService {
      * @throws ServiceException      if there's an error during product addition
      */
     @Transactional
-    public ApiResponse addProduct(ProductsForPM newProduct){
+    public ApiResponse<Void> addProduct(ProductsForPM newProduct){
         try {
             if (validateProduct(newProduct)) {
                 String newID = generateProductId();
@@ -117,8 +115,8 @@ public class ProductManagementService {
                 if (!newProduct.getStatus().equals(ProductStatus.PLANNING)) {
                     icService.addProduct(newProduct, false);
                 }
-                logger.info("PM (addProduct): New product added: ID = {}, Name = {}", newID, newProduct.getName());
-                return new ApiResponse(true, "PM: Product added successfully with ID: " + newID);
+                log.info("PM (addProduct): New product added: ID = {}, Name = {}", newID, newProduct.getName());
+                return new ApiResponse<>(true, "PM: Product added successfully with ID: " + newID);
             }
             throw new ValidationException("PM (addProduct): Invalid product details");
         } catch (ValidationException ve) {
@@ -139,19 +137,18 @@ public class ProductManagementService {
      * @throws ServiceException if any other error occurs during deletion
      */
     @Transactional
-    public ApiResponse deleteProduct(String id, String jwtToken) throws BadRequestException {
+    public ApiResponse<Void> deleteProduct(String id, String jwtToken) throws BadRequestException {
         try {
             Optional<ProductsForPM> productNeedsToBeDeleted = pmRepository.findById(id);
             String username = jwtService.extractUsername(jwtToken);
             if (productNeedsToBeDeleted.isPresent()) {
-                icService.deleteByProductId(id); // First delete it from the Inventory as they have a connection with each other.
+                icService.deleteByProductId(id); // Delete first from the Inventory as they have a connection with each other.
                 pmRepository.delete(productNeedsToBeDeleted.get());
-                logger.info("PM (deleteProduct): Product with ID {} is deleted", id);
-                logger.info("PM (deleteProduct): Product with ID {} is deleted successfully by {}.", id, username);
-                return new ApiResponse(true, "Product with ID " + id + " deleted successfully!");
+                log.info("PM (deleteProduct): Product with ID {} is deleted successfully by {}.", id, username);
+                return new ApiResponse<>(true, "Product with ID " + id + " deleted successfully!");
             }
-            logger.info("PM (deleteProduct): Attempt for deletion product with ID {} by {} is failed.", id, username);
-            logger.info("PM (deleteProduct): Product with ID {} not found", id);
+            log.info("PM (deleteProduct): Attempt for deletion product with ID {} by {} is failed.", id, username);
+            log.info("PM (deleteProduct): Product with ID {} not found", id);
             throw new BadRequestException("PM (deleteProduct): Product with ID " + id + " not found");
         } catch (BadRequestException e) {
             throw e;
@@ -175,14 +172,14 @@ public class ProductManagementService {
      * @throws ServiceException    if any other error occurs during update
      */
     @Transactional
-    public ApiResponse updateProduct(String productId, ProductsForPM newProduct) {
+    public ApiResponse<Void> updateProduct(String productId, ProductsForPM newProduct) {
         try {
             ProductsForPM currentProduct = pmRepository.findById(productId)
                     .orElseThrow(() -> new ResourceNotFoundException("PM (updateProduct): Product with ID " + productId + " not found"));
 
             if(isAllFieldsNull(newProduct)){
-                logger.info("PM (updateProduct): No fields to update. Product with ID {} not updated.", productId);
-                return new ApiResponse(false, "Missing fields to update.");
+                log.info("PM (updateProduct): No fields to update. Product with ID {} not updated.", productId);
+                return new ApiResponse<>(false, "Missing fields to update.");
             }
 
             updateProductFields(currentProduct, newProduct);
@@ -190,17 +187,17 @@ public class ProductManagementService {
             updateProductLocation(currentProduct, newProduct);
 
             pmRepository.save(currentProduct);
-            logger.info("PM (updateProduct): Product with ID {} updated successfully", productId);
+            log.info("PM (updateProduct): Product with ID {} updated successfully", productId);
 
-            return new ApiResponse(true, "Product with ID " + productId + " updated successfully!");
+            return new ApiResponse<>(true, "Product with ID " + productId + " updated successfully!");
         } catch (ResourceNotFoundException e) {
-            logger.error("PM (updateProduct): Product with ID {} not found: {}", productId, e.getMessage());
+            log.error("PM (updateProduct): Product with ID {} not found: {}", productId, e.getMessage());
             throw new ResourceNotFoundException("PM (updateProduct): " + e.getMessage() );
         } catch (ValidationException e) {
-            logger.error("PM (updateProduct): Invalid location format: {}", e.getMessage());
+            log.error("PM (updateProduct): Invalid location format: {}", e.getMessage());
             throw new ValidationException(e.getMessage());
         } catch (Exception e) {
-            logger.error("PM (updateProduct): Internal error: {}", e.getMessage());
+            log.error("PM (updateProduct): Internal error: {}", e.getMessage());
             throw new ServiceException("PM (updateProduct): Internal error " + productId, e);
         }
     }
@@ -280,7 +277,7 @@ public class ProductManagementService {
                 Page<ProductsForPM> result = pmRepository.searchProducts(text.trim().toLowerCase(), pageable);
                 return transformToDTOPaginatedResponse(result);
             }
-            logger.info("PM (searchProduct): No search text provided. Retrieving first page with default size.");
+            log.info("PM (searchProduct): No search text provided. Retrieving first page with default size.");
             return getAllProducts(0, 10);
         }catch (DataAccessException da) {
             throw new DatabaseException("PM (searchProduct): Database error", da);
@@ -344,13 +341,13 @@ public class ProductManagementService {
             return transformToDTOPaginatedResponse(resultPage);
 
         } catch (IllegalArgumentException iae) {
-            logger.error("PM (filterProducts): Invalid filter value: {}", iae.getMessage());
+            log.error("PM (filterProducts): Invalid filter value: {}", iae.getMessage());
             throw new ValidationException("PM (filterProducts): Invalid filter value");
         } catch (DataAccessException da) {
-            logger.error("PM (filterProducts): Database error: {}", da.getMessage());
+            log.error("PM (filterProducts): Database error: {}", da.getMessage());
             throw new DatabaseException("PM (filterProducts): Database error", da);
         } catch (Exception e) {
-            logger.error("PM (filterProducts): Failed to filter products: {}", e.getMessage());
+            log.error("PM (filterProducts): Failed to filter products: {}", e.getMessage());
             throw new ServiceException("PM (filterProducts): Failed to filter products", e);
         }
     }
@@ -368,7 +365,7 @@ public class ProductManagementService {
         List<ProductManagementDTO> allProducts = getAllProducts();
         createHeaderRow(sheet);
         populateDataRows(sheet, allProducts);
-        logger.info("PM (GeneratePmReport): Retrieved {} products from database for report generation.)", allProducts.size());
+        log.info("PM (GeneratePmReport): Retrieved {} products from database for report generation.)", allProducts.size());
         ExcelReporterHelper.writeWorkbookToResponse(response, workbook);
     }
 

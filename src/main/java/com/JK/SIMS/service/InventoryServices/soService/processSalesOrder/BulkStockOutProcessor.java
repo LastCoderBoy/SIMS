@@ -1,5 +1,6 @@
 package com.JK.SIMS.service.InventoryServices.soService.processSalesOrder;
 
+import com.JK.SIMS.exceptionHandler.InventoryException;
 import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.models.salesOrder.SalesOrder;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
@@ -28,6 +29,8 @@ public class BulkStockOutProcessor extends OrderProcessor implements StockOutPro
             SalesOrder updatedSalesOrder = processOrder(salesOrder, approvedQuantities, username);
             log.info("SO-processStockOut(): Processing order with reference: {} is complete!", updatedSalesOrder.getOrderReference());
             return updatedSalesOrder;
+        } catch (InventoryException ie){
+            throw ie;
         } catch (Exception e) {
             log.error("SO-processStockOut(): Error processing order - {}", e.getMessage());
             throw new ServiceException("Failed to process order");

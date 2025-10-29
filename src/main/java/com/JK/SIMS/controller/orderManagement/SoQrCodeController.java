@@ -5,6 +5,7 @@ import com.JK.SIMS.exceptionHandler.InvalidTokenException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.salesOrder.dtos.views.DetailedSalesOrderView;
+import com.JK.SIMS.models.salesOrder.qrcode.dtos.QrCodeUrlResponse;
 import com.JK.SIMS.service.orderManagementService.salesOrderService.SoQrCodeService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -16,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import static com.JK.SIMS.service.utilities.SalesOrderServiceHelper.validateSalesOrderStatus;
 
 @RestController
-@RequestMapping("/api/v1/products/manage-order/so/qr")
+@RequestMapping("/api/v1/products/manage-order/so/qrcode")
 @Slf4j
 public class SoQrCodeController {
 
@@ -26,7 +27,14 @@ public class SoQrCodeController {
         this.salesQrCodeService = salesQrCodeService;
     }
 
-    @GetMapping("/{qrToken}")
+    @GetMapping("/{salesOrderId}/view")
+    public ResponseEntity<?> viewQrCode(@PathVariable Long salesOrderId){
+        log.info("SO-QR: viewQrCode() is calling...");
+        QrCodeUrlResponse qrCodeUrlResponse = salesQrCodeService.getPresignedQrCodeUrl(salesOrderId);
+        return ResponseEntity.ok(new ApiResponse<>(true, "QR Code URL generated successfully", qrCodeUrlResponse));
+    }
+
+    @GetMapping("/{qrToken}/verify")
     public ResponseEntity<?> verifyQrCode(@PathVariable String qrToken,
                                           @RequestHeader("Authorization") String token,
                                           HttpServletRequest request){

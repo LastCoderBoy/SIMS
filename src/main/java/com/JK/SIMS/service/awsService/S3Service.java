@@ -16,7 +16,6 @@ import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignReques
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 
 import java.io.IOException;
-import java.net.URL;
 import java.time.Duration;
 import java.util.Map;
 
@@ -41,7 +40,7 @@ public class S3Service {
      *
      * @param objectKey The unique key (filename) for the object in S3.
      * @param fileBytes The file content as a byte array.
-     * @param contentType The MIME type of the file (e.g., "image/png", "application/pdf").
+     * @param contentType The MIME type of the file (e.g. "image/png", "application/pdf").
      * @return The public URL of the uploaded object.
      */
     public String uploadFile(String objectKey, byte[] fileBytes, String contentType) {
@@ -51,7 +50,7 @@ public class S3Service {
                     .key(objectKey)
                     .contentType(contentType)
                     .contentLength((long) fileBytes.length)
-                    // Add metadata for tracking
+                    // metadata for tracking
                     .metadata(Map.of(
                             "upload-timestamp", String.valueOf(System.currentTimeMillis()),
                             "content-length", String.valueOf(fileBytes.length)

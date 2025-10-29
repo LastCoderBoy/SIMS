@@ -2,7 +2,7 @@ package com.JK.SIMS.models.damage_loss;
 
 import java.time.LocalDateTime;
 
-public record DamageLossDTORequest (
+public record DamageLossRequest(
     String sku,
     Integer quantityLost,
     LossReason reason,

@@ -64,7 +64,7 @@ public class ProductController {
             throw new BadRequestException("PM (updateProduct): Product ID or New product cannot be null");
         }
         logger.info("PM: updateProduct() calling...");
-        ApiResponse response = pmService.updateProduct(id.toUpperCase(), newProduct);
+        ApiResponse<Void> response = pmService.updateProduct(id.toUpperCase(), newProduct);
         return ResponseEntity.ok(response);
     }
 

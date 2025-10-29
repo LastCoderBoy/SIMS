@@ -19,7 +19,6 @@ import com.JK.SIMS.models.salesOrder.qrcode.SalesOrderQRCode;
 import com.JK.SIMS.repository.salesOrderRepo.OrderItemRepository;
 import com.JK.SIMS.repository.salesOrderRepo.SalesOrderRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
-import com.JK.SIMS.service.awsService.S3Service;
 import com.JK.SIMS.service.orderManagementService.salesOrderService.SalesOrderService;
 import com.JK.SIMS.service.orderManagementService.salesOrderService.SoQrCodeService;
 import com.JK.SIMS.service.productManagementService.PMServiceHelper;
@@ -131,7 +130,7 @@ public class SalesOrderServiceImpl implements SalesOrderService {
         try {
             // Validate the request and Create the Entity
             salesOrderServiceHelper.validateSalesOrderItems(salesOrderRequestDto.getOrderItems());
-            String user = securityUtils.validateAndExtractUsername(jwtToken);
+            String createdPerson = securityUtils.validateAndExtractUsername(jwtToken);
             String orderReference = generateOrderReference(LocalDate.now());
 
             // Create the QR Code and upload to the AWS S3 bucket
@@ -143,7 +142,7 @@ public class SalesOrderServiceImpl implements SalesOrderService {
             SalesOrder salesOrder = createSalesOrderEntity(
                     salesOrderRequestDto,
                     orderReference,
-                    user,
+                    createdPerson,
                     salesOrderQRCode
             );
 
@@ -542,8 +541,7 @@ public class SalesOrderServiceImpl implements SalesOrderService {
         }
     }
 
-    @Transactional(readOnly = true)
-    public SalesOrder getSalesOrderById(Long orderId) {
+    private SalesOrder getSalesOrderById(Long orderId) {
         return salesOrderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("SalesOrder with ID: " + orderId + " not found"));
     }

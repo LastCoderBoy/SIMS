@@ -8,5 +8,5 @@ public record DamageLossPageResponse (
         Long totalReport,
         Long totalItems,
         BigDecimal totalLossValue,
-        PaginatedResponse<DamageLossDTO> dtoResponse
+        PaginatedResponse<DamageLossResponse> dtoResponse
 ){}
