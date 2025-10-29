@@ -1,7 +1,7 @@
 package com.JK.SIMS.controller.inventoryControllers;
 
 
-import com.JK.SIMS.models.inventoryData.InventoryDataDto;
+import com.JK.SIMS.models.inventoryData.dtos.InventoryControlResponse;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryServices.lowStockService.LowStockService;
@@ -34,7 +34,7 @@ public class LowStockController {
                                                    @RequestParam(defaultValue = "0") int page,
                                                    @RequestParam(defaultValue = "10") int size){
         logger.info("LowStockController: getAllPaginatedLowStockRecords() calling with page {} and size {}...", page, size);
-        PaginatedResponse<InventoryDataDto> response =
+        PaginatedResponse<InventoryControlResponse> response =
                 lowStockService.getAllPaginatedLowStockRecords(sortBy, sortDirection, page, size);
         return ResponseEntity.ok(response);
     }
@@ -44,7 +44,7 @@ public class LowStockController {
                                            @RequestParam(defaultValue = "0") int page,
                                            @RequestParam(defaultValue = "10") int size){
         logger.info("LowStockController: searchProduct() calling with page {} and size {}...", page, size);
-        PaginatedResponse<InventoryDataDto> inventoryResponse = lowStockService.searchInLowStockProducts(text, page, size);
+        PaginatedResponse<InventoryControlResponse> inventoryResponse = lowStockService.searchInLowStockProducts(text, page, size);
         return ResponseEntity.ok(inventoryResponse);
     }
 
@@ -55,7 +55,7 @@ public class LowStockController {
                                             @RequestParam(defaultValue = "0") int page,
                                             @RequestParam(defaultValue = "10") int size){
         logger.info("LowStockController: filterProducts() calling with page {} and size {}...", page, size);
-        PaginatedResponse<InventoryDataDto> filterResponse =
+        PaginatedResponse<InventoryControlResponse> filterResponse =
                 lowStockService.filterLowStockProducts(category, sortBy, sortDirection, page, size);
         return ResponseEntity.ok(filterResponse);
     }

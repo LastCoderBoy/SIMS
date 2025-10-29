@@ -1,7 +1,7 @@
 package com.JK.SIMS.service.InventoryServices.inventoryPageService.searchLogic;
 
 import com.JK.SIMS.exceptionHandler.ServiceException;
-import com.JK.SIMS.models.inventoryData.PendingOrdersResponseDto;
+import com.JK.SIMS.models.inventoryData.dtos.PendingOrdersResponseInIC;
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.salesOrder.SalesOrder;
 import com.JK.SIMS.models.PaginatedResponse;
@@ -39,7 +39,7 @@ public class SearchInPendingOrdersImpl implements PendingOrdersSearchStrategy {
     // Search method which is used for the pending SO and PO orders
     @Override
     @Transactional(readOnly = true)
-    public PaginatedResponse<PendingOrdersResponseDto> searchInPendingOrders(String text, int page, int size) {
+    public PaginatedResponse<PendingOrdersResponseInIC> searchInPendingOrders(String text, int page, int size) {
         try {
             // Search in Sales Orders
             Page<SalesOrder> salesOrderPage = soSearchStrategy.searchInSo(text, page, size, DEFAULT_SORT_BY_FOR_SO, DEFAULT_SORT_DIRECTION);
@@ -49,7 +49,7 @@ public class SearchInPendingOrdersImpl implements PendingOrdersSearchStrategy {
                     poSearchStrategy.searchInPos(text, page, size, DEFAULT_SORT_BY_FOR_PO, DEFAULT_SORT_DIRECTION);
 
             // Combine the results
-            List<PendingOrdersResponseDto> combinedResults = new ArrayList<>();
+            List<PendingOrdersResponseInIC> combinedResults = new ArrayList<>();
             inventoryServiceHelper.fillWithSalesOrders(combinedResults, salesOrderPage.getContent());
             inventoryServiceHelper.fillWithPurchaseOrders(combinedResults, purchaseOrderPage.getContent());
 

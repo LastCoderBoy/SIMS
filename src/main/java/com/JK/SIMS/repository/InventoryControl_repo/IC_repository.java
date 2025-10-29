@@ -2,7 +2,7 @@ package com.JK.SIMS.repository.InventoryControl_repo;
 
 import com.JK.SIMS.models.inventoryData.InventoryControlData;
 import com.JK.SIMS.models.inventoryData.InventoryDataStatus;
-import com.JK.SIMS.models.inventoryData.InventoryMetrics;
+import com.JK.SIMS.models.inventoryData.dtos.InventoryMetrics;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import jakarta.persistence.LockModeType;
 import jakarta.transaction.Transactional;
@@ -25,7 +25,7 @@ public interface IC_repository extends JpaRepository<InventoryControlData, Strin
     void deleteByProduct_ProductID(@Param("productId") String productId);
 
     @Query("""
-        SELECT new com.JK.SIMS.models.inventoryData.InventoryMetrics(
+        SELECT new com.JK.SIMS.models.inventoryData.dtos.InventoryMetrics(
             COUNT(*),
             COUNT(CASE WHEN i.currentStock <= i.minLevel AND i.status != 'INVALID' THEN 1 ELSE NULL END)
         )

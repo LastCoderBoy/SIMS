@@ -1,6 +1,9 @@
 package com.JK.SIMS.service.InventoryServices.inventoryPageService;
 
 import com.JK.SIMS.exceptionHandler.*;
+import com.JK.SIMS.models.inventoryData.dtos.InventoryMetrics;
+import com.JK.SIMS.models.inventoryData.dtos.InventoryPageResponse;
+import com.JK.SIMS.models.inventoryData.dtos.PendingOrdersResponseInIC;
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrderStatus;
 import com.JK.SIMS.models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.models.salesOrder.SalesOrderStatus;
@@ -63,7 +66,7 @@ public class InventoryControlService {
         try {
             InventoryMetrics metrics = icRepository.getInventoryMetrics();
 
-            PaginatedResponse<PendingOrdersResponseDto> allPendingOrders = getAllPendingOrders(page, size);
+            PaginatedResponse<PendingOrdersResponseInIC> allPendingOrders = getAllPendingOrders(page, size);
 
             // Create the response object
             InventoryPageResponse inventoryPageResponse = new InventoryPageResponse(
@@ -86,7 +89,7 @@ public class InventoryControlService {
     }
 
     @Transactional(readOnly = true)
-    public PaginatedResponse<PendingOrdersResponseDto> getAllPendingOrders(int page, int size) {
+    public PaginatedResponse<PendingOrdersResponseInIC> getAllPendingOrders(int page, int size) {
         // Fetch all pending orders (SO and PO)
         PaginatedResponse<SummarySalesOrderView> allPendingSalesOrders =
                 soServiceInIc.getAllWaitingSalesOrders(page, size, "orderDate", "desc");
@@ -95,7 +98,7 @@ public class InventoryControlService {
                 poServiceInIc.getAllPendingPurchaseOrders(page, size, "product.name", "asc");
 
         // Combine and sort
-        List<PendingOrdersResponseDto> combinedResults = new ArrayList<>();
+        List<PendingOrdersResponseInIC> combinedResults = new ArrayList<>();
         inventoryServiceHelper.fillWithSalesOrderView(combinedResults, allPendingSalesOrders.getContent());
         inventoryServiceHelper.fillWithPurchaseOrderView(combinedResults, allPendingPurchaseOrders.getContent());
 
@@ -214,7 +217,7 @@ public class InventoryControlService {
     }
 
     @Transactional(readOnly = true)
-    public PaginatedResponse<PendingOrdersResponseDto> searchByTextPendingOrders(String text, int page, int size) {
+    public PaginatedResponse<PendingOrdersResponseInIC> searchByTextPendingOrders(String text, int page, int size) {
         try {
             globalServiceHelper.validatePaginationParameters(page, size);
             Optional<String> inputText = Optional.ofNullable((text));
@@ -237,11 +240,11 @@ public class InventoryControlService {
     }
 
     @Transactional(readOnly = true)
-    public PaginatedResponse<PendingOrdersResponseDto> filterPendingOrders( String type, SalesOrderStatus soStatus, PurchaseOrderStatus poStatus,
+    public PaginatedResponse<PendingOrdersResponseInIC> filterPendingOrders(String type, SalesOrderStatus soStatus, PurchaseOrderStatus poStatus,
                                                                             String dateOption, LocalDate startDate, LocalDate endDate, ProductCategories category,
                                                                             String sortBy, String sortDirection, int page, int size) {
 
-        List<PendingOrdersResponseDto> combinedResults = new ArrayList<>();
+        List<PendingOrdersResponseInIC> combinedResults = new ArrayList<>();
 
         if (type == null && soStatus == null && poStatus == null && category == null && dateOption == null) {
             // Fetch all pending Sales Orders
@@ -293,7 +296,7 @@ public class InventoryControlService {
         }
 
         // Sort combined results
-        combinedResults.sort(Comparator.comparing(PendingOrdersResponseDto::getOrderDate).reversed());
+        combinedResults.sort(Comparator.comparing(PendingOrdersResponseInIC::getOrderDate).reversed());
 
         return new PaginatedResponse<>(
                 new PageImpl<>(combinedResults, PageRequest.of(page, size), combinedResults.size())

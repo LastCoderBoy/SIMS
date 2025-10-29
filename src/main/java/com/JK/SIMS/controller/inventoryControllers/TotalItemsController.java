@@ -2,7 +2,8 @@ package com.JK.SIMS.controller.inventoryControllers;
 
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.inventoryData.InventoryControlData;
-import com.JK.SIMS.models.inventoryData.InventoryDataDto;
+import com.JK.SIMS.models.inventoryData.dtos.InventoryControlRequest;
+import com.JK.SIMS.models.inventoryData.dtos.InventoryControlResponse;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryServices.totalItemsService.TotalItemsService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -13,8 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.nio.file.AccessDeniedException;
 
 @RestController
 @RequestMapping("/api/v1/products/inventory/total")
@@ -33,19 +32,19 @@ public class TotalItemsController {
                                             @RequestParam(defaultValue = "0") int page,
                                             @RequestParam(defaultValue = "10") int size){
         logger.info("TotalItemsController: getAllProducts() calling with page {} and size {}...", page, size);
-        PaginatedResponse<InventoryDataDto> inventoryResponse =
+        PaginatedResponse<InventoryControlResponse> inventoryResponse =
                 totalItemsService.getPaginatedInventoryDto(sortBy, sortDirection, page, size);
         return ResponseEntity.ok(inventoryResponse);
     }
 
     // Used to update the IC Stock levels.
-    @PutMapping("/{sku}")
+    @PutMapping("/{sku}/update")
     public ResponseEntity<?> updateProduct(@PathVariable String sku,
-                                           @RequestBody InventoryControlData newInventoryControlData) throws BadRequestException {
-        if(sku == null || sku.trim().isEmpty() || newInventoryControlData == null){
+                                           @RequestBody InventoryControlRequest inventoryControlRequest) throws BadRequestException {
+        if(sku == null || sku.trim().isEmpty() || inventoryControlRequest == null){
             throw new BadRequestException("IC: updateProduct() SKU or new input body cannot be null or empty");
         }
-        ApiResponse response = totalItemsService.updateProduct(sku.toUpperCase(), newInventoryControlData);
+        ApiResponse<Void> response = totalItemsService.updateProduct(sku.toUpperCase(), inventoryControlRequest);
         return ResponseEntity.ok(response);
     }
 
@@ -54,7 +53,7 @@ public class TotalItemsController {
                                            @RequestParam(defaultValue = "0") int page,
                                            @RequestParam(defaultValue = "10") int size){
         logger.info("TotalItemsController: searchProduct() calling with page {} and size {}...", page, size);
-        PaginatedResponse<InventoryDataDto> inventoryResponse = totalItemsService.searchProduct(text, page, size);
+        PaginatedResponse<InventoryControlResponse> inventoryResponse = totalItemsService.searchProduct(text, page, size);
         return ResponseEntity.ok(inventoryResponse);
     }
 
@@ -67,20 +66,19 @@ public class TotalItemsController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         logger.info("TotalItemsController: filterProducts() calling with page {} and size {}...", page, size);
-        PaginatedResponse<InventoryDataDto> filterResponse =
+        PaginatedResponse<InventoryControlResponse> filterResponse =
                 totalItemsService.filterProducts(filterBy, sortBy, sortDirection, page, size);
         return ResponseEntity.ok(filterResponse);
     }
 
     @DeleteMapping("/{sku}")
     @PreAuthorize("@securityUtils.hasAccess()")
-    public ResponseEntity<?> deleteProduct(@PathVariable String sku) throws BadRequestException, AccessDeniedException {
+    public ResponseEntity<?> deleteProduct(@PathVariable String sku) throws BadRequestException{
         if(sku == null || sku.trim().isEmpty()){
             throw new BadRequestException("IC: deleteProduct() SKU cannot be empty");
         }
         logger.info("IC: deleteProduct() calling...");
-
-        ApiResponse response = totalItemsService.deleteProduct(sku);
+        ApiResponse<Void> response = totalItemsService.deleteProduct(sku);
         return ResponseEntity.ok(response);
     }
 

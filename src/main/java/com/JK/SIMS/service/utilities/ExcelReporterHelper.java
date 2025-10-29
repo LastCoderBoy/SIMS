@@ -1,6 +1,6 @@
 package com.JK.SIMS.service.utilities;
 
-import com.JK.SIMS.models.inventoryData.InventoryDataDto;
+import com.JK.SIMS.models.inventoryData.dtos.InventoryControlResponse;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.poi.ss.usermodel.CellStyle;
@@ -59,9 +59,9 @@ public class ExcelReporterHelper {
         cell.setCellStyle(style);
     }
 
-    public static void populateDataRowsForInventoryDto(XSSFSheet sheet, List<InventoryDataDto> allProducts) {
+    public static void populateDataRowsForInventoryDto(XSSFSheet sheet, List<InventoryControlResponse> allProducts) {
         int dataRowIndex = 1;
-        for (InventoryDataDto ic : allProducts) {
+        for (InventoryControlResponse ic : allProducts) {
             XSSFRow rowForData = sheet.createRow(dataRowIndex);
             rowForData.createCell(0).setCellValue(ic.getProductID());
             rowForData.createCell(1).setCellValue(ic.getSKU());

@@ -1,11 +1,13 @@
 package com.JK.SIMS.service.InventoryServices.totalItemsService;
 
 import com.JK.SIMS.exceptionHandler.DatabaseException;
+import com.JK.SIMS.exceptionHandler.ResourceNotFoundException;
 import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.inventoryData.InventoryControlData;
-import com.JK.SIMS.models.inventoryData.InventoryDataDto;
+import com.JK.SIMS.models.inventoryData.dtos.InventoryControlRequest;
+import com.JK.SIMS.models.inventoryData.dtos.InventoryControlResponse;
 import com.JK.SIMS.models.inventoryData.InventoryDataStatus;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
@@ -62,7 +64,7 @@ public class TotalItemsService {
     }
 
     @Transactional(readOnly = true)
-    public PaginatedResponse<InventoryDataDto> getPaginatedInventoryDto(String sortBy, String sortDirection, int page, int size) {
+    public PaginatedResponse<InventoryControlResponse> getPaginatedInventoryDto(String sortBy, String sortDirection, int page, int size) {
         try{
             globalServiceHelper.validatePaginationParameters(page, size);
             // Parse sort direction
@@ -85,27 +87,27 @@ public class TotalItemsService {
 
     // Only currentStock and minLevel can be updated in the IC section
     @Transactional
-    public ApiResponse updateProduct(String sku, InventoryControlData newInventoryControlData) throws BadRequestException {
+    public ApiResponse<Void> updateProduct(String sku, InventoryControlRequest inventoryControlRequest) {
         try {
             // Validate input parameters
-            validateUpdateRequest(newInventoryControlData);
+            validateUpdateRequest(inventoryControlRequest);
 
             // Find and validate the existing product
-            InventoryControlData existingProduct = inventoryServiceHelper.getInventoryDataBySku(sku);
+            InventoryControlData existingProduct = inventoryServiceHelper.getInventoryDataBySku(sku); // might throw ResourceNotFoundException
 
             // Update stock levels
             stockManagementLogic.updateInventoryStockLevels(existingProduct,
-                    Optional.ofNullable(newInventoryControlData.getCurrentStock()),
-                    Optional.ofNullable(newInventoryControlData.getMinLevel()));
+                    Optional.ofNullable(inventoryControlRequest.getCurrentStock()),
+                    Optional.ofNullable(inventoryControlRequest.getMinLevel()));
 
             logger.info("IcTotalItems (updateProduct): Product with SKU {} updated successfully", sku);
-            return new ApiResponse(true, sku + " is updated successfully");
+            return new ApiResponse<>(true, sku + " is updated successfully");
 
         } catch (DataAccessException da) {
             logger.error("IcTotalItems (updateProduct): Database error while updating SKU {}: {}",
                     sku, da.getMessage());
             throw new DatabaseException("IC (updateProduct): Database error", da);
-        } catch (BadRequestException | ValidationException e) {
+        } catch (ResourceNotFoundException | ValidationException e) {
             throw e;
         } catch (Exception ex) {
             logger.error("IcTotalItems (updateProduct): Unexpected error while updating SKU {}: {}",
@@ -116,7 +118,7 @@ public class TotalItemsService {
 
     // Search by SKU, Location, ID, Name, Category.
     @Transactional(readOnly = true)
-    public PaginatedResponse<InventoryDataDto> searchProduct(String text, int page, int size) {
+    public PaginatedResponse<InventoryControlResponse> searchProduct(String text, int page, int size) {
         try {
             Optional<String> inputText = Optional.ofNullable((text));
             if (inputText.isPresent() && !inputText.get().trim().isEmpty()) {
@@ -136,7 +138,7 @@ public class TotalItemsService {
 
 
 
-    public PaginatedResponse<InventoryDataDto> filterProducts(String filterBy, String sortBy, String sortDirection, int page, int size) {
+    public PaginatedResponse<InventoryControlResponse> filterProducts(String filterBy, String sortBy, String sortDirection, int page, int size) {
         try {
             globalServiceHelper.validatePaginationParameters(page, size);
 
@@ -205,23 +207,21 @@ public class TotalItemsService {
      * @throws ServiceException    if any other error occurs during deletion
      */
     @Transactional
-    public ApiResponse deleteProduct(String sku) throws BadRequestException {
+    public ApiResponse<Void> deleteProduct(String sku) throws BadRequestException {
         try{
             Optional<InventoryControlData> product = icRepository.findBySKU(sku);
             if(product.isPresent()){
                 InventoryControlData productToBeDeleted = product.get();
                 ProductsForPM productInPM = productToBeDeleted.getPmProduct();
 
-                if(productInPM.getStatus().equals(ProductStatus.ACTIVE) ||
-                        productInPM.getStatus().equals(ProductStatus.PLANNING) ||
-                        productInPM.getStatus().equals(ProductStatus.ON_ORDER) ) {
+                if(productInPM.getStatus().equals(ProductStatus.ACTIVE) || productInPM.getStatus().equals(ProductStatus.PLANNING)
+                        || productInPM.getStatus().equals(ProductStatus.ON_ORDER) ) {
                     productInPM.setStatus(ProductStatus.ARCHIVED);
                     pmServiceHelper.saveProduct(productInPM);
                 }
                 icRepository.deleteBySKU(sku);
-
                 logger.info("IC (deleteProduct): Product {} is deleted successfully.", sku);
-                return new ApiResponse(true, "Product " + sku + " is deleted successfully.");
+                return new ApiResponse<>(true, "Product " + sku + " is deleted successfully.");
             }
             throw new BadRequestException("IC (deleteProduct): Product with SKU " + sku + " not found");
         }catch (DataAccessException de){
@@ -238,14 +238,14 @@ public class TotalItemsService {
         XSSFSheet sheet = workbook.createSheet("All Inventory Products");
         createHeaderRowForInventoryDto(sheet);
 
-        List<InventoryDataDto> allProducts = getAllInventoryProducts(sortBy, sortDirection);
+        List<InventoryControlResponse> allProducts = getAllInventoryProducts(sortBy, sortDirection);
         populateDataRowsForInventoryDto(sheet, allProducts);
         logger.info("TotalItems (generateReport): {} products retrieved.", allProducts.size());
         writeWorkbookToResponse(response, workbook);
     }
 
     // Helper methods
-    public List<InventoryDataDto> getAllInventoryProducts(String sortBy, String sortDirection) {
+    public List<InventoryControlResponse> getAllInventoryProducts(String sortBy, String sortDirection) {
         try {
             // Parse sort direction
             Sort.Direction direction = sortDirection.equalsIgnoreCase("desc") ?

@@ -1,4 +1,4 @@
-package com.JK.SIMS.models.inventoryData;
+package com.JK.SIMS.models.inventoryData.dtos;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

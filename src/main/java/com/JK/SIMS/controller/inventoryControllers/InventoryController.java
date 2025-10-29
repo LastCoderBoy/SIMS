@@ -4,8 +4,8 @@ package com.JK.SIMS.controller.inventoryControllers;
 import com.JK.SIMS.config.security.TokenUtils;
 import com.JK.SIMS.exceptionHandler.InvalidTokenException;
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.inventoryData.InventoryPageResponse;
-import com.JK.SIMS.models.inventoryData.PendingOrdersResponseDto;
+import com.JK.SIMS.models.inventoryData.dtos.InventoryPageResponse;
+import com.JK.SIMS.models.inventoryData.dtos.PendingOrdersResponseInIC;
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrderStatus;
 import com.JK.SIMS.models.purchaseOrder.dtos.ReceiveStockRequestDto;
 import com.JK.SIMS.models.salesOrder.SalesOrderStatus;
@@ -110,7 +110,7 @@ public class InventoryController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size){
         logger.info("IC: searchOutgoingInPendingProduct() calling...");
-        PaginatedResponse<PendingOrdersResponseDto> pendingOrdersDtos =
+        PaginatedResponse<PendingOrdersResponseInIC> pendingOrdersDtos =
                 icService.searchByTextPendingOrders(text, page, size);
         return ResponseEntity.ok(pendingOrdersDtos);
     }
@@ -153,7 +153,7 @@ public class InventoryController {
         }
 
         // Delegate to service
-        PaginatedResponse<PendingOrdersResponseDto> result =
+        PaginatedResponse<PendingOrdersResponseInIC> result =
                 icService.filterPendingOrders(type, soStatus, poStatus, dateOption,
                         startDate, endDate, productCategory, sortBy, sortDirection, page, size);
         return ResponseEntity.ok(result);

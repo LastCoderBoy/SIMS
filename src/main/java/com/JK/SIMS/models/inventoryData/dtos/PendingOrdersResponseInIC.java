@@ -1,4 +1,4 @@
-package com.JK.SIMS.models.inventoryData;
+package com.JK.SIMS.models.inventoryData.dtos;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class PendingOrdersResponseDto {
+public class PendingOrdersResponseInIC {
 
     private Long id;
     private String orderReference; // For SO: orderReference, for PO: poNumber

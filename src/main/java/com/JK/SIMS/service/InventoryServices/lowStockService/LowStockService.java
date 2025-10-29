@@ -4,7 +4,7 @@ import com.JK.SIMS.exceptionHandler.DatabaseException;
 import com.JK.SIMS.exceptionHandler.ServiceException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.inventoryData.InventoryControlData;
-import com.JK.SIMS.models.inventoryData.InventoryDataDto;
+import com.JK.SIMS.models.inventoryData.dtos.InventoryControlResponse;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.InventoryControl_repo.IC_repository;
@@ -46,7 +46,7 @@ public class LowStockService {
         this.icRepository = icRepository;
     }
     @Transactional(readOnly = true)
-    public PaginatedResponse<InventoryDataDto> getAllPaginatedLowStockRecords(String sortBy, String sortDirection, int page, int size) {
+    public PaginatedResponse<InventoryControlResponse> getAllPaginatedLowStockRecords(String sortBy, String sortDirection, int page, int size) {
         try {
             globalServiceHelper.validatePaginationParameters(page, size);
             // Parse sort direction
@@ -68,7 +68,7 @@ public class LowStockService {
     }
 
     @Transactional(readOnly = true)
-    public PaginatedResponse<InventoryDataDto> searchInLowStockProducts(String text, int page, int size) {
+    public PaginatedResponse<InventoryControlResponse> searchInLowStockProducts(String text, int page, int size) {
         try {
             globalServiceHelper.validatePaginationParameters(page, size);
             Optional<String> inputText = Optional.ofNullable((text));
@@ -91,8 +91,8 @@ public class LowStockService {
         }
     }
 
-    public PaginatedResponse<InventoryDataDto> filterLowStockProducts(ProductCategories category, String sortBy,
-                                                                      String sortDirection, int page, int size) {
+    public PaginatedResponse<InventoryControlResponse> filterLowStockProducts(ProductCategories category, String sortBy,
+                                                                              String sortDirection, int page, int size) {
         try {
             globalServiceHelper.validatePaginationParameters(page, size);
 
@@ -122,14 +122,14 @@ public class LowStockService {
     public void generateLowStockReport(HttpServletResponse response, String sortBy, String sortDirection) {
         XSSFWorkbook workbook = new XSSFWorkbook();
         XSSFSheet sheet = workbook.createSheet("Low Stock Products");
-        List<InventoryDataDto> allLowStockProducts = getAllLowStockProducts(sortBy, sortDirection);
+        List<InventoryControlResponse> allLowStockProducts = getAllLowStockProducts(sortBy, sortDirection);
         createHeaderRowForInventoryDto(sheet);
         populateDataRowsForInventoryDto(sheet, allLowStockProducts);
         logger.info("TotalItems (generateReport): {} products retrieved.", allLowStockProducts.size());
         writeWorkbookToResponse(response, workbook);
     }
 
-    public List<InventoryDataDto> getAllLowStockProducts(String sortBy, String sortDirection) {
+    public List<InventoryControlResponse> getAllLowStockProducts(String sortBy, String sortDirection) {
         try {
             // Parse sort direction
             Sort.Direction direction = sortDirection.equalsIgnoreCase("desc") ?

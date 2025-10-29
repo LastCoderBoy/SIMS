@@ -1,10 +1,12 @@
 package com.JK.SIMS.service.InventoryServices.inventoryServiceHelper;
 
+import com.JK.SIMS.exceptionHandler.ResourceNotFoundException;
 import com.JK.SIMS.exceptionHandler.ValidationException;
 import com.JK.SIMS.models.inventoryData.InventoryControlData;
-import com.JK.SIMS.models.inventoryData.InventoryDataDto;
+import com.JK.SIMS.models.inventoryData.dtos.InventoryControlRequest;
+import com.JK.SIMS.models.inventoryData.dtos.InventoryControlResponse;
 import com.JK.SIMS.models.inventoryData.InventoryDataStatus;
-import com.JK.SIMS.models.inventoryData.PendingOrdersResponseDto;
+import com.JK.SIMS.models.inventoryData.dtos.PendingOrdersResponseInIC;
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.models.salesOrder.SalesOrder;
@@ -32,36 +34,30 @@ public class InventoryServiceHelper {
 
     private static final Logger logger = LoggerFactory.getLogger(InventoryServiceHelper.class);
 
+    // TODO: Remove repository from the Helper
     private final IC_repository icRepository;
     private final LowStockScheduler lowStockAlert;
-    private final SalesOrderServiceHelper salesOrderServiceHelper;
     @Autowired
-    public InventoryServiceHelper(IC_repository icRepository, LowStockScheduler lowStockAlert, SalesOrderServiceHelper salesOrderServiceHelper) {
+    public InventoryServiceHelper(IC_repository icRepository, LowStockScheduler lowStockAlert) {
         this.icRepository = icRepository;
         this.lowStockAlert = lowStockAlert;
-        this.salesOrderServiceHelper = salesOrderServiceHelper;
     }
 
 
-    public static void validateUpdateRequest(InventoryControlData newInventoryControlData) {
+    public static void validateUpdateRequest(InventoryControlRequest inventoryControlRequest) {
         List<String> errors = new ArrayList<>();
-        Integer newCurrentStock = newInventoryControlData.getCurrentStock();
-        Integer newMinLevel = newInventoryControlData.getMinLevel();
+        Integer newCurrentStock = inventoryControlRequest.getCurrentStock();
+        Integer newMinLevel = inventoryControlRequest.getMinLevel();
 
         if (newCurrentStock == null && newMinLevel == null) {
             errors.add("At least one of currentStock or minLevel must be provided");
         }
-
-        if (newCurrentStock != null &&
-                newCurrentStock <= 0) {
+        if (newCurrentStock != null && newCurrentStock <= 0) {
             errors.add("Current stock must be greater than 0");
         }
-
-        if (newMinLevel != null &&
-                newMinLevel <= 0) {
+        if (newMinLevel != null && newMinLevel <= 0) {
             errors.add("Minimum stock level must be greater than 0");
         }
-
         if (!errors.isEmpty()) {
             throw new ValidationException(errors);
         }
@@ -70,7 +66,7 @@ public class InventoryServiceHelper {
     @Transactional(readOnly = true)
     public InventoryControlData getInventoryDataBySku(String sku) throws BadRequestException {
         return icRepository.findBySKU(sku)
-                .orElseThrow(() -> new BadRequestException(
+                .orElseThrow(() -> new ResourceNotFoundException(
                         "IC (updateProduct): No product with SKU " + sku + " found"));
     }
 
@@ -90,10 +86,10 @@ public class InventoryServiceHelper {
         }
     }
 
-    public void fillWithPurchaseOrders(List<PendingOrdersResponseDto> combinedPendingOrders,
+    public void fillWithPurchaseOrders(List<PendingOrdersResponseInIC> combinedPendingOrders,
                                        List<PurchaseOrder> pendingPurchaseOrders){
         for(PurchaseOrder po : pendingPurchaseOrders){
-            PendingOrdersResponseDto pendingOrder = new PendingOrdersResponseDto(
+            PendingOrdersResponseInIC pendingOrder = new PendingOrdersResponseInIC(
                     po.getId(),
                     po.getPONumber(),
                     StockMovementReferenceType.PURCHASE_ORDER.toString(),
@@ -107,10 +103,10 @@ public class InventoryServiceHelper {
         }
     }
 
-    public void fillWithPurchaseOrderView(List<PendingOrdersResponseDto> combinedPendingOrders,
+    public void fillWithPurchaseOrderView(List<PendingOrdersResponseInIC> combinedPendingOrders,
                                        List<SummaryPurchaseOrderView> pendingPurchaseOrders){
         for(SummaryPurchaseOrderView po : pendingPurchaseOrders){
-            PendingOrdersResponseDto pendingOrder = new PendingOrdersResponseDto(
+            PendingOrdersResponseInIC pendingOrder = new PendingOrdersResponseInIC(
                     po.getId(),
                     po.getPoNumber(),
                     StockMovementReferenceType.PURCHASE_ORDER.toString(),
@@ -124,10 +120,10 @@ public class InventoryServiceHelper {
         }
     }
 
-    public void fillWithSalesOrders(List<PendingOrdersResponseDto> combinedPendingOrders,
+    public void fillWithSalesOrders(List<PendingOrdersResponseInIC> combinedPendingOrders,
                                     List<SalesOrder> pendingSalesOrders){
         pendingSalesOrders.forEach(so ->
-                combinedPendingOrders.add(new PendingOrdersResponseDto(
+                combinedPendingOrders.add(new PendingOrdersResponseInIC(
                         so.getId(),
                         so.getOrderReference(),
                         StockMovementReferenceType.SALES_ORDER.toString(),
@@ -140,10 +136,10 @@ public class InventoryServiceHelper {
         );
     }
 
-    public void fillWithSalesOrderView(List<PendingOrdersResponseDto> combinedPendingOrders,
+    public void fillWithSalesOrderView(List<PendingOrdersResponseInIC> combinedPendingOrders,
                                     List<SummarySalesOrderView> pendingSalesOrders){
         pendingSalesOrders.forEach(so ->
-                combinedPendingOrders.add(new PendingOrdersResponseDto(
+                combinedPendingOrders.add(new PendingOrdersResponseInIC(
                         so.getId(),
                         so.getOrderReference(),
                         StockMovementReferenceType.SALES_ORDER.toString(),
@@ -156,8 +152,8 @@ public class InventoryServiceHelper {
         );
     }
 
-    public PaginatedResponse<InventoryDataDto> transformToPaginatedInventoryDTOResponse(Page<InventoryControlData> inventoryPage){
-        PaginatedResponse<InventoryDataDto> dtoResponse = new PaginatedResponse<>();
+    public PaginatedResponse<InventoryControlResponse> transformToPaginatedInventoryDTOResponse(Page<InventoryControlData> inventoryPage){
+        PaginatedResponse<InventoryControlResponse> dtoResponse = new PaginatedResponse<>();
         dtoResponse.setContent(inventoryPage.getContent().stream()
                                                         .map(this::convertToInventoryDTO).toList());
         dtoResponse.setTotalPages(inventoryPage.getTotalPages());
@@ -166,8 +162,8 @@ public class InventoryServiceHelper {
         return dtoResponse;
     }
 
-    public InventoryDataDto convertToInventoryDTO(InventoryControlData inventoryControlData) {
-        InventoryDataDto dto = new InventoryDataDto();
+    public InventoryControlResponse convertToInventoryDTO(InventoryControlData inventoryControlData) {
+        InventoryControlResponse dto = new InventoryControlResponse();
         // Set product fields
         dto.setProductID(inventoryControlData.getPmProduct().getProductID());
         dto.setProductName(inventoryControlData.getPmProduct().getName());

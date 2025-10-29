@@ -139,7 +139,7 @@ public class SoQrCodeServiceImpl implements SoQrCodeService {
     @Override
     public SalesOrderQRCode generateAndLinkQrCode(String orderReference) throws IOException, WriterException {
         String secureToken = GlobalServiceHelper.generateToken();
-        String qrData = baseUrl + "/api/v1/products/manage-order/so/qr/" + secureToken;
+        String qrData = baseUrl + "/api/v1/products/manage-order/so/qrcode/" + secureToken;
         byte[] qrImageBytes = qrCodeUtil.generateQrCodeImage(qrData, 250, 250);
 
         // Define a unique object key (filename) for S3
