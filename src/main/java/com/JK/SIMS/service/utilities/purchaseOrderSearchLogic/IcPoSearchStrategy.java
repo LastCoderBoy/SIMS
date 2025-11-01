@@ -1,7 +1,7 @@
 package com.JK.SIMS.service.utilities.purchaseOrderSearchLogic;
 
-import com.JK.SIMS.exceptionHandler.DatabaseException;
-import com.JK.SIMS.exceptionHandler.ServiceException;
+import com.JK.SIMS.exception.DatabaseException;
+import com.JK.SIMS.exception.ServiceException;
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.repository.PurchaseOrder_repo.PurchaseOrderRepository;
 import lombok.extern.slf4j.Slf4j;

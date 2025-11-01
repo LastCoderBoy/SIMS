@@ -1,7 +1,7 @@
 package com.JK.SIMS.service.utilities.purchaseOrderFilterLogic;
 
-import com.JK.SIMS.exceptionHandler.ServiceException;
-import com.JK.SIMS.exceptionHandler.ValidationException;
+import com.JK.SIMS.exception.ServiceException;
+import com.JK.SIMS.exception.ValidationException;
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrderStatus;
 import com.JK.SIMS.models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;

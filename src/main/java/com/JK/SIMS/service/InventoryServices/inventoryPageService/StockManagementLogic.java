@@ -1,9 +1,9 @@
 package com.JK.SIMS.service.InventoryServices.inventoryPageService;
 
-import com.JK.SIMS.exceptionHandler.DatabaseException;
-import com.JK.SIMS.exceptionHandler.InsufficientStockException;
-import com.JK.SIMS.exceptionHandler.ResourceNotFoundException;
-import com.JK.SIMS.exceptionHandler.ServiceException;
+import com.JK.SIMS.exception.DatabaseException;
+import com.JK.SIMS.exception.InsufficientStockException;
+import com.JK.SIMS.exception.ResourceNotFoundException;
+import com.JK.SIMS.exception.ServiceException;
 import com.JK.SIMS.models.inventoryData.InventoryControlData;
 import com.JK.SIMS.repository.InventoryControl_repo.IC_repository;
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;

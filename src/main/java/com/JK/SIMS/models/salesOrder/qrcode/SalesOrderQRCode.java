@@ -50,16 +50,4 @@ public class SalesOrderQRCode {
     @JsonIgnore  // Avoid infinite loop in JSON serialization
     private SalesOrder salesOrder;
 
-
-    /**
-     * Helper method to get a temporary URL for the QR code
-     * This should be called from a service layer, not directly
-     */
-    @Transient
-    public String getQrCodeUrl(S3Service s3Service, Duration duration) {
-        if (qrCodeS3Key != null) {
-            return s3Service.generatePresignedUrl(qrCodeS3Key, duration);
-        }
-        return null;
-    }
 }

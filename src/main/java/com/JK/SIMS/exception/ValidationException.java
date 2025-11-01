@@ -1,4 +1,4 @@
-package com.JK.SIMS.exceptionHandler;
+package com.JK.SIMS.exception;
 
 import lombok.Data;
 

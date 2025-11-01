@@ -15,7 +15,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/SIMS") // this endpoint will not be authenticated.
+@RequestMapping("/api/v1/email") // this endpoint will not be authenticated.
 public class EmailControllerForPurchaseOrder {
 
     private final ConfirmationTokenService confirmationTokenService;

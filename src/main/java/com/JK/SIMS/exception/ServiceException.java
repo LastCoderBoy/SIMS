@@ -1,4 +1,4 @@
-package com.JK.SIMS.exceptionHandler;
+package com.JK.SIMS.exception;
 
 public class ServiceException extends RuntimeException {
     public ServiceException(String message, Throwable cause) {

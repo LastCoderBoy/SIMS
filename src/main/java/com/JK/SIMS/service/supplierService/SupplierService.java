@@ -1,6 +1,6 @@
 package com.JK.SIMS.service.supplierService;
 
-import com.JK.SIMS.exceptionHandler.ResourceNotFoundException;
+import com.JK.SIMS.exception.ResourceNotFoundException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.supplier.Supplier;
 import com.JK.SIMS.models.supplier.SupplierRequest;

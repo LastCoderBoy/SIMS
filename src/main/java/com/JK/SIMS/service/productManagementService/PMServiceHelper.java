@@ -1,9 +1,9 @@
 package com.JK.SIMS.service.productManagementService;
 
-import com.JK.SIMS.exceptionHandler.DatabaseException;
-import com.JK.SIMS.exceptionHandler.ResourceNotFoundException;
-import com.JK.SIMS.exceptionHandler.ServiceException;
-import com.JK.SIMS.exceptionHandler.ValidationException;
+import com.JK.SIMS.exception.DatabaseException;
+import com.JK.SIMS.exception.ResourceNotFoundException;
+import com.JK.SIMS.exception.ServiceException;
+import com.JK.SIMS.exception.ValidationException;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.repository.ProductManagement_repo.PM_repository;

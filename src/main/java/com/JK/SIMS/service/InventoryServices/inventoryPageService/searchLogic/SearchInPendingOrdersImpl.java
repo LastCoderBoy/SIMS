@@ -1,6 +1,6 @@
 package com.JK.SIMS.service.InventoryServices.inventoryPageService.searchLogic;
 
-import com.JK.SIMS.exceptionHandler.ServiceException;
+import com.JK.SIMS.exception.ServiceException;
 import com.JK.SIMS.models.inventoryData.dtos.PendingOrdersResponseInIC;
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.salesOrder.SalesOrder;

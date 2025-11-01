@@ -1,7 +1,9 @@
 package com.JK.SIMS.service.utilities;
 
-import com.JK.SIMS.exceptionHandler.ResourceNotFoundException;
-import com.JK.SIMS.exceptionHandler.ValidationException;
+import com.JK.SIMS.config.security.utils.TokenUtils;
+import com.JK.SIMS.exception.InvalidTokenException;
+import com.JK.SIMS.exception.ResourceNotFoundException;
+import com.JK.SIMS.exception.ValidationException;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.Nullable;
@@ -65,6 +67,14 @@ public class GlobalServiceHelper {
     public static <T extends Enum<T>> boolean isInEnum(Enum<T> value, Class<T> enumClass) {
         if(value == null) return false;
         return enumClass.isInstance(value);
+    }
+
+    public static String validateAndExtractToken(String authHeader) {
+        if (authHeader == null || authHeader.trim().isEmpty()) {
+            log.error("SO-QR: Invalid or missing Authorization header");
+            throw new InvalidTokenException("Invalid Token provided. Please re-login.");
+        }
+        return TokenUtils.extractToken(authHeader);
     }
 
     public static @Nullable String getOptionDateValue(String optionDate) {

@@ -1,6 +1,6 @@
 package com.JK.SIMS.controller.inventoryControllers;
 
-import com.JK.SIMS.config.security.TokenUtils;
+import com.JK.SIMS.config.security.utils.TokenUtils;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.salesOrder.dtos.SalesOrderResponseDto;

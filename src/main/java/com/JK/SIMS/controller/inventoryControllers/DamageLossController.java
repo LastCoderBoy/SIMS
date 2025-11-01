@@ -1,13 +1,13 @@
 package com.JK.SIMS.controller.inventoryControllers;
 
-import com.JK.SIMS.exceptionHandler.InvalidTokenException;
+import com.JK.SIMS.exception.InvalidTokenException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.damage_loss.DamageLossResponse;
 import com.JK.SIMS.models.damage_loss.DamageLossRequest;
 import com.JK.SIMS.models.damage_loss.DamageLossPageResponse;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryServices.damageLossService.DamageLossService;
-import com.JK.SIMS.config.security.TokenUtils;
+import com.JK.SIMS.config.security.utils.TokenUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;

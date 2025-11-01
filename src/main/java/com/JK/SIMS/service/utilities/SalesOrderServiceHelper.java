@@ -1,7 +1,7 @@
 package com.JK.SIMS.service.utilities;
 
-import com.JK.SIMS.exceptionHandler.ServiceException;
-import com.JK.SIMS.exceptionHandler.ValidationException;
+import com.JK.SIMS.exception.ServiceException;
+import com.JK.SIMS.exception.ValidationException;
 import com.JK.SIMS.models.salesOrder.SalesOrder;
 import com.JK.SIMS.models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.salesOrder.dtos.SalesOrderRequestDto;

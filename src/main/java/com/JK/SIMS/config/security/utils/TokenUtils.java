@@ -1,6 +1,6 @@
-package com.JK.SIMS.config.security;
+package com.JK.SIMS.config.security.utils;
 
-import com.JK.SIMS.exceptionHandler.InvalidTokenException;
+import com.JK.SIMS.exception.InvalidTokenException;
 
 public class TokenUtils {
 

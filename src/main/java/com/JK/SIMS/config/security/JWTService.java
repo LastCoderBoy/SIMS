@@ -26,6 +26,9 @@ public class JWTService {
     @Value("${jwt.secret}")
     private String secretKey;
 
+    @Value("${jwt.access.expiration}") // 1 hour in milliseconds
+    private Long accessTokenDurationMs;
+
     private static final Logger logger = LoggerFactory.getLogger(JWTService.class);
     private final BlackListTokenRepository blackListTokenRepository;
     @Autowired
@@ -33,16 +36,17 @@ public class JWTService {
         this.blackListTokenRepository = blackListTokenRepository;
     }
 
-    public String generateToken(String username, String role) {
+    public String generateAccessToken(String username, String role) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", role);
+        claims.put("type", "ACCESS");
 
         return Jwts.builder()
                 .claims()
                 .add(claims)
                 .subject(username)
                 .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + 1000* 60 * 60 * 8)) // 8-hour expiration time
+                .expiration(new Date(System.currentTimeMillis() + accessTokenDurationMs))
                 .and()
                 .signWith(getKey())
                 .compact();
@@ -85,11 +89,6 @@ public class JWTService {
         return extractClaim(token, Claims::getSubject);
     }
 
-    private <T> T extractClaim(String token, Function<Claims, T> claimResolver) {
-        final Claims claims = extractAllClaims(token);
-        return claimResolver.apply(claims);
-    }
-
     private Claims extractAllClaims(String token) {
         return Jwts.parser()
                 .verifyWith(getKey())
@@ -98,16 +97,22 @@ public class JWTService {
                 .getPayload();
     }
 
-    public boolean validateToken(String token, UserDetails userDetails) {
-        final String userName = extractUsername(token);
-        return (userName.equals(userDetails.getUsername()) && !isTokenExpired(token));
+
+    private Date extractExpiration(String token) {
+        return extractClaim(token, Claims::getExpiration);
+    }
+
+    private <T> T extractClaim(String token, Function<Claims, T> claimResolver) {
+        final Claims claims = extractAllClaims(token);
+        return claimResolver.apply(claims);
     }
 
     public boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
     }
 
-    private Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);
+    public boolean validateToken(String token, UserDetails userDetails) {
+        final String userName = extractUsername(token);
+        return (userName.equals(userDetails.getUsername()) && !isTokenExpired(token));
     }
 }

@@ -1,10 +1,5 @@
 package com.JK.SIMS.service.orderManagementService.analyticsService;
 
-import com.JK.SIMS.exceptionHandler.DatabaseException;
-import com.JK.SIMS.exceptionHandler.ServiceException;
-import org.springframework.dao.DataAccessException;
-import org.springframework.transaction.annotation.Transactional;
-
 public class OmAnalyticsService {
 
     // Average Fulfill Time.

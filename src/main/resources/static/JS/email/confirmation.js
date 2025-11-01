@@ -1,6 +1,6 @@
 const urlParams = new URLSearchParams(window.location.search);
 const token = urlParams.get('token');
-fetch(`/api/v1/SIMS/confirm-status?token=${token}`)
+fetch(`/api/v1/email/confirm-status?token=${token}`)
     .then(response => response.json())
     .then(data => {
         const alertDiv = document.getElementById('alert');

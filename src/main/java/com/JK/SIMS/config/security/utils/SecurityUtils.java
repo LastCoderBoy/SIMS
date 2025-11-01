@@ -1,5 +1,6 @@
-package com.JK.SIMS.config.security;
+package com.JK.SIMS.config.security.utils;
 
+import com.JK.SIMS.config.security.JWTService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.coyote.BadRequestException;
 import org.springframework.beans.factory.annotation.Autowired;

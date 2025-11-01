@@ -1,6 +1,6 @@
 package com.JK.SIMS.service.InventoryServices.inventoryPageService;
 
-import com.JK.SIMS.exceptionHandler.*;
+import com.JK.SIMS.exception.*;
 import com.JK.SIMS.models.inventoryData.dtos.InventoryMetrics;
 import com.JK.SIMS.models.inventoryData.dtos.InventoryPageResponse;
 import com.JK.SIMS.models.inventoryData.dtos.PendingOrdersResponseInIC;

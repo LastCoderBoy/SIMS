@@ -1,7 +1,7 @@
 package com.JK.SIMS.service.utilities.salesOrderSearchLogic;
 
-import com.JK.SIMS.exceptionHandler.DatabaseException;
-import com.JK.SIMS.exceptionHandler.ServiceException;
+import com.JK.SIMS.exception.DatabaseException;
+import com.JK.SIMS.exception.ServiceException;
 import com.JK.SIMS.models.salesOrder.SalesOrder;
 import com.JK.SIMS.repository.salesOrderRepo.SalesOrderRepository;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;

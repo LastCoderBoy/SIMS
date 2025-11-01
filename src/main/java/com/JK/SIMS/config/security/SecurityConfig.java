@@ -2,7 +2,7 @@ package com.JK.SIMS.config.security;
 
 import com.JK.SIMS.config.security.secFilter.JWTFilter;
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.service.userManagement_service.UserDetailsServiceImpl;
+import com.JK.SIMS.service.userAuthenticationService.impl.UserDetailsServiceImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,7 +13,6 @@ import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
-import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -49,8 +48,8 @@ public class SecurityConfig {
                         .requestMatchers("/CSS/**", "/JS/**", "/HTML/**").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasAuthority("ROLE_ADMIN")  // Only admins
                         .requestMatchers("/api/v1/priority/**").hasAnyAuthority("ROLE_MANAGER", "ROLE_ADMIN") // Only Managers and Admins
-                        .requestMatchers("/api/v1/user/login").permitAll() // Everyone can log in
-                        .requestMatchers("/api/v1/SIMS/**").permitAll() // Used for Confirmation in Email
+                        .requestMatchers("/api/v1/auth/**").permitAll() // Everyone can authenticate
+                        .requestMatchers("/api/v1/email/**").permitAll() // Used for Confirmation in Email
                         .anyRequest().authenticated())
                 .exceptionHandling(exception -> exception
                         // Handle access denied (403) - user is authenticated but lacks permission

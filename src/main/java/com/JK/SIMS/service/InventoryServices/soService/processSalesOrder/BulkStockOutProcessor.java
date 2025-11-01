@@ -1,7 +1,7 @@
 package com.JK.SIMS.service.InventoryServices.soService.processSalesOrder;
 
-import com.JK.SIMS.exceptionHandler.InventoryException;
-import com.JK.SIMS.exceptionHandler.ServiceException;
+import com.JK.SIMS.exception.InventoryException;
+import com.JK.SIMS.exception.ServiceException;
 import com.JK.SIMS.models.salesOrder.SalesOrder;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
 import com.JK.SIMS.service.stockMovementService.StockMovementService;

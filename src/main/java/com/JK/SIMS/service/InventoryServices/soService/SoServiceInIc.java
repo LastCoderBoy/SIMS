@@ -1,7 +1,7 @@
 package com.JK.SIMS.service.InventoryServices.soService;
 
-import com.JK.SIMS.config.security.SecurityUtils;
-import com.JK.SIMS.exceptionHandler.*;
+import com.JK.SIMS.config.security.utils.SecurityUtils;
+import com.JK.SIMS.exception.*;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.salesOrder.SalesOrder;
 import com.JK.SIMS.models.salesOrder.SalesOrderStatus;

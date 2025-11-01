@@ -1,9 +1,9 @@
 package com.JK.SIMS.service.InventoryServices.soService.processSalesOrder;
 
-import com.JK.SIMS.exceptionHandler.InsufficientStockException;
-import com.JK.SIMS.exceptionHandler.InventoryException;
-import com.JK.SIMS.exceptionHandler.ResourceNotFoundException;
-import com.JK.SIMS.exceptionHandler.ServiceException;
+import com.JK.SIMS.exception.InsufficientStockException;
+import com.JK.SIMS.exception.InventoryException;
+import com.JK.SIMS.exception.ResourceNotFoundException;
+import com.JK.SIMS.exception.ServiceException;
 import com.JK.SIMS.models.salesOrder.SalesOrder;
 import com.JK.SIMS.models.salesOrder.orderItem.OrderItem;
 import com.JK.SIMS.models.stockMovements.StockMovementReferenceType;

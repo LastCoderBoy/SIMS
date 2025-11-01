@@ -1,4 +1,4 @@
-package com.JK.SIMS.exceptionHandler;
+package com.JK.SIMS.exception;
 
 public class JwtAuthenticationException extends RuntimeException {
     public JwtAuthenticationException(String message) {

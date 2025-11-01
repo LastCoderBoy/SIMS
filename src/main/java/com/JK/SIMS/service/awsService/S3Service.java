@@ -1,6 +1,6 @@
 package com.JK.SIMS.service.awsService;
 
-import com.JK.SIMS.exceptionHandler.S3Exception;
+import com.JK.SIMS.exception.CustomS3Exception;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -65,13 +65,13 @@ public class S3Service {
             return objectKey;
         }catch (S3Exception e) {
             log.error("S3 error while uploading file: {}", e.getMessage());
-            throw new S3Exception("Failed to upload file to S3", e);
+            throw new CustomS3Exception("Failed to upload file to S3", e);
         } catch (AwsServiceException e) {
             log.error("AWS error while uploading file: {}", e.getMessage());
-            throw new S3Exception("Failed to upload file to S3", e);
+            throw new CustomS3Exception("Failed to upload file to S3", e);
         } catch (SdkClientException e) {
             log.error("SDK error while uploading file: {}", e.getMessage());
-            throw new S3Exception("Failed to upload file to S3", e);
+            throw new CustomS3Exception("Failed to upload file to S3", e);
         }
     }
 
@@ -94,13 +94,13 @@ public class S3Service {
             return s3ObjectStream.readAllBytes();
         } catch (IOException e) {
             log.error("Failed to read file {} from S3: {}", objectKey, e.getMessage());
-            throw new S3Exception("Failed to read file from S3", e);
+            throw new CustomS3Exception("Failed to read file from S3", e);
         } catch (NoSuchKeyException e) {
             log.error("File not found in S3: {}", objectKey);
-            throw new S3Exception("File not found: " + objectKey);
+            throw new CustomS3Exception("File not found: " + objectKey);
         } catch (S3Exception e) {
             log.error("S3 error while downloading file: {}", e.getMessage());
-            throw new S3Exception("Failed to download file from S3", e);
+            throw new CustomS3Exception("Failed to download file from S3", e);
         }
     }
 
@@ -122,7 +122,7 @@ public class S3Service {
 
         } catch (S3Exception e) {
             log.error("S3 error while deleting file {}: {}", objectKey, e.getMessage());
-            throw new S3Exception("Failed to delete file from S3", e);
+            throw new CustomS3Exception("Failed to delete file from S3", e);
         }
     }
 
@@ -151,10 +151,10 @@ public class S3Service {
             String url = presignedRequest.url().toString();
             log.debug("Generated presigned URL for {} valid for {} seconds", objectKey, duration.getSeconds());
             return url;
-
         } catch (S3Exception e) {
             log.error("Error generating presigned URL for {}: {}", objectKey, e.getMessage());
-            throw new S3Exception("Failed to generate presigned URL", e);
+            throw new CustomS3Exception("Failed to generate presigned URL", e);
         }
     }
 }
+

@@ -1,6 +1,6 @@
 package com.JK.SIMS.service.utilities;
 
-import com.JK.SIMS.exceptionHandler.ResourceNotFoundException;
+import com.JK.SIMS.exception.ResourceNotFoundException;
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.purchaseOrder.dtos.PurchaseOrderResponseDto;
 import com.JK.SIMS.models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;

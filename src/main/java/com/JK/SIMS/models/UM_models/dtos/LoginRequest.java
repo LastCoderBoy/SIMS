@@ -1,4 +1,4 @@
-package com.JK.SIMS.models.UM_models;
+package com.JK.SIMS.models.UM_models.dtos;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;

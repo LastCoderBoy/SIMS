@@ -1,8 +1,8 @@
 package com.JK.SIMS.service.InventoryServices.lowStockService;
 
-import com.JK.SIMS.exceptionHandler.DatabaseException;
-import com.JK.SIMS.exceptionHandler.ServiceException;
-import com.JK.SIMS.exceptionHandler.ValidationException;
+import com.JK.SIMS.exception.DatabaseException;
+import com.JK.SIMS.exception.ServiceException;
+import com.JK.SIMS.exception.ValidationException;
 import com.JK.SIMS.models.inventoryData.InventoryControlData;
 import com.JK.SIMS.models.inventoryData.dtos.InventoryControlResponse;
 import com.JK.SIMS.models.PM_models.ProductCategories;

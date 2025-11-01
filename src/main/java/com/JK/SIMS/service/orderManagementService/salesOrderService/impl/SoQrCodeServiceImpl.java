@@ -1,10 +1,10 @@
 package com.JK.SIMS.service.orderManagementService.salesOrderService.impl;
 
-import com.JK.SIMS.config.security.SecurityUtils;
-import com.JK.SIMS.exceptionHandler.InvalidTokenException;
-import com.JK.SIMS.exceptionHandler.ResourceNotFoundException;
-import com.JK.SIMS.exceptionHandler.ServiceException;
-import com.JK.SIMS.exceptionHandler.ValidationException;
+import com.JK.SIMS.config.security.utils.SecurityUtils;
+import com.JK.SIMS.exception.InvalidTokenException;
+import com.JK.SIMS.exception.ResourceNotFoundException;
+import com.JK.SIMS.exception.ServiceException;
+import com.JK.SIMS.exception.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.salesOrder.SalesOrder;
 import com.JK.SIMS.models.salesOrder.SalesOrderStatus;
@@ -18,6 +18,7 @@ import com.JK.SIMS.service.orderManagementService.salesOrderService.SoQrCodeServ
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import com.JK.SIMS.service.utilities.qrCode.QrCodeUtil;
 import com.google.zxing.WriterException;
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.coyote.BadRequestException;
@@ -25,6 +26,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.io.IOException;
 import java.time.Clock;
@@ -59,6 +61,15 @@ public class SoQrCodeServiceImpl implements SoQrCodeService {
         this.salesOrderRepository = salesOrderRepository;
     }
 
+    @PostConstruct
+    private void validateConfiguration() {
+        if (baseUrl == null || baseUrl.trim().isEmpty()) {
+            log.error("SO-QR: app.backend.base-url is not configured!");
+            throw new IllegalStateException("app.backend.base-url must be configured");
+        }
+        log.info("SO-QR: Configuration validated - Base URL: {}", baseUrl);
+    }
+
     @Override
     @Transactional
     public DetailedSalesOrderView verifyQrCode(String qrToken, String jwtToken, HttpServletRequest request) {
@@ -81,11 +92,9 @@ public class SoQrCodeServiceImpl implements SoQrCodeService {
 
     @Override
     @Transactional
-    public ApiResponse<String> updateOrderStatus(String qrToken, String jwtToken, SalesOrderStatus newStatusValue, HttpServletRequest request) {
+    public ApiResponse<String> updateOrderStatus(String qrToken, String jwtToken, SalesOrderStatus newStatusValue,
+                                                 HttpServletRequest request) {
         try {
-            if(newStatusValue == null){
-                throw new ValidationException("Missing status value");
-            }
             SalesOrderQRCode soQrEntity = getSoQrCodeByToken(qrToken);
             SalesOrder salesOrder = soQrEntity.getSalesOrder();
             if(!isOrderStatusCanBeUpdated(salesOrder, newStatusValue)){
@@ -93,8 +102,8 @@ public class SoQrCodeServiceImpl implements SoQrCodeService {
                 throw new ValidationException("Order cannot be updated to status: " + newStatusValue);
             }
             String username = securityUtils.validateAndExtractUsername(jwtToken);
-            salesOrder.setStatus(newStatusValue);
             salesOrder.setUpdatedBy(username);
+            salesOrder.setStatus(newStatusValue);
             if(newStatusValue == SalesOrderStatus.DELIVERED){
                 salesOrder.setDeliveryDate(GlobalServiceHelper.now(clock));
             }
@@ -131,8 +140,12 @@ public class SoQrCodeServiceImpl implements SoQrCodeService {
             return new QrCodeUrlResponse(qrImageUrl, salesOrder.getOrderReference(), expiryTime);
         } catch (ResourceNotFoundException rnfe){
             throw rnfe;
+        } catch (S3Exception e) {
+            log.error("SO-QR: Failed to generate presigned URL for salesOrderId: {}", salesOrderId, e);
+            throw new ServiceException("Failed to generate QR code URL", e);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            log.error("SO-QR: Unexpected error generating presigned URL for salesOrderId: {}", salesOrderId, e);
+            throw new ServiceException("Unexpected error generating QR code URL", e);
         }
     }
 
@@ -167,12 +180,6 @@ public class SoQrCodeServiceImpl implements SoQrCodeService {
         }
     }
 
-    @Transactional(readOnly = true)
-    public SalesOrderQRCode getSoQrCodeByToken(String qrToken){
-        return salesOrderQrRepository.findByToken(qrToken)
-                .orElseThrow(() -> new ResourceNotFoundException("QR Code not found with token: " + qrToken));
-    }
-
     private void logScanner(SalesOrderQRCode soQrEntity, String jwtToken, HttpServletRequest request){
         try {
             // Extract the scanner details
@@ -188,7 +195,6 @@ public class SoQrCodeServiceImpl implements SoQrCodeService {
             soQrEntity.setUserAgent(userAgent);
         } catch (Exception e) {
             log.error("SO-QR: logScanner() Error logging scanner details - {}", e.getMessage());
-            throw new ServiceException("Failed to log scanner details", e);
         }
     }
 
@@ -198,6 +204,11 @@ public class SoQrCodeServiceImpl implements SoQrCodeService {
             return validUpdateStatusList.contains(newStatusValue);
         }
         return false;
+    }
+
+    private SalesOrderQRCode getSoQrCodeByToken(String qrToken){
+        return salesOrderQrRepository.findByToken(qrToken)
+                .orElseThrow(() -> new ResourceNotFoundException("QR Code not found with token: " + qrToken));
     }
 
     private SalesOrder getSalesOrderById(Long orderId) {

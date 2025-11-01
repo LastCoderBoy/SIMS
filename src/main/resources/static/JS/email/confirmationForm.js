@@ -1,6 +1,6 @@
 const urlParams = new URLSearchParams(window.location.search);
 const token = urlParams.get('token');
-fetch(`/api/v1/SIMS/confirm-form?token=${token}`)
+fetch(`/api/v1/email/confirm-form?token=${token}`)
     .then(response => response.json())
     .then(data => {
         if (!data.valid) {
@@ -12,7 +12,7 @@ fetch(`/api/v1/SIMS/confirm-form?token=${token}`)
 document.getElementById('confirmForm').addEventListener('submit', function(e) {
     e.preventDefault();
     const date = document.getElementById('expectedArrivalDate').value;
-    fetch(`/api/v1/SIMS/confirm?token=${token}`, {
+    fetch(`/api/v1/email/confirm?token=${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ expectedArrivalDate: date })

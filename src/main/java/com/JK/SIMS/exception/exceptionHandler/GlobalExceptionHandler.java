@@ -1,5 +1,6 @@
-package com.JK.SIMS.exceptionHandler;
+package com.JK.SIMS.exception.exceptionHandler;
 
+import com.JK.SIMS.exception.*;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import lombok.extern.slf4j.Slf4j;
@@ -102,7 +103,7 @@ public class GlobalExceptionHandler {
                 "{}Access denied: {}");
     }
 
-    @ExceptionHandler({JwtAuthenticationException.class, ExpiredJwtException.class, JwtException.class, AuthenticationFailedException.class})
+    @ExceptionHandler({JwtAuthenticationException.class, ExpiredJwtException.class, JwtException.class, AuthenticationFailedException.class, TokenRefreshException.class})
     public ResponseEntity<ErrorObject> handleAuthenticationExceptions(Exception ex) {
         return handleException(ex, HttpStatus.UNAUTHORIZED,
                 "{}Authentication error: {}");
@@ -145,9 +146,9 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorObject, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    // Custom S3Exception (for your wrapper)
-    @ExceptionHandler(S3Exception.class)
-    public ResponseEntity<ErrorObject> handleCustomS3Exception(S3Exception ex) {
+    // Custom CustomS3Exception (for your wrapper)
+    @ExceptionHandler(CustomS3Exception.class)
+    public ResponseEntity<ErrorObject> handleCustomS3Exception(CustomS3Exception ex) {
         return handleException(ex, HttpStatus.INTERNAL_SERVER_ERROR, LogLevel.ERROR,
                 "{}Custom S3 error: {}");
     }

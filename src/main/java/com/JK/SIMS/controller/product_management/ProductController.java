@@ -1,13 +1,13 @@
 package com.JK.SIMS.controller.product_management;
 
-import com.JK.SIMS.config.security.SecurityUtils;
-import com.JK.SIMS.exceptionHandler.ValidationException;
+import com.JK.SIMS.config.security.utils.SecurityUtils;
+import com.JK.SIMS.exception.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.PM_models.ProductManagementDTO;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.productManagementService.ProductManagementService;
-import com.JK.SIMS.config.security.TokenUtils;
+import com.JK.SIMS.config.security.utils.TokenUtils;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;

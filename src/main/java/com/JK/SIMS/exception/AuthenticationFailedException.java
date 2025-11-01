@@ -1,4 +1,4 @@
-package com.JK.SIMS.exceptionHandler;
+package com.JK.SIMS.exception;
 
 public class AuthenticationFailedException extends RuntimeException {
     public AuthenticationFailedException(String message, Throwable cause) {
