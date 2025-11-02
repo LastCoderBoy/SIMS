@@ -16,6 +16,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -129,13 +130,8 @@ public class UserService {
             clearRefreshTokenCookie(response); // Clear invalid cookie
             log.warn("UM (refreshToken): Token refresh failed - {}", e.getMessage());
             throw e;
-        } catch (ExpiredJwtException e) {
-            log.warn("UM (refreshToken): Refresh token has expired");
-            throw new TokenRefreshException("UM (refreshToken): Refresh token has expired", e);
-        } catch (JwtException e) {
-            log.error("UM (refreshToken): Invalid refresh token format - {}", e.getMessage());
-            throw new TokenRefreshException("UM (refreshToken): Invalid refresh token format", e);
         } catch (Exception e) {
+            clearRefreshTokenCookie(response); // Clear invalid cookie
             log.error("UM (refreshToken): Unexpected error during token refresh - {}", e.getMessage(), e);
             throw new TokenRefreshException("UM (refreshToken): Failed to refresh token", e);
         }
@@ -247,10 +243,15 @@ public class UserService {
         Cookie cookie = new Cookie(refreshTokenCookieName, refreshToken);
         cookie.setHttpOnly(true);  // Prevents JavaScript access (XSS protection)
         cookie.setSecure(false);    // Set to false for local dev, true for production
-        cookie.setPath("/api/v1/auth"); // Cookie only sent to auth endpoints
+//        cookie.setPath("/api/v1/auth"); // Cookie only sent to auth endpoints
+        cookie.setPath("/"); // Cookie only sent to auth endpoints
         cookie.setMaxAge(refreshTokenCookieMaxAge); // 7 days
         cookie.setAttribute("SameSite", "Strict"); // CSRF protection
         response.addCookie(cookie);
+
+        log.info("Set refresh token cookie: name={}, maxAge={}, secure={}, httpOnly={}, path={}",
+                refreshTokenCookieName, refreshTokenCookieMaxAge, false, true, "/");
+
     }
 
     /**
@@ -259,8 +260,9 @@ public class UserService {
     private void clearRefreshTokenCookie(HttpServletResponse response) {
         Cookie cookie = new Cookie(refreshTokenCookieName, "");
         cookie.setHttpOnly(true);
-        cookie.setSecure(true);
-        cookie.setPath("/api/v1/auth");
+        cookie.setSecure(false);    // Set to false for local dev, true for production
+//        cookie.setPath("/api/v1/auth");
+        cookie.setPath("/");  //  Must match the path used when setting
         cookie.setMaxAge(0); // Expire immediately
         cookie.setAttribute("SameSite", "Strict");
         response.addCookie(cookie);
@@ -269,7 +271,7 @@ public class UserService {
     /**
      * Extracts refresh token from the cookie
      */
-    private String extractRefreshTokenFromCookie(HttpServletRequest request) {
+    private @Nullable String extractRefreshTokenFromCookie(HttpServletRequest request) {
         Cookie[] cookies = request.getCookies();
         if (cookies != null) {
             for (Cookie cookie : cookies) {

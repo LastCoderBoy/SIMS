@@ -48,6 +48,7 @@ public class SecurityConfig {
                         .requestMatchers("/CSS/**", "/JS/**", "/HTML/**").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasAuthority("ROLE_ADMIN")  // Only admins
                         .requestMatchers("/api/v1/priority/**").hasAnyAuthority("ROLE_MANAGER", "ROLE_ADMIN") // Only Managers and Admins
+                        .requestMatchers("/test-auth.html").permitAll() // DEBUG ONLY
                         .requestMatchers("/api/v1/auth/**").permitAll() // Everyone can authenticate
                         .requestMatchers("/api/v1/email/**").permitAll() // Used for Confirmation in Email
                         .anyRequest().authenticated())

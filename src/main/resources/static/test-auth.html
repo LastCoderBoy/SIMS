@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIMS Authentication Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .section h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+
+        .btn-info {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        #output {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .status.logged-out {
+            background: #fee;
+            color: #c33;
+        }
+
+        .status.logged-in {
+            background: #efe;
+            color: #3c3;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .info-box strong {
+            color: #1976d2;
+        }
+
+        .token-display {
+            background: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            word-break: break-all;
+            font-size: 12px;
+            font-family: monospace;
+            margin-top: 10px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🔐 SIMS Authentication Test</h1>
+    <p class="subtitle">Smart Inventory Management System - Token Testing Interface</p>
+
+    <div class="info-box">
+        <strong>ℹ️ How to use:</strong><br>
+        1. Login with your credentials<br>
+        2. Access Token is stored in memory (JavaScript variable)<br>
+        3. Refresh Token is stored in HttpOnly cookie (check DevTools → Application → Cookies)<br>
+        4. Try API calls to see authentication in action!
+    </div>
+
+    <!-- Login Section -->
+    <div class="section">
+        <h2>📝 Login</h2>
+        <div class="form-group">
+            <label for="login">Username or Email</label>
+            <input type="text" id="login" placeholder="LastCoderBoy" value="LastCoderBoy">
+        </div>
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" placeholder="Enter password">
+        </div>
+        <button onclick="login()">🚀 Login</button>
+        <div id="loginStatus" style="margin-top: 10px;"></div>
+        <div id="tokenDisplay"></div>
+    </div>
+
+    <!-- API Test Section -->
+    <div class="section">
+        <h2>🧪 Test Protected Endpoints</h2>
+        <button onclick="testProducts()" class="btn-info">📦 Get Products</button>
+        <button onclick="testOrders()" class="btn-info">📋 Get Orders</button>
+        <button onclick="testUserProfile()" class="btn-info">👤 Get Profile</button>
+    </div>
+
+    <!-- Token Management -->
+    <div class="section">
+        <h2>🔄 Token Management</h2>
+        <button onclick="refreshToken()" class="btn-secondary">🔄 Refresh Access Token</button>
+        <button onclick="logout()">🚪 Logout</button>
+        <button onclick="logoutAllDevices()" class="btn-danger">🔥 Logout All Devices</button>
+    </div>
+
+    <!-- Cookie Inspector -->
+    <div class="section">
+        <h2>🍪 Cookie Inspector</h2>
+        <button onclick="showCookies()" class="btn-info">🔍 Show All Cookies</button>
+        <button onclick="clearOutput()">🧹 Clear Output</button>
+    </div>
+
+    <!-- Output Console -->
+    <div id="output"></div>
+</div>
+
+<script>
+    const API_BASE_URL = 'http://localhost:8080/api/v1';
+    let accessToken = null;
+
+    function log(message, type = 'info') {
+        const output = document.getElementById('output');
+        const timestamp = new Date().toLocaleTimeString();
+        const colors = {
+            success: '#00ff00',
+            error: '#ff4444',
+            info: '#00ccff',
+            warning: '#ffaa00'
+        };
+
+        output.innerHTML += `<span style="color: ${colors[type]}">[${timestamp}] ${message}</span>\n`;
+        output.scrollTop = output.scrollHeight;
+    }
+
+    function clearOutput() {
+        document.getElementById('output').innerHTML = '';
+    }
+
+    function updateLoginStatus(isLoggedIn, username = '') {
+        const statusDiv = document.getElementById('loginStatus');
+        if (isLoggedIn) {
+            statusDiv.innerHTML = `<span class="status logged-in">✅ Logged in as: ${username}</span>`;
+        } else {
+            statusDiv.innerHTML = `<span class="status logged-out">❌ Not logged in</span>`;
+        }
+    }
+
+    function displayToken(token) {
+        const tokenDiv = document.getElementById('tokenDisplay');
+        if (token) {
+            tokenDiv.innerHTML = `
+                    <div class="token-display">
+                        <strong>Access Token (first 50 chars):</strong><br>
+                        ${token.substring(0, 50)}...
+                    </div>
+                `;
+        }
+    }
+
+    async function login() {
+        const loginValue = document.getElementById('login').value;
+        const password = document.getElementById('password').value;
+
+        log('🔄 Attempting login...', 'info');
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/auth/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include', // ⚠️ IMPORTANT: This enables cookie handling
+                body: JSON.stringify({
+                    login: loginValue,
+                    password: password
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                accessToken = data.data.accessToken;
+                log('✅ LOGIN SUCCESS!', 'success');
+                log(`Username: ${data.data.username}`, 'success');
+                log(`Role: ${data.data.role}`, 'success');
+                log(`Token Type: ${data.data.tokenType}`, 'success');
+                log(`Expires In: ${data.data.expiresIn} seconds`, 'success');
+                log('🍪 Refresh token stored in HttpOnly cookie', 'success');
+
+                updateLoginStatus(true, data.data.username);
+                displayToken(accessToken);
+            } else {
+                log(`❌ LOGIN FAILED: ${data.message || 'Unknown error'}`, 'error');
+                updateLoginStatus(false);
+            }
+        } catch (error) {
+            log(`❌ ERROR: ${error.message}`, 'error');
+            updateLoginStatus(false);
+        }
+    }
+
+    async function refreshToken() {
+        log('🔄 Refreshing access token...', 'info');
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+                method: 'POST',
+                credentials: 'include' // Sends the refresh token cookie
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                accessToken = data.data.accessToken;
+                log('✅ TOKEN REFRESHED!', 'success');
+                log(`New Access Token received`, 'success');
+                log(`Username: ${data.data.username}`, 'success');
+                log('🍪 New refresh token stored in cookie', 'success');
+
+                updateLoginStatus(true, data.data.username);
+                displayToken(accessToken);
+            } else {
+                log(`❌ REFRESH FAILED: ${data.message}`, 'error');
+            }
+        } catch (error) {
+            log(`❌ ERROR: ${error.message}`, 'error');
+        }
+    }
+
+    async function logout() {
+        if (!accessToken) {
+            log('⚠️ No access token found', 'warning');
+            return;
+        }
+
+        log('🚪 Logging out...', 'info');
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/auth/logout`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                },
+                credentials: 'include'
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                log('✅ LOGOUT SUCCESS!', 'success');
+                log('🍪 Refresh token cookie cleared', 'success');
+                accessToken = null;
+                updateLoginStatus(false);
+                document.getElementById('tokenDisplay').innerHTML = '';
+            } else {
+                log(`❌ LOGOUT FAILED: ${data.message}`, 'error');
+            }
+        } catch (error) {
+            log(`❌ ERROR: ${error.message}`, 'error');
+        }
+    }
+
+    async function logoutAllDevices() {
+        log('🔥 Logging out from all devices...', 'warning');
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/auth/logout-all`, {
+                method: 'POST',
+                credentials: 'include'
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                log('✅ LOGGED OUT FROM ALL DEVICES!', 'success');
+                accessToken = null;
+                updateLoginStatus(false);
+                document.getElementById('tokenDisplay').innerHTML = '';
+            } else {
+                log(`❌ LOGOUT ALL FAILED: ${data.message}`, 'error');
+            }
+        } catch (error) {
+            log(`❌ ERROR: ${error.message}`, 'error');
+        }
+    }
+
+    async function testProducts() {
+        if (!accessToken) {
+            log('⚠️ Please login first!', 'warning');
+            return;
+        }
+
+        log('📦 Fetching products...', 'info');
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/products`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                },
+                credentials: 'include'
+            });
+
+            if (response.status === 401) {
+                log('⚠️ Access token expired! Auto-refreshing...', 'warning');
+                await refreshToken();
+                return testProducts(); // Retry
+            }
+
+            const data = await response.json();
+
+            if (response.ok) {
+                log('✅ PRODUCTS FETCHED!', 'success');
+                log(JSON.stringify(data, null, 2), 'info');
+            } else {
+                log(`❌ FAILED: ${data.message}`, 'error');
+            }
+        } catch (error) {
+            log(`❌ ERROR: ${error.message}`, 'error');
+        }
+    }
+
+    async function testOrders() {
+        if (!accessToken) {
+            log('⚠️ Please login first!', 'warning');
+            return;
+        }
+
+        log('📋 Fetching orders...', 'info');
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/orders`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                },
+                credentials: 'include'
+            });
+
+            if (response.status === 401) {
+                log('⚠️ Access token expired! Auto-refreshing...', 'warning');
+                await refreshToken();
+                return testOrders(); // Retry
+            }
+
+            const data = await response.json();
+
+            if (response.ok) {
+                log('✅ ORDERS FETCHED!', 'success');
+                log(JSON.stringify(data, null, 2), 'info');
+            } else {
+                log(`❌ FAILED: ${data.message}`, 'error');
+            }
+        } catch (error) {
+            log(`❌ ERROR: ${error.message}`, 'error');
+        }
+    }
+
+    async function testUserProfile() {
+        if (!accessToken) {
+            log('⚠️ Please login first!', 'warning');
+            return;
+        }
+
+        log('👤 Fetching user profile...', 'info');
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/auth/me`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                },
+                credentials: 'include'
+            });
+
+            if (response.status === 401) {
+                log('⚠️ Access token expired! Auto-refreshing...', 'warning');
+                await refreshToken();
+                return testUserProfile(); // Retry
+            }
+
+            const data = await response.json();
+
+            if (response.ok) {
+                log('✅ PROFILE FETCHED!', 'success');
+                log(JSON.stringify(data, null, 2), 'info');
+            } else {
+                log(`❌ FAILED: ${data.message}`, 'error');
+            }
+        } catch (error) {
+            log(`❌ ERROR: ${error.message}`, 'error');
+        }
+    }
+
+    function showCookies() {
+        log('🍪 Current Cookies:', 'info');
+        const cookies = document.cookie.split(';');
+
+        if (cookies.length === 0 || document.cookie === '') {
+            log('⚠️ No readable cookies found', 'warning');
+            log('ℹ️ HttpOnly cookies (like refresh_token) cannot be accessed via JavaScript', 'info');
+            log('ℹ️ To see HttpOnly cookies, open DevTools → Application → Cookies', 'info');
+        } else {
+            cookies.forEach(cookie => {
+                log(`  ${cookie.trim()}`, 'info');
+            });
+            log('ℹ️ Note: HttpOnly cookies won\'t appear here (security feature)', 'info');
+        }
+    }
+
+    // Initialize
+    updateLoginStatus(false);
+    log('🚀 SIMS Authentication Test Page Ready!', 'success');
+    log('ℹ️ Open DevTools → Application → Cookies to see HttpOnly refresh_token', 'info');
+</script>
+</body>
+</html>

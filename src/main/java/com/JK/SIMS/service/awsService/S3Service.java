@@ -1,6 +1,8 @@
 package com.JK.SIMS.service.awsService;
 
 import com.JK.SIMS.exception.CustomS3Exception;
+import com.JK.SIMS.exception.ResourceNotFoundException;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,6 +23,7 @@ import java.util.Map;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class S3Service {
 
     @Value( "${aws.s3.bucket-name}")
@@ -28,12 +31,6 @@ public class S3Service {
 
     private final S3Client s3Client;
     private final S3Presigner s3Presigner;
-
-    @Autowired
-    public S3Service(S3Client s3Client, S3Presigner s3Presigner) {
-        this.s3Client = s3Client;
-        this.s3Presigner = s3Presigner;
-    }
 
     /**
      * Uploads a file to the S3 bucket.
@@ -126,16 +123,30 @@ public class S3Service {
         }
     }
 
+
     /**
      * Generate a pre-signed URL for temporary access to a private S3 object.
-     * This URL will work even though the bucket is private.
      *
      * @param objectKey The S3 object key
-     * @param duration How long the URL should be valid (e.g. Duration.ofHours(24))
+     * @param duration How long the URL should be valid (max 7 days for AWS)
      * @return A temporary URL that grants access to the file
+     * @throws IllegalArgumentException if duration exceeds AWS limit
      */
     public String generatePresignedUrl(String objectKey, Duration duration) {
+        // AWS presigned URLs have a maximum validity of 7 days
+        if (duration.toDays() > 7) {
+            throw new IllegalArgumentException("Presigned URL duration cannot exceed 7 days");
+        }
+
         try {
+            // First, verify the object exists
+            HeadObjectRequest headRequest = HeadObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(objectKey)
+                    .build();
+
+            s3Client.headObject(headRequest); // Throws NoSuchKeyException if not found
+
             GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                     .bucket(bucketName)
                     .key(objectKey)
@@ -149,10 +160,15 @@ public class S3Service {
             PresignedGetObjectRequest presignedRequest = s3Presigner.presignGetObject(presignRequest);
 
             String url = presignedRequest.url().toString();
-            log.debug("Generated presigned URL for {} valid for {} seconds", objectKey, duration.getSeconds());
+            log.info("Generated presigned URL for {} valid for {} minutes",
+                    objectKey, duration.toMinutes());
             return url;
+
+        } catch (NoSuchKeyException e) {
+            log.error("Object not found in S3: {}", objectKey);
+            throw new ResourceNotFoundException("QR code image not found: " + objectKey);
         } catch (S3Exception e) {
-            log.error("Error generating presigned URL for {}: {}", objectKey, e.getMessage());
+            log.error("Error generating presigned URL for {}: {}", objectKey, e.awsErrorDetails().errorMessage());
             throw new CustomS3Exception("Failed to generate presigned URL", e);
         }
     }

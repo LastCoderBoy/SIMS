@@ -20,6 +20,7 @@ import com.JK.SIMS.service.utilities.qrCode.QrCodeUtil;
 import com.google.zxing.WriterException;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.coyote.BadRequestException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,6 +37,7 @@ import java.util.List;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class SoQrCodeServiceImpl implements SoQrCodeService {
 
     @Value( "${app.backend.base-url}")
@@ -43,6 +45,7 @@ public class SoQrCodeServiceImpl implements SoQrCodeService {
 
     private final List<SalesOrderStatus> validUpdateStatusList = List.of(
             SalesOrderStatus.DELIVERY_IN_PROCESS, SalesOrderStatus.DELIVERED);
+
     private final Clock clock;
     private final QrCodeUtil qrCodeUtil;
     private final SecurityUtils securityUtils;
@@ -50,16 +53,6 @@ public class SoQrCodeServiceImpl implements SoQrCodeService {
 
     private final SalesOrderRepository salesOrderRepository;
     private final SalesOrderQrRepository salesOrderQrRepository;
-
-    @Autowired
-    public SoQrCodeServiceImpl(Clock clock, QrCodeUtil qrCodeUtil, SalesOrderQrRepository salesOrderQrRepository, SecurityUtils securityUtils, S3Service s3Service, SalesOrderRepository salesOrderRepository) {
-        this.clock = clock;
-        this.qrCodeUtil = qrCodeUtil;
-        this.salesOrderQrRepository = salesOrderQrRepository;
-        this.securityUtils = securityUtils;
-        this.s3Service = s3Service;
-        this.salesOrderRepository = salesOrderRepository;
-    }
 
     @PostConstruct
     private void validateConfiguration() {
