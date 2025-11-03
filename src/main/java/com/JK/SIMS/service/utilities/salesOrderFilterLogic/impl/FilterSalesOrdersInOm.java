@@ -1,14 +1,15 @@
-package com.JK.SIMS.service.utilities.salesOrderFilterLogic;
+package com.JK.SIMS.service.utilities.salesOrderFilterLogic.impl;
 
 import com.JK.SIMS.models.salesOrder.SalesOrder;
 import com.JK.SIMS.repository.salesOrderRepo.SalesOrderRepository;
+import com.JK.SIMS.service.utilities.salesOrderFilterLogic.AbstractSoFilterStrategy;
 import org.jetbrains.annotations.Nullable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;
 
-@Component
-public class FilterSalesOrders extends AbstractSoFilterStrategy {
-    protected FilterSalesOrders(SalesOrderRepository salesOrderRepository) {
+@Component("filterSalesOrdersInOm")  // Must match field name
+public class FilterSalesOrdersInOm extends AbstractSoFilterStrategy {
+    protected FilterSalesOrdersInOm(SalesOrderRepository salesOrderRepository) {
         super(salesOrderRepository);
     }
 

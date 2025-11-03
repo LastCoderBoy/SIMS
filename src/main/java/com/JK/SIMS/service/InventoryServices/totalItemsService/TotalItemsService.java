@@ -17,7 +17,7 @@ import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.InventoryControl_repo.IC_repository;
-import com.JK.SIMS.service.productManagementService.PMServiceHelper;
+import com.JK.SIMS.service.productManagementService.impl.PMServiceHelper;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.coyote.BadRequestException;
@@ -233,14 +233,13 @@ public class TotalItemsService {
         }
     }
 
-    public void generateReport(HttpServletResponse response, String sortBy, String sortDirection) {
+    public void generateTotalItemsReport(HttpServletResponse response, String sortBy, String sortDirection) {
         XSSFWorkbook workbook = new XSSFWorkbook();
         XSSFSheet sheet = workbook.createSheet("All Inventory Products");
         createHeaderRowForInventoryDto(sheet);
-
         List<InventoryControlResponse> allProducts = getAllInventoryProducts(sortBy, sortDirection);
         populateDataRowsForInventoryDto(sheet, allProducts);
-        logger.info("TotalItems (generateReport): {} products retrieved.", allProducts.size());
+        logger.info("TotalItems (generateTotalItemsReport): {} products retrieved.", allProducts.size());
         writeWorkbookToResponse(response, workbook);
     }
 

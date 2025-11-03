@@ -30,12 +30,7 @@ public class ExcelReporterHelper {
     public static void createHeaderRowForInventoryDto(XSSFSheet sheet) {
         // Create a bold font style
         XSSFWorkbook workbook = sheet.getWorkbook();
-        Font headerFont = workbook.createFont();
-        headerFont.setBold(true);
-
-        // Create a cell style with the bold font
-        CellStyle headerStyle = workbook.createCellStyle();
-        headerStyle.setFont(headerFont);
+        CellStyle headerStyle = createBoldHeaderStyle(workbook);
 
         // Create the header row
         XSSFRow row = sheet.createRow(0);
@@ -75,5 +70,15 @@ public class ExcelReporterHelper {
             rowForData.createCell(9).setCellValue(ic.getInventoryStatus().toString());
             dataRowIndex++;
         }
+    }
+
+    public static CellStyle createBoldHeaderStyle(XSSFWorkbook workbook) {
+        Font headerFont = workbook.createFont();
+        headerFont.setBold(true);
+
+        CellStyle headerStyle = workbook.createCellStyle();
+        headerStyle.setFont(headerFont);
+
+        return headerStyle;
     }
 }

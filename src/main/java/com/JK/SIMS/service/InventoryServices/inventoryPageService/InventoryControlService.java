@@ -272,7 +272,7 @@ public class InventoryControlService {
             } else {
                 // Fetch filtered Sales Orders
                 PaginatedResponse<SummarySalesOrderView> salesOrders =
-                        soServiceInIc.filterSoProducts(soStatus, dateOption, startDate, endDate, page, size, sortBy, sortDirection);
+                        soServiceInIc.filterWaitingSoProducts(soStatus, dateOption, startDate, endDate, page, size, sortBy, sortDirection);
                 inventoryServiceHelper.fillWithSalesOrderView(combinedResults, salesOrders.getContent());
             }
         }

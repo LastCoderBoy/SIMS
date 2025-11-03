@@ -122,7 +122,7 @@ public class SoControllerInIc {
 
         String optionDateValue = getOptionDateValue(optionDate);
         PaginatedResponse<SummarySalesOrderView> dtoResponse =
-                soServiceInIc.filterSoProducts(soStatus, optionDateValue, startDate, endDate, page, size, sortBy, sortDirection);
+                soServiceInIc.filterWaitingSoProducts(soStatus, optionDateValue, startDate, endDate, page, size, sortBy, sortDirection);
         return ResponseEntity.ok(dtoResponse);
     }
 }

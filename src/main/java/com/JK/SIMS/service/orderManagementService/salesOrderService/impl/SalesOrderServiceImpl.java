@@ -21,7 +21,8 @@ import com.JK.SIMS.repository.salesOrderRepo.SalesOrderRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
 import com.JK.SIMS.service.orderManagementService.salesOrderService.SalesOrderService;
 import com.JK.SIMS.service.orderManagementService.salesOrderService.SoQrCodeService;
-import com.JK.SIMS.service.productManagementService.PMServiceHelper;
+import com.JK.SIMS.service.productManagementService.ProductManagementService;
+import com.JK.SIMS.service.productManagementService.impl.PMServiceHelper;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import com.JK.SIMS.service.utilities.SalesOrderServiceHelper;
 import com.JK.SIMS.service.utilities.salesOrderFilterLogic.SoFilterStrategy;
@@ -29,6 +30,7 @@ import com.JK.SIMS.service.utilities.salesOrderSearchLogic.SoSearchStrategy;
 import jakarta.annotation.Nullable;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -50,36 +52,18 @@ import java.util.stream.Collectors;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class SalesOrderServiceImpl implements SalesOrderService {
 
     private final GlobalServiceHelper globalServiceHelper;
-    private final PMServiceHelper pmServiceHelper;
+    private final ProductManagementService pmService;
     private final StockManagementLogic stockManagementLogic;
     private final SalesOrderServiceHelper salesOrderServiceHelper;
     private final SecurityUtils securityUtils;
-    private final SoSearchStrategy soSearchStrategy;
-    private final SoFilterStrategy soFilterStrategy;
     private final SoQrCodeService soQrCodeService;
-
     private final SalesOrderRepository salesOrderRepository;
-    private final OrderItemRepository orderItemRepository;
-    @Autowired
-    public SalesOrderServiceImpl(GlobalServiceHelper globalServiceHelper, SalesOrderRepository salesOrderRepository,
-                                 OrderItemRepository orderItemRepository, PMServiceHelper pmServiceHelper,
-                                 StockManagementLogic stockManagementLogic, SalesOrderServiceHelper salesOrderServiceHelper,
-                                 SecurityUtils securityUtils, @Qualifier("omSoSearchStrategy") SoSearchStrategy soSearchStrategy,
-                                 @Qualifier("filterSalesOrders") SoFilterStrategy soFilterStrategy, SoQrCodeService soQrCodeService) {
-        this.globalServiceHelper = globalServiceHelper;
-        this.salesOrderRepository = salesOrderRepository;
-        this.orderItemRepository = orderItemRepository;
-        this.pmServiceHelper = pmServiceHelper;
-        this.stockManagementLogic = stockManagementLogic;
-        this.salesOrderServiceHelper = salesOrderServiceHelper;
-        this.securityUtils = securityUtils;
-        this.soSearchStrategy = soSearchStrategy;
-        this.soFilterStrategy = soFilterStrategy;
-        this.soQrCodeService = soQrCodeService;
-    }
+    private final SoSearchStrategy omSoSearchStrategy;
+    private final SoFilterStrategy filterSalesOrdersInOm;
 
     @Override
     @Transactional(readOnly = true)
@@ -396,7 +380,7 @@ public class SalesOrderServiceImpl implements SalesOrderService {
      */
     private void populateSalesOrderWithItems(SalesOrder salesOrder, List<OrderItemRequest> orderItemRequestList){
         for (OrderItemRequest itemDto : orderItemRequestList) {
-            ProductsForPM product = pmServiceHelper.findProductById(itemDto.getProductId());
+            ProductsForPM product = pmService.findProductById(itemDto.getProductId());
 
             // Validate product status
             if (product.getStatus() != ProductStatus.ACTIVE && product.getStatus() != ProductStatus.ON_ORDER) {
@@ -468,7 +452,7 @@ public class SalesOrderServiceImpl implements SalesOrderService {
                 log.info("OM-SO searchInSalesOrders(): No search text provided, returning all orders");
                 return getAllSummarySalesOrders(sortBy, sortDirection, page, size);
             }
-            Page<SalesOrder> salesOrderPage = soSearchStrategy.searchInSo(text, page, size, sortBy, sortDirection);
+            Page<SalesOrder> salesOrderPage = omSoSearchStrategy.searchInSo(text, page, size, sortBy, sortDirection);
             return salesOrderServiceHelper.transformToSummarySalesOrderView(salesOrderPage);
         } catch (Exception e) {
             log.error("OM-SO searchInSalesOrders(): Unexpected error occurred: {}", e.getMessage(), e);
@@ -487,7 +471,7 @@ public class SalesOrderServiceImpl implements SalesOrderService {
 
             // Filter the orders
             Page<SalesOrder> salesOrderPage =
-                    soFilterStrategy.filterSalesOrders(statusValue, optionDateValue, startDate, endDate, pageable);
+                    filterSalesOrdersInOm.filterSalesOrders(statusValue, optionDateValue, startDate, endDate, pageable);
             return salesOrderServiceHelper.transformToSummarySalesOrderView(salesOrderPage);
         } catch (IllegalArgumentException e) {
             log.error("OM-SO filterSalesOrders(): Invalid filter parameters: {}", e.getMessage(), e);

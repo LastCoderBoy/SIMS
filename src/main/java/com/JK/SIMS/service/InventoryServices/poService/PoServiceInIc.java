@@ -6,31 +6,29 @@ import com.JK.SIMS.exception.ResourceNotFoundException;
 import com.JK.SIMS.exception.ServiceException;
 import com.JK.SIMS.exception.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
+import com.JK.SIMS.models.PM_models.ProductCategories;
+import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.inventoryData.InventoryControlData;
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrder;
-import com.JK.SIMS.models.purchaseOrder.dtos.PurchaseOrderResponseDto;
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrderStatus;
+import com.JK.SIMS.models.purchaseOrder.dtos.PurchaseOrderResponseDto;
 import com.JK.SIMS.models.purchaseOrder.dtos.ReceiveStockRequestDto;
 import com.JK.SIMS.models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.models.stockMovements.StockMovementReferenceType;
 import com.JK.SIMS.models.stockMovements.StockMovementType;
-import com.JK.SIMS.service.utilities.purchaseOrderFilterLogic.PoFilterStrategy;
-import com.JK.SIMS.models.PM_models.ProductCategories;
-import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.PurchaseOrder_repo.PurchaseOrderRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
-import com.JK.SIMS.service.utilities.PurchaseOrderServiceHelper;
-import com.JK.SIMS.service.productManagementService.PMServiceHelper;
-import com.JK.SIMS.service.utilities.purchaseOrderSearchLogic.PoSearchStrategy;
+import com.JK.SIMS.service.productManagementService.impl.PMServiceHelper;
 import com.JK.SIMS.service.stockMovementService.StockMovementService;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
+import com.JK.SIMS.service.utilities.PurchaseOrderServiceHelper;
+import com.JK.SIMS.service.utilities.purchaseOrderFilterLogic.PoFilterStrategy;
+import com.JK.SIMS.service.utilities.purchaseOrderSearchLogic.PoSearchStrategy;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.coyote.BadRequestException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -45,40 +43,23 @@ import java.util.Optional;
 
 
 @Service
+@Slf4j
+@RequiredArgsConstructor
 public class PoServiceInIc {
     private static final String DEFAULT_SORT_BY = "product.name";
     private static final String DEFAULT_SORT_DIRECTION = "asc";
-    private static final Logger logger = LoggerFactory.getLogger(PoServiceInIc.class);
     private final Clock clock;
 
     private final PurchaseOrderRepository purchaseOrderRepository;
-
     private final SecurityUtils securityUtils;
     private final PurchaseOrderServiceHelper poServiceHelper;
-    private final PoSearchStrategy poSearchStrategy;
-    private final PoFilterStrategy poFilterStrategy;
     private final GlobalServiceHelper globalServiceHelper;
     private final PMServiceHelper pmServiceHelper;
     private final StockManagementLogic stockManagementLogic;
     private final StockMovementService stockMovementService; // Used to log the stock movement
     private final InventoryServiceHelper inventoryServiceHelper;
-    @Autowired
-    public PoServiceInIc(Clock clock, PurchaseOrderRepository purchaseOrderRepository, SecurityUtils securityUtils, PurchaseOrderServiceHelper poServiceHelper,
-                         @Qualifier("icPoSearchStrategy") PoSearchStrategy poSearchStrategy, GlobalServiceHelper globalServiceHelper,
-                         @Qualifier("filterWaitingPurchaseOrders") PoFilterStrategy poFilterStrategy, PMServiceHelper pmServiceHelper,
-                         StockManagementLogic stockManagementLogic, StockMovementService stockMovementService, InventoryServiceHelper inventoryServiceHelper) {
-        this.clock = clock;
-        this.purchaseOrderRepository = purchaseOrderRepository;
-        this.securityUtils = securityUtils;
-        this.poServiceHelper = poServiceHelper;
-        this.poSearchStrategy = poSearchStrategy;
-        this.poFilterStrategy = poFilterStrategy;
-        this.globalServiceHelper = globalServiceHelper;
-        this.pmServiceHelper = pmServiceHelper;
-        this.stockManagementLogic = stockManagementLogic;
-        this.stockMovementService = stockMovementService;
-        this.inventoryServiceHelper = inventoryServiceHelper;
-    }
+    private final PoSearchStrategy icPoSearchStrategy;
+    private final PoFilterStrategy filterWaitingPurchaseOrders;
 
     @Transactional(readOnly = true)
     public PaginatedResponse<SummaryPurchaseOrderView> getAllPendingPurchaseOrders(int page, int size, String sortBy, String sortDirection) {
@@ -93,13 +74,13 @@ public class PoServiceInIc {
             Page<PurchaseOrder> entityResponse = purchaseOrderRepository.findAllPendingOrders(pageable);
             PaginatedResponse<SummaryPurchaseOrderView> dtoResponse =
                     poServiceHelper.transformToPaginatedSummaryView(entityResponse);
-            logger.info("PO (getAllPendingPurchaseOrders): Returning {} paginated data", dtoResponse.getContent().size());
+            log.info("PO (getAllPendingPurchaseOrders): Returning {} paginated data", dtoResponse.getContent().size());
             return dtoResponse;
         }catch (DataAccessException da){
-            logger.error("PO (getAllPendingPurchaseOrders): Database error occurred: {}", da.getMessage(), da);
+            log.error("PO (getAllPendingPurchaseOrders): Database error occurred: {}", da.getMessage(), da);
             throw new DatabaseException("PO (getAllPendingPurchaseOrders): Database error", da);
         }catch (Exception e){
-            logger.error("PO (getAllPendingPurchaseOrders): Service error occurred: {}", e.getMessage(), e);
+            log.error("PO (getAllPendingPurchaseOrders): Service error occurred: {}", e.getMessage(), e);
             throw new ServiceException("PO (getAllPendingPurchaseOrders): Service error occurred", e);
         }
     }
@@ -125,7 +106,7 @@ public class PoServiceInIc {
                     receiveRequest.getReceivedQuantity(), order.getPONumber(),
                     StockMovementReferenceType.PURCHASE_ORDER, updatedPerson);
 
-            logger.info("IS (receiveIncomingStock): Updated incoming stock order successfully. PO Number: {}", order.getPONumber());
+            log.info("IS (receiveIncomingStock): Updated incoming stock order successfully. PO Number: {}", order.getPONumber());
             return new ApiResponse<>(true, "Incoming stock order updated successfully.");
 
         } catch (NumberFormatException e) {
@@ -221,16 +202,16 @@ public class PoServiceInIc {
             inventoryProductOpt.ifPresent(inventoryServiceHelper::updateInventoryStatus);
 
             purchaseOrderRepository.save(purchaseOrder);
-            logger.info("PO (cancelPurchaseOrderInternal): SalesOrder cancelled successfully. PO Number: {}", purchaseOrder.getPONumber());
+            log.info("PO (cancelPurchaseOrderInternal): SalesOrder cancelled successfully. PO Number: {}", purchaseOrder.getPONumber());
             return new ApiResponse<>(true, "The order cancelled successfully.");
         } catch (DataAccessException e) {
-            logger.error("PO (cancelPurchaseOrderInternal): Database error while cancelling order", e);
+            log.error("PO (cancelPurchaseOrderInternal): Database error while cancelling order", e);
             throw new DatabaseException("Failed to cancel order due to database error:" + e.getMessage());
         } catch (Exception e) {
             if (e instanceof ResourceNotFoundException || e instanceof ValidationException || e instanceof BadRequestException) {
                 throw e;
             }
-            logger.error("PO (cancelPurchaseOrderInternal): Unexpected error while cancelling order", e);
+            log.error("PO (cancelPurchaseOrderInternal): Unexpected error while cancelling order", e);
             throw new ServiceException("Failed to cancel order: " + e.getMessage());
         }
     }
@@ -245,13 +226,13 @@ public class PoServiceInIc {
         try {
             globalServiceHelper.validatePaginationParameters(page, size);
             if (text == null || text.trim().isEmpty()) {
-                logger.warn("PO (searchInIncomingPurchaseOrders): Search text is null or empty, returning all incoming orders.");
+                log.warn("PO (searchInIncomingPurchaseOrders): Search text is null or empty, returning all incoming orders.");
                 return getAllPendingPurchaseOrders(page, size, DEFAULT_SORT_BY, DEFAULT_SORT_DIRECTION);
             }
-            Page<PurchaseOrder> purchaseOrderPage = poSearchStrategy.searchInPos(text, page, size, sortBy, sortDirection);
+            Page<PurchaseOrder> purchaseOrderPage = icPoSearchStrategy.searchInPos(text, page, size, sortBy, sortDirection);
             return poServiceHelper.transformToPaginatedSummaryView(purchaseOrderPage);
         } catch (Exception e) {
-            logger.error("PO (searchInIncomingPurchaseOrders): Error searching orders - {}", e.getMessage());
+            log.error("PO (searchInIncomingPurchaseOrders): Error searching orders - {}", e.getMessage());
             throw new ServiceException("Failed to search orders", e);
         }
     }
@@ -268,9 +249,9 @@ public class PoServiceInIc {
             Sort sort = Sort.by(direction, sortBy);
             Pageable pageable = PageRequest.of(page, size, sort);
 
-            return poFilterStrategy.filterPurchaseOrders(category, status, pageable);
+            return filterWaitingPurchaseOrders.filterPurchaseOrders(category, status, pageable);
         } catch (Exception e) {
-            logger.error("PO (filterIncomingPurchaseOrders): Error filtering orders - {}", e.getMessage());
+            log.error("PO (filterIncomingPurchaseOrders): Error filtering orders - {}", e.getMessage());
             throw new ServiceException("Failed to filter orders", e);
         }
     }
@@ -281,13 +262,13 @@ public class PoServiceInIc {
             Sort sort = Sort.by(Sort.Direction.DESC, "product.name");
             Pageable pageable = PageRequest.of(page, size, sort);
             Page<PurchaseOrder> allOverdueOrders = purchaseOrderRepository.findAllOverdueOrders(pageable);
-            logger.info("PO (getAllOverduePurchaseOrders): Retrieved {} overdue orders", allOverdueOrders.getTotalElements());
+            log.info("PO (getAllOverduePurchaseOrders): Retrieved {} overdue orders", allOverdueOrders.getTotalElements());
             return poServiceHelper.transformToPaginatedDtoResponse(allOverdueOrders);
         } catch (DataAccessException dae) {
-            logger.error("PO (getAllOverduePurchaseOrders): Database error while retrieving overdue orders", dae);
+            log.error("PO (getAllOverduePurchaseOrders): Database error while retrieving overdue orders", dae);
             throw new DatabaseException("Failed to retrieve overdue orders due to database error");
         } catch (Exception e) {
-            logger.error("PO (getAllOverduePurchaseOrders): Unexpected error while retrieving overdue orders", e);
+            log.error("PO (getAllOverduePurchaseOrders): Unexpected error while retrieving overdue orders", e);
             throw new ServiceException("Failed to retrieve overdue orders: " + e.getMessage());
         }
     }

@@ -125,7 +125,7 @@ public class LowStockService {
         List<InventoryControlResponse> allLowStockProducts = getAllLowStockProducts(sortBy, sortDirection);
         createHeaderRowForInventoryDto(sheet);
         populateDataRowsForInventoryDto(sheet, allLowStockProducts);
-        logger.info("TotalItems (generateReport): {} products retrieved.", allLowStockProducts.size());
+        logger.info("TotalItems (generateTotalItemsReport): {} products retrieved.", allLowStockProducts.size());
         writeWorkbookToResponse(response, workbook);
     }
 

@@ -1,7 +1,6 @@
 package com.JK.SIMS.controller.inventoryControllers;
 
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.inventoryData.InventoryControlData;
 import com.JK.SIMS.models.inventoryData.dtos.InventoryControlRequest;
 import com.JK.SIMS.models.inventoryData.dtos.InventoryControlResponse;
 import com.JK.SIMS.models.PaginatedResponse;
@@ -87,12 +86,12 @@ public class TotalItemsController {
     public void generateReport(HttpServletResponse response,
                                @RequestParam(defaultValue = "pmProduct.productID") String sortBy,
                                @RequestParam(defaultValue = "asc") String sortDirection) {
-        logger.info("TotalItemsController: generateReport() calling...");
+        logger.info("TotalItemsController: generateTotalItemsReport() calling...");
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         String headerKey = "Content-Disposition";
         String headerValue = "attachment; filename=TotalItemsReport.xlsx";
         response.setHeader(headerKey, headerValue);
-        totalItemsService.generateReport(response, sortBy, sortDirection);
+        totalItemsService.generateTotalItemsReport(response, sortBy, sortDirection);
     }
 
 }

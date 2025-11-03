@@ -14,7 +14,7 @@ import com.JK.SIMS.service.InventoryServices.inventoryPageService.InventoryContr
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
 import com.JK.SIMS.service.confirmTokenService.ConfirmationTokenService;
 import com.JK.SIMS.service.email_service.EmailServiceForPo;
-import com.JK.SIMS.service.productManagementService.PMServiceHelper;
+import com.JK.SIMS.service.productManagementService.impl.PMServiceHelper;
 import jakarta.persistence.OptimisticLockException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

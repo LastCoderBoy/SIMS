@@ -14,7 +14,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-@Component
+@Component("omPoSearchStrategy") // Must match field name
 @Slf4j
 public class OmPoSearchStrategy implements PoSearchStrategy {
     private final PurchaseOrderRepository purchaseOrderRepository;

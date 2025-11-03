@@ -20,8 +20,8 @@ import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import com.JK.SIMS.service.utilities.SalesOrderServiceHelper;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
@@ -35,6 +35,7 @@ import java.time.LocalDateTime;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class SoServiceInIc {
 
     private final Clock clock;
@@ -45,25 +46,9 @@ public class SoServiceInIc {
     private final GlobalServiceHelper globalServiceHelper;
     private final StockManagementLogic stockManagementLogic;
     private final StockOutProcessor stockOutProcessor;
-    private final SoSearchStrategy soSearchStrategy;
-    private final SoFilterStrategy soFilterStrategy;
-
     private final SalesOrderRepository salesOrderRepository;
-    @Autowired
-    public SoServiceInIc(Clock clock, SecurityUtils securityUtils, SalesOrderServiceHelper salesOrderServiceHelper, GlobalServiceHelper globalServiceHelper,
-                         StockManagementLogic stockManagementLogic, @Qualifier("icSoSearchStrategy") SoSearchStrategy soSearchStrategy,
-                         StockOutProcessor stockOutProcessor, @Qualifier("filterWaitingSalesOrders") SoFilterStrategy soFilterStrategy,
-                         SalesOrderRepository salesOrderRepository) {
-        this.clock = clock;
-        this.securityUtils = securityUtils;
-        this.salesOrderServiceHelper = salesOrderServiceHelper;
-        this.globalServiceHelper = globalServiceHelper;
-        this.stockManagementLogic = stockManagementLogic;
-        this.soSearchStrategy = soSearchStrategy;
-        this.stockOutProcessor = stockOutProcessor;
-        this.soFilterStrategy = soFilterStrategy;
-        this.salesOrderRepository = salesOrderRepository;
-    }
+    private final SoSearchStrategy icSoSearchStrategy;
+    private final SoFilterStrategy filterWaitingSalesOrders;
 
     // Will be used in the SORT logic and the normal GET all logic.
     // Can be only sorted using Status.
@@ -163,7 +148,7 @@ public class SoServiceInIc {
                 log.warn("IcSo (searchInWaitingSalesOrders): Search text is null or empty, returning all waiting orders.");
                 return getAllWaitingSalesOrders(page, size, "id", "asc");
             }
-            Page<SalesOrder> salesOrderPage = soSearchStrategy.searchInSo(text, page, size, sortBy, sortDir);
+            Page<SalesOrder> salesOrderPage = icSoSearchStrategy.searchInSo(text, page, size, sortBy, sortDir);
             return salesOrderServiceHelper.transformToSummarySalesOrderView(salesOrderPage);
         } catch (IllegalArgumentException ie) {
             log.error("OS (searchInWaitingSalesOrders): Invalid pagination parameters: {}", ie.getMessage());
@@ -190,15 +175,15 @@ public class SoServiceInIc {
     }
 
     @Transactional(readOnly = true)
-    public PaginatedResponse<SummarySalesOrderView> filterSoProducts(SalesOrderStatus statusValue, String optionDateValue, LocalDate startDate,
-                                                                     LocalDate endDate, int page, int size, String sortBy, String sortDirection) {
+    public PaginatedResponse<SummarySalesOrderView> filterWaitingSoProducts(SalesOrderStatus statusValue, String optionDateValue, LocalDate startDate,
+                                                                            LocalDate endDate, int page, int size, String sortBy, String sortDirection) {
         try{
             // Validate and prepare the pageable
             Pageable pageable = globalServiceHelper.preparePageable(page, size, sortBy, sortDirection);
 
             // Filter the orders
             Page<SalesOrder> salesOrderPage =
-                    soFilterStrategy.filterSalesOrders(statusValue, optionDateValue, startDate, endDate, pageable);
+                    filterWaitingSalesOrders.filterSalesOrders(statusValue, optionDateValue, startDate, endDate, pageable);
             return salesOrderServiceHelper.transformToSummarySalesOrderView(salesOrderPage);
         } catch (IllegalArgumentException e) {
             log.error("IC-SO filterSalesOrders(): Invalid filter parameters: {}", e.getMessage(), e);

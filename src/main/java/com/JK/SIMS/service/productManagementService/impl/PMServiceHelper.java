@@ -1,4 +1,4 @@
-package com.JK.SIMS.service.productManagementService;
+package com.JK.SIMS.service.productManagementService.impl;
 
 import com.JK.SIMS.exception.DatabaseException;
 import com.JK.SIMS.exception.ResourceNotFoundException;
@@ -6,11 +6,13 @@ import com.JK.SIMS.exception.ServiceException;
 import com.JK.SIMS.exception.ValidationException;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
+import com.JK.SIMS.models.PM_models.dtos.ProductManagementResponse;
+import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.ProductManagement_repo.PM_repository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,16 +21,13 @@ import java.math.BigDecimal;
 import java.util.regex.Pattern;
 
 @Component
+@Slf4j
+@RequiredArgsConstructor
 public class PMServiceHelper {
 
-    private static final Logger logger = LoggerFactory.getLogger(PMServiceHelper.class);
     private static final Pattern LOCATION_PATTERN = Pattern.compile("^[A-Za-z]\\d{1,2}-\\d{3}$");
 
     private final PM_repository pmRepository;
-    @Autowired
-    public PMServiceHelper(PM_repository pmRepository) {
-        this.pmRepository = pmRepository;
-    }
 
     /**
      * Validates a product entity by checking all required fields and their formats.
@@ -100,26 +99,39 @@ public class PMServiceHelper {
         }
     }
 
-    @Transactional(readOnly = true)
-    public ProductsForPM findProductById(String productId) {
-        return pmRepository.findById(productId)
-                .orElseThrow(() -> new ResourceNotFoundException("PM (findProductById): Product with ID " + productId + " not found"));
-    }
-
     @Transactional(propagation = Propagation.MANDATORY)
     public void saveProduct(ProductsForPM product) {
         try {
             pmRepository.save(product);
-            logger.info("PM (saveProduct): Successfully saved/updated product with ID {}",
+            log.info("PM (saveProduct): Successfully saved/updated product with ID {}",
                     product.getProductID());
         } catch (DataAccessException da) {
-            logger.error("PM (saveProduct): Database error while saving product: {}",
+            log.error("PM (saveProduct): Database error while saving product: {}",
                     da.getMessage());
             throw new DatabaseException("Failed to save product", da);
         } catch (Exception e) {
-            logger.error("PM (saveProduct): Unexpected error while saving product: {}",
+            log.error("PM (saveProduct): Unexpected error while saving product: {}",
                     e.getMessage());
             throw new ServiceException("Failed to save product", e);
         }
+    }
+
+    public ProductManagementResponse convertToDTO(ProductsForPM product) {
+        return new ProductManagementResponse(
+                product.getProductID(),
+                product.getName(),
+                product.getLocation(),
+                product.getCategory(),
+                product.getPrice(),
+                product.getStatus()
+        );
+    }
+
+    public PaginatedResponse<ProductManagementResponse> transformToDTOPaginatedResponse(Page<ProductsForPM> products) {
+        PaginatedResponse<ProductManagementResponse> response = new PaginatedResponse<>();
+        response.setContent(products.getContent().stream().map(this::convertToDTO).toList());
+        response.setTotalPages(products.getTotalPages());
+        response.setTotalElements(products.getTotalElements());
+        return response;
     }
 }
