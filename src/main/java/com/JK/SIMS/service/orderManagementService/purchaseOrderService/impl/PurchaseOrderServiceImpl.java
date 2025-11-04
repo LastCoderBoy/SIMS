@@ -187,7 +187,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     // Private helper methods
     private ProductsForPM validateAndGetProduct(String productId) throws ResourceNotFoundException, ValidationException {
         ProductsForPM product = pmService.findProductById(productId);
-        if (GlobalServiceHelper.amongInvalidStatus(product.getStatus())) {
+        if (product.isInInvalidStatus()) {
             throw new ValidationException("Product is not for sale and cannot be ordered. Please update the status in the PM section first.");
         }
         return product;

@@ -1,11 +1,11 @@
 package com.JK.SIMS.service.productManagementService.impl;
 
 import com.JK.SIMS.exception.DatabaseException;
-import com.JK.SIMS.exception.ResourceNotFoundException;
 import com.JK.SIMS.exception.ServiceException;
 import com.JK.SIMS.exception.ValidationException;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
+import com.JK.SIMS.models.PM_models.dtos.ProductManagementRequest;
 import com.JK.SIMS.models.PM_models.dtos.ProductManagementResponse;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.ProductManagement_repo.PM_repository;
@@ -36,7 +36,7 @@ public class PMServiceHelper {
      * @return true if validation passes
      * @throws ValidationException if any validation rule is violated, with detailed error message
      */
-    protected static boolean validateProduct(ProductsForPM product) throws ValidationException {
+    protected static boolean validateProduct(ProductManagementRequest product) throws ValidationException {
         StringBuilder errorMessage = new StringBuilder();
 
         if (product.getName() == null || product.getName().trim().isEmpty()) {
@@ -66,7 +66,7 @@ public class PMServiceHelper {
         return true;
     }
 
-    protected static boolean isAllFieldsNull(ProductsForPM product) {
+    protected static boolean isAllFieldsNull(ProductManagementRequest product) {
         return product.getName() == null &&
                 product.getCategory() == null &&
                 product.getPrice() == null &&
@@ -75,11 +75,9 @@ public class PMServiceHelper {
     }
 
 
-    protected static boolean validateStatusBeforeAdding(ProductsForPM currentProduct, ProductsForPM newProduct){
-        if(currentProduct.getStatus().equals(ProductStatus.PLANNING) || currentProduct.getStatus().equals(ProductStatus.ARCHIVED)){
-            if(!newProduct.getStatus().equals(ProductStatus.PLANNING)){
-                return true;
-            }
+    protected static boolean validateStatusBeforeAdding(ProductStatus currentStatus, ProductStatus newStatus){
+        if(currentStatus.equals(ProductStatus.PLANNING) || currentStatus.equals(ProductStatus.ARCHIVED)){
+            return !newStatus.equals(ProductStatus.PLANNING);
         }
         return false;
     }

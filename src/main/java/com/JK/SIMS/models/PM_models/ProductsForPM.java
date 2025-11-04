@@ -34,4 +34,10 @@ public class ProductsForPM {
     @Enumerated(EnumType.STRING)
     @Column(name = "Status")
     private ProductStatus status;
+
+    public boolean isInInvalidStatus(){
+        return this.status.equals(ProductStatus.RESTRICTED) ||
+                this.status.equals(ProductStatus.ARCHIVED) ||
+                this.status.equals(ProductStatus.DISCONTINUED);
+    }
 }

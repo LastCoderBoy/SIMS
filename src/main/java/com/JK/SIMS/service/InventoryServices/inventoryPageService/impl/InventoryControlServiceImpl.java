@@ -1,4 +1,4 @@
-package com.JK.SIMS.service.InventoryServices.inventoryPageService;
+package com.JK.SIMS.service.InventoryServices.inventoryPageService.impl;
 
 import com.JK.SIMS.exception.DatabaseException;
 import com.JK.SIMS.exception.InventoryException;
@@ -18,6 +18,7 @@ import com.JK.SIMS.models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.salesOrder.dtos.views.SummarySalesOrderView;
 import com.JK.SIMS.repository.InventoryControl_repo.IC_repository;
 import com.JK.SIMS.service.InventoryServices.damageLossService.DamageLossService;
+import com.JK.SIMS.service.InventoryServices.inventoryPageService.InventoryControlService;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.searchLogic.PendingOrdersSearchStrategy;
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
 import com.JK.SIMS.service.InventoryServices.poService.PoServiceInIc;
@@ -38,8 +39,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-
-import static com.JK.SIMS.service.utilities.GlobalServiceHelper.amongInvalidStatus;
 
 @Service
 @Slf4j
@@ -118,7 +117,7 @@ public class InventoryControlServiceImpl implements InventoryControlService {
             inventoryControlData.setMinLevel(0);
 
             // Handle the status properly
-            if(amongInvalidStatus(product.getStatus())){
+            if(product.isInInvalidStatus()){
                 inventoryControlData.setStatus(InventoryDataStatus.INVALID);
             }else {
                 // isUnderTransfer means the Product is INCOMING

@@ -4,6 +4,7 @@ import com.JK.SIMS.config.security.utils.TokenUtils;
 import com.JK.SIMS.exception.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
+import com.JK.SIMS.models.PM_models.dtos.ProductManagementRequest;
 import com.JK.SIMS.models.PM_models.dtos.ProductManagementResponse;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.productManagementService.ProductManagementService;
@@ -37,9 +38,10 @@ public class ProductController {
 
     @PostMapping
     @PreAuthorize("@securityUtils.hasAccess()")
-    public ResponseEntity<ApiResponse<Void>> addProduct(@RequestBody ProductsForPM newProduct) throws AccessDeniedException {
+    public ResponseEntity<ApiResponse<Void>> addProduct(@RequestBody ProductManagementRequest newProduct){
         if (newProduct == null) {
-            throw new ValidationException("PM: Product data cannot be null");
+            log.error("PM: addProduct() Request for Product cannot be null");
+            throw new ValidationException("Request for Product cannot be null");
         }
         //Only the Admins and Managers can add new products.
         log.info("PM: addProduct() calling...");
@@ -49,12 +51,12 @@ public class ProductController {
 
     @PutMapping("/{id}")
     @PreAuthorize("@securityUtils.hasAccess()")
-    public ResponseEntity<ApiResponse<Void>> updateProduct(@PathVariable String id, @RequestBody ProductsForPM newProduct) throws BadRequestException, AccessDeniedException {
-        if (id == null || newProduct == null || id.trim().isEmpty()) {
-            throw new BadRequestException("PM (updateProduct): Product ID or New product cannot be null");
+    public ResponseEntity<ApiResponse<Void>> updateProduct(@PathVariable String id, @RequestBody ProductManagementRequest productRequest) throws BadRequestException, AccessDeniedException {
+        if (id == null || productRequest == null || id.trim().isEmpty()) {
+            throw new BadRequestException("Product ID or New product cannot be null");
         }
         log.info("PM: updateProduct() calling...");
-        ApiResponse<Void> response = pmService.updateProduct(id.toUpperCase(), newProduct);
+        ApiResponse<Void> response = pmService.updateProduct(id.toUpperCase(), productRequest);
         return ResponseEntity.ok(response);
     }
 

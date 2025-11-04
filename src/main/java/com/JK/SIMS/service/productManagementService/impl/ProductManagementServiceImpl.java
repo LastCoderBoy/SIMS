@@ -10,6 +10,7 @@ import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PM_models.dtos.DashboardPmMetrics;
+import com.JK.SIMS.models.PM_models.dtos.ProductManagementRequest;
 import com.JK.SIMS.models.PM_models.dtos.ProductManagementResponse;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.inventoryData.InventoryControlData;
@@ -52,6 +53,7 @@ public class ProductManagementServiceImpl implements ProductManagementService {
     private final JWTService jwtService;
     private final PMServiceHelper pmServiceHelper;
 
+    @Override
     @Transactional(readOnly = true)
     public ProductsForPM findProductById(String productId) {
         return pmRepository.findById(productId)
@@ -98,17 +100,26 @@ public class ProductManagementServiceImpl implements ProductManagementService {
      */
     @Override
     @Transactional
-    public ApiResponse<Void> addProduct(ProductsForPM newProduct){
+    public ApiResponse<Void> addProduct(ProductManagementRequest newProduct){
         try {
             if (validateProduct(newProduct)) {
+                ProductsForPM product = new ProductsForPM();
                 String newID = generateProductId();
-                newProduct.setProductID(newID);
-                pmRepository.save(newProduct);
+                // Populate the entity with the new data
+                product.setProductID(newID);
+                product.setName(newProduct.getName());
+                product.setCategory(newProduct.getCategory());
+                product.setPrice(newProduct.getPrice());
+                product.setLocation(newProduct.getLocation());
+                product.setStatus(newProduct.getStatus());
+
+                // Save the entity and modify the relationship entity based on the status
+                pmRepository.save(product);
                 if (!newProduct.getStatus().equals(ProductStatus.PLANNING)) {
-                    icService.addProduct(newProduct, false);
+                    icService.addProduct(product, false);
                 }
                 log.info("PM (addProduct): New product added: ID = {}, Name = {}", newID, newProduct.getName());
-                return new ApiResponse<>(true, "PM: Product added successfully with ID: " + newID);
+                return new ApiResponse<>(true, "Product added successfully with ID: " + newID);
             }
             throw new ValidationException("PM (addProduct): Invalid product details");
         } catch (ValidationException ve) {
@@ -158,7 +169,7 @@ public class ProductManagementServiceImpl implements ProductManagementService {
      * will be used to update the existing product.
      *
      * @param productId  The unique identifier of the product to update
-     * @param newProduct The product object containing the new values to update
+     * @param updateProductRequest The product object containing the new values to update
      * @return ApiResponse indicating success or failure of the update operation
      * @throws ResourceNotFoundException if the product with given ID is not found
      * @throws ValidationException if the new location format is invalid
@@ -166,19 +177,16 @@ public class ProductManagementServiceImpl implements ProductManagementService {
      */
     @Override
     @Transactional
-    public ApiResponse<Void> updateProduct(String productId, ProductsForPM newProduct) {
+    public ApiResponse<Void> updateProduct(String productId, ProductManagementRequest updateProductRequest) {
         try {
-            ProductsForPM currentProduct = pmRepository.findById(productId)
-                    .orElseThrow(() -> new ResourceNotFoundException("PM (updateProduct): Product with ID " + productId + " not found"));
-
-            if(isAllFieldsNull(newProduct)){
+            ProductsForPM currentProduct = findProductById(productId);
+            if(isAllFieldsNull(updateProductRequest)){
                 log.info("PM (updateProduct): No fields to update. Product with ID {} not updated.", productId);
                 return new ApiResponse<>(false, "Missing fields to update.");
             }
 
-            updateProductFields(currentProduct, newProduct);
-            updateProductAndInventoryStatus(currentProduct, newProduct, productId);
-            updateProductLocation(currentProduct, newProduct);
+            updateProductFields(currentProduct, updateProductRequest);
+            updateProductAndInventoryStatus(currentProduct, updateProductRequest, productId);
 
             pmRepository.save(currentProduct);
             log.info("PM (updateProduct): Product with ID {} updated successfully", productId);
@@ -197,38 +205,44 @@ public class ProductManagementServiceImpl implements ProductManagementService {
     }
 
 
-    private void updateProductFields(ProductsForPM currentProduct, ProductsForPM newProduct) {
-        if (newProduct.getName() != null) {
-            currentProduct.setName(newProduct.getName());
+    private void updateProductFields(ProductsForPM currentProduct, ProductManagementRequest newProductRequest) {
+        if (newProductRequest.getName() != null) {
+            currentProduct.setName(newProductRequest.getName());
         }
-        if (newProduct.getCategory() != null) {
-            currentProduct.setCategory(newProduct.getCategory());
+        if (newProductRequest.getCategory() != null) {
+            currentProduct.setCategory(newProductRequest.getCategory());
         }
-        if (newProduct.getPrice() != null) {
-            currentProduct.setPrice(newProduct.getPrice());
+        if (newProductRequest.getPrice() != null) {
+            currentProduct.setPrice(newProductRequest.getPrice());
+        }
+        if (newProductRequest.getLocation() != null) {
+            validateLocationFormat(newProductRequest.getLocation());
+            currentProduct.setLocation(newProductRequest.getLocation());
         }
     }
 
-    private void updateProductAndInventoryStatus(ProductsForPM currentProduct, ProductsForPM newProduct, String productId) {
-        if (newProduct.getStatus() != null && !newProduct.getStatus().equals(currentProduct.getStatus())) {
+    private void updateProductAndInventoryStatus(ProductsForPM currentProduct, ProductManagementRequest updateProductRequest, String productId) {
+        if (updateProductRequest.getStatus() != null && !updateProductRequest.getStatus().equals(currentProduct.getStatus())) {
             Optional<InventoryControlData> productInIcOpt =
                     inventoryServiceHelper.getInventoryProductByProductId(productId);
-            ProductStatus previousStatus = currentProduct.getStatus();
+            ProductStatus currentStatus = currentProduct.getStatus();
+            ProductStatus newStatus = updateProductRequest.getStatus();
 
-            if (validateStatusBeforeAdding(currentProduct, newProduct)) {
-                currentProduct.setStatus(newProduct.getStatus());
-                handleStatusChange(currentProduct, newProduct, previousStatus, productInIcOpt);
+            if (validateStatusBeforeAdding(currentStatus, newStatus)) {
+                currentProduct.setStatus(newStatus);
+                handleStatusChange(currentProduct, newStatus, currentStatus, productInIcOpt);
             } else {
-                currentProduct.setStatus(newProduct.getStatus());
-                if (amongInvalidStatus(newProduct.getStatus())) {
+                currentProduct.setStatus(newStatus);
+                if (amongInvalidStatus(newStatus)) {
                     icService.updateInventoryStatus(productInIcOpt, InventoryDataStatus.INVALID);
                 }
             }
         }
     }
 
-    private void handleStatusChange(ProductsForPM currentProduct, ProductsForPM newProduct, ProductStatus previousStatus, Optional<InventoryControlData> productInIcOpt) {
-        if (newProduct.getStatus().equals(ProductStatus.ACTIVE) || newProduct.getStatus().equals(ProductStatus.ON_ORDER)) {
+    private void handleStatusChange(ProductsForPM currentProduct, ProductStatus newStatus,
+                                    ProductStatus previousStatus, Optional<InventoryControlData> productInIcOpt) {
+        if (newStatus.equals(ProductStatus.ACTIVE) || newStatus.equals(ProductStatus.ON_ORDER)) {
             if (previousStatus.equals(ProductStatus.ARCHIVED)) {
                 // the status is changing from ARCHIVED -> ACTIVE, ON_ORDER
                 if (productInIcOpt.isEmpty()) {
@@ -244,12 +258,6 @@ public class ProductManagementServiceImpl implements ProductManagementService {
         }
     }
 
-    private void updateProductLocation(ProductsForPM currentProduct, ProductsForPM newProduct) {
-        if (newProduct.getLocation() != null) {
-            validateLocationFormat(newProduct.getLocation());
-            currentProduct.setLocation(newProduct.getLocation());
-        }
-    }
 
     /**
      * Searches for products based on a text query with pagination support.
