@@ -4,6 +4,7 @@ import com.JK.SIMS.models.inventoryData.InventoryControlData;
 import com.JK.SIMS.models.inventoryData.InventoryDataStatus;
 import com.JK.SIMS.models.inventoryData.dtos.InventoryMetrics;
 import com.JK.SIMS.models.PM_models.ProductCategories;
+import com.JK.SIMS.models.inventoryData.dtos.reportSection.InventoryStockValue;
 import jakarta.persistence.LockModeType;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
@@ -13,6 +14,7 @@ import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -84,4 +86,11 @@ public interface IC_repository extends JpaRepository<InventoryControlData, Strin
     @Query("SELECT i FROM InventoryControlData i WHERE i.pmProduct.productID = :productId")
     InventoryControlData findByProductIdWithLock(@Param("productId") String productId);
 
+    @Query(value = """
+    SELECT COALESCE(SUM(ic.current_stock * pm.price), 0) AS per_stock_value
+    FROM inventory_control_data ic
+    JOIN products_for_management pm USING(productid)
+    WHERE ic.status != 'INVALID'
+    """, nativeQuery = true)
+    BigDecimal getInventoryStockValue();
 }

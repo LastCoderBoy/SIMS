@@ -1,18 +1,39 @@
 package com.JK.SIMS.models.PM_models;
 
+import lombok.Getter;
+
+import java.util.Arrays;
+import java.util.List;
+
+@Getter
 public enum ProductStatus {
-    ACTIVE, // Product is ready to sell
+    ACTIVE(true, "Product is ready to sell"),
+    ON_ORDER(true, "Product order confirmed by supplier"),
+    PLANNING(false, "Product is being considered to sell"),
 
-    ON_ORDER, // Product being considered is accepted, supplier is confirmed the order
+    // Invalid statuses
+    DISCONTINUED(false, "Product is stopped but present in inventory"),
+    ARCHIVED(false, "Product has been sold before"),
+    RESTRICTED(false, "Product is restricted");
 
-    PLANNING, // Product is being considered to sell
+    private final boolean active;
+    private final String description;
 
+    ProductStatus(boolean active, String description) {
+        this.active = active;
+        this.description = description;
+    }
 
-     //  ******* INVALID statuses *******
+    // Helper methods for querying
+    public static List<ProductStatus> getActiveStatuses() {
+        return Arrays.stream(values())
+                .filter(ProductStatus::isActive)
+                .toList();
+    }
 
-    DISCONTINUED, // Product is stopped but present in the Inventory
-
-    ARCHIVED, // Product has been sold before and may or may not be present in the inventory
-
-    RESTRICTED // Product is restricted due to some reasons, might be present in the Inventory or not. Information for future plans
+    public static List<ProductStatus> getInactiveStatuses() {
+        return Arrays.stream(values())
+                .filter(status -> !status.isActive())
+                .toList();
+    }
 }

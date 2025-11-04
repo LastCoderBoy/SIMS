@@ -9,6 +9,7 @@ import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
+import com.JK.SIMS.models.PM_models.dtos.DashboardPmMetrics;
 import com.JK.SIMS.models.PM_models.dtos.ProductManagementResponse;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.inventoryData.InventoryControlData;
@@ -389,9 +390,18 @@ public class ProductManagementServiceImpl implements ProductManagementService {
         }
         return "PRD001";
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DashboardPmMetrics totalProductsByStatus(){
+        try {
+            return pmRepository.countProductMetricsByStatus(ProductStatus.getActiveStatuses(), ProductStatus.getInactiveStatuses());
+        } catch (Exception e) {
+            log.error("PM (totalProductsByStatus): Failed to retrieve product metrics: {}", e.getMessage());
+            throw new ServiceException("Internal Service Error occurred", e);
+        }
+    }
 }
-
-
 
 
 

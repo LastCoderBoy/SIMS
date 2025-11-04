@@ -1,4 +1,4 @@
-package com.JK.SIMS.controller.user_management;
+package com.JK.SIMS.controller.authenticationController;
 
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.UM_models.dtos.LoginRequest;

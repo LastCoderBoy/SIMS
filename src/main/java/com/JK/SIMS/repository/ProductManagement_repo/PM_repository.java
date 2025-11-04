@@ -3,6 +3,7 @@ package com.JK.SIMS.repository.ProductManagement_repo;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductStatus;
+import com.JK.SIMS.models.PM_models.dtos.DashboardPmMetrics;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -10,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -40,4 +42,16 @@ public interface PM_repository extends JpaRepository<ProductsForPM, String> {
     Page<ProductsForPM> findByPriceLevel(int price, Pageable pageable);
 
     Page<ProductsForPM> findByStatus(ProductStatus status, Pageable pageable);
+
+    @Query("""
+        SELECT new com.JK.SIMS.models.PM_models.dtos.DashboardPmMetrics(
+            COUNT(CASE WHEN pm.status IN :activeStatuses THEN 1 END),
+            COUNT(CASE WHEN pm.status IN :inactiveStatuses THEN 1 END)
+        )
+        FROM ProductsForPM pm
+    """)
+    DashboardPmMetrics countProductMetricsByStatus(
+            @Param("activeStatuses") List<ProductStatus> activeStatuses,
+            @Param("inactiveStatuses") List<ProductStatus> inactiveStatuses
+    );
 }
