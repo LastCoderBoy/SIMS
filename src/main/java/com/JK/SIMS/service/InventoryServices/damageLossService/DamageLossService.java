@@ -1,20 +1,25 @@
 package com.JK.SIMS.service.InventoryServices.damageLossService;
 
+import com.JK.SIMS.config.security.JWTService;
 import com.JK.SIMS.exception.DatabaseException;
+import com.JK.SIMS.exception.ResourceNotFoundException;
 import com.JK.SIMS.exception.ServiceException;
 import com.JK.SIMS.exception.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.inventoryData.InventoryControlData;
 import com.JK.SIMS.models.PaginatedResponse;
-import com.JK.SIMS.models.damage_loss.*;
+import com.JK.SIMS.models.damage_loss.DamageLoss;
+import com.JK.SIMS.models.damage_loss.LossReason;
+import com.JK.SIMS.models.damage_loss.dtos.DamageLossMetrics;
+import com.JK.SIMS.models.damage_loss.dtos.DamageLossPageResponse;
+import com.JK.SIMS.models.damage_loss.dtos.DamageLossRequest;
+import com.JK.SIMS.models.damage_loss.dtos.DamageLossResponse;
+import com.JK.SIMS.models.inventoryData.InventoryControlData;
 import com.JK.SIMS.repository.InventoryControl_repo.DamageLossRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
-import com.JK.SIMS.config.security.JWTService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.coyote.BadRequestException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -31,25 +36,15 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
+@Slf4j
+@RequiredArgsConstructor
 public class DamageLossService {
 
-    private static final Logger logger  = LoggerFactory.getLogger(DamageLossService.class);
+    private final Clock clock;
     private final JWTService jWTService;
     private final StockManagementLogic stockManagementLogic;
-    private final Clock clock;
     private final InventoryServiceHelper inventoryServiceHelper;
-
-    private final DamageLossRepository damageLoss_repository;
-
-    @Autowired
-    public DamageLossService(DamageLossRepository damageLoss_repository, JWTService jWTService,
-                             StockManagementLogic stockManagementLogic, Clock clock, InventoryServiceHelper inventoryServiceHelper){
-        this.damageLoss_repository = damageLoss_repository;
-        this.jWTService = jWTService;
-        this.stockManagementLogic = stockManagementLogic;
-        this.clock = clock;
-        this.inventoryServiceHelper = inventoryServiceHelper;
-    }
+    private final DamageLossRepository damageLossRepository;
 
     @Transactional(readOnly = true)
     public DamageLossPageResponse getDamageLossDashboardData(int page, int size) {
@@ -80,7 +75,7 @@ public class DamageLossService {
 
             String username = jWTService.extractUsername(jwtToken);
             DamageLoss entity = convertToEntity(dtoRequest, inventoryProduct, username);
-            damageLoss_repository.save(entity);
+            damageLossRepository.save(entity);
 
             // Update the Inventory Stock level and the status
             int remainingStock = inventoryProduct.getCurrentStock() - dtoRequest.quantityLost();
@@ -139,9 +134,9 @@ public class DamageLossService {
                 report.setReason(request.reason());
             }
 
-            damageLoss_repository.save(report);
+            damageLossRepository.save(report);
 
-            logger.info("DL (updateDamageLossProduct): Successfully updated damage/loss report for SKU: {}",
+            log.info("DL (updateDamageLossProduct): Successfully updated damage/loss report for SKU: {}",
                     report.getIcProduct().getSKU());
             return new ApiResponse<>(true, report.getIcProduct().getSKU() + " SKU is updated successfully.");
 
@@ -159,9 +154,9 @@ public class DamageLossService {
         try {
             DamageLoss report = getDamageLossById(id);
             restoreStockLevel(report.getIcProduct(), report.getQuantityLost());
-            damageLoss_repository.delete(report);
+            damageLossRepository.delete(report);
 
-            logger.info("DL (delete): Deleted damage/loss report and restored inventory for SKU {}", report.getIcProduct().getSKU());
+            log.info("DL (delete): Deleted damage/loss report and restored inventory for SKU {}", report.getIcProduct().getSKU());
             return new ApiResponse<>(true, "Report deleted and stock restored for SKU: " + report.getIcProduct().getSKU());
         } catch (Exception e) {
             throw new ServiceException("DL (delete): Error while deleting report", e);
@@ -174,11 +169,11 @@ public class DamageLossService {
             Optional<String> inputText = Optional.ofNullable((text));
             if (inputText.isPresent() && !inputText.get().trim().isEmpty()) {
                 Pageable pageable = PageRequest.of(page, size, Sort.by("icProduct.pmProduct.name").ascending());
-                Page<DamageLoss> damageLossReports = damageLoss_repository.searchProducts(inputText.get().trim().toLowerCase(), pageable);
-                logger.info("DL (searchProduct): {} products retrieved.", damageLossReports.getContent().size());
+                Page<DamageLoss> damageLossReports = damageLossRepository.searchProducts(inputText.get().trim().toLowerCase(), pageable);
+                log.info("DL (searchProduct): {} products retrieved.", damageLossReports.getContent().size());
                 return transformToPaginatedDTO(damageLossReports);
             }
-            logger.info("DL (searchProduct): No search text provided. Retrieving first page with default size.");
+            log.info("DL (searchProduct): No search text provided. Retrieving first page with default size.");
             return getAllDamageLoss(page,size);
         } catch (DataAccessException e) {
             throw new DatabaseException("DL (searchProduct): Database error", e);
@@ -200,8 +195,8 @@ public class DamageLossService {
 
             reason = reason.trim().toUpperCase();
             LossReason lossReason = LossReason.valueOf(reason);
-            Page<DamageLoss> foundReports = damageLoss_repository.findByReason(lossReason, pageable);
-            logger.info("DL (filterProducts): {} products retrieved.", foundReports.getContent().size());
+            Page<DamageLoss> foundReports = damageLossRepository.findByReason(lossReason, pageable);
+            log.info("DL (filterProducts): {} products retrieved.", foundReports.getContent().size());
             return transformToPaginatedDTO(foundReports);
         } catch (IllegalArgumentException e) {
             throw new ValidationException(e.getMessage());
@@ -213,7 +208,7 @@ public class DamageLossService {
     @Transactional(readOnly = true)
     public DamageLossMetrics getDamageLossMetrics() {
         try {
-            return damageLoss_repository.getDamageLossMetrics();
+            return damageLossRepository.getDamageLossMetrics();
         } catch (DataAccessException de) {
             throw new DatabaseException("DL (getDamageLossMetrics): Failed to retrieve damage/loss metrics", de);
         } catch (Exception e) {
@@ -222,9 +217,18 @@ public class DamageLossService {
     }
 
     @Transactional(readOnly = true)
-    public DamageLoss getDamageLossById(Integer id) throws BadRequestException {
-        return damageLoss_repository.findById(id)
-                .orElseThrow(() -> new BadRequestException("DL (getDamageLossById): Report not found for ID: " + id));
+    public Long countTotalDamagedProducts() {
+        try {
+            return damageLossRepository.countTotalDamagedProducts();
+        } catch (DataAccessException de) {
+            log.error("DL (countTotalDamagedProducts): Failed to retrieve total damaged products", de);
+            throw new DatabaseException("Failed to retrieve total damaged products", de);
+        }
+    }
+
+    private DamageLoss getDamageLossById(Integer id) throws BadRequestException {
+        return damageLossRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("DL (getDamageLossById): Report not found for ID: " + id));
     }
 
     private void validateDamageLossDto(DamageLossRequest dto){
@@ -277,24 +281,24 @@ public class DamageLossService {
 
     private void restoreStockLevel(InventoryControlData product, int quantityToRestore) {
         if (quantityToRestore <= 0) {
-            logger.warn("DL (restoreStockLevel): Quantity to restore is zero or negative. Skipping update.");
+            log.warn("DL (restoreStockLevel): Quantity to restore is zero or negative. Skipping update.");
             return;
         }
 
         int updatedStock = product.getCurrentStock() + quantityToRestore;
         stockManagementLogic.updateInventoryStockLevels(product, Optional.of(updatedStock), Optional.empty());
 
-        logger.info("DL (restoreStockLevel): Restored {} units to SKU {}. New stock: {}",
+        log.info("DL (restoreStockLevel): Restored {} units to SKU {}. New stock: {}",
                 quantityToRestore, product.getSKU(), updatedStock);
     }
 
     private PaginatedResponse<DamageLossResponse> getAllDamageLoss(int page, int size) {
         try {
             Pageable pageable = PageRequest.of(page, size, Sort.by("icProduct.pmProduct.name").ascending());
-            Page<DamageLoss> dbResponse = damageLoss_repository.findAll(pageable);
+            Page<DamageLoss> dbResponse = damageLossRepository.findAll(pageable);
 
             PaginatedResponse<DamageLossResponse> dtoResult = transformToPaginatedDTO(dbResponse);
-            logger.info("DL (getAllDamageLoss): Returning {} paginated data", dtoResult.getContent().size());
+            log.info("DL (getAllDamageLoss): Returning {} paginated data", dtoResult.getContent().size());
             return dtoResult;
         } catch (DataAccessException de) {
             throw new DatabaseException("DL (getAllDamageLoss): Database error.", de);

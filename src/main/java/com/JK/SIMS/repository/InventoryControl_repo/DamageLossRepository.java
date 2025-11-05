@@ -1,7 +1,7 @@
 package com.JK.SIMS.repository.InventoryControl_repo;
 
 import com.JK.SIMS.models.damage_loss.DamageLoss;
-import com.JK.SIMS.models.damage_loss.DamageLossMetrics;
+import com.JK.SIMS.models.damage_loss.dtos.DamageLossMetrics;
 import com.JK.SIMS.models.damage_loss.LossReason;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -13,7 +13,7 @@ import org.springframework.stereotype.Repository;
 public interface DamageLossRepository extends JpaRepository<DamageLoss, Integer> {
 
     @Query("""
-        SELECT new com.JK.SIMS.models.damage_loss.DamageLossMetrics(
+        SELECT new com.JK.SIMS.models.damage_loss.dtos.DamageLossMetrics(
             COUNT(*),
             SUM(dl.quantityLost),
             SUM(dl.lossValue)
@@ -21,6 +21,9 @@ public interface DamageLossRepository extends JpaRepository<DamageLoss, Integer>
         FROM DamageLoss dl
     """)
     DamageLossMetrics getDamageLossMetrics();
+
+    @Query(value = "SELECT SUM(quantity_lost) FROM damage_losses", nativeQuery = true)
+    Long countTotalDamagedProducts();
 
     @Query("SELECT dl FROM DamageLoss dl WHERE " +
             "LOWER(dl.icProduct.pmProduct.name) LIKE CONCAT('%', :text, '%') OR " +

@@ -4,22 +4,21 @@ package com.JK.SIMS.controller.inventoryControllers;
 import com.JK.SIMS.config.security.utils.TokenUtils;
 import com.JK.SIMS.exception.InvalidTokenException;
 import com.JK.SIMS.models.ApiResponse;
+import com.JK.SIMS.models.PM_models.ProductCategories;
+import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.inventoryData.dtos.InventoryPageResponse;
 import com.JK.SIMS.models.inventoryData.dtos.PendingOrdersResponseInIC;
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrderStatus;
 import com.JK.SIMS.models.purchaseOrder.dtos.ReceiveStockRequestDto;
 import com.JK.SIMS.models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.salesOrder.dtos.processSalesOrderDtos.ProcessSalesOrderRequestDto;
-import com.JK.SIMS.models.PM_models.ProductCategories;
-import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.InventoryControlService;
-import com.JK.SIMS.service.InventoryServices.poService.PoServiceInIc;
+import com.JK.SIMS.service.InventoryServices.poService.POServiceInInventory;
 import com.JK.SIMS.service.InventoryServices.soService.SoServiceInIc;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.coyote.BadRequestException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -30,26 +29,20 @@ import java.nio.file.AccessDeniedException;
 import java.time.LocalDate;
 
 @RestController
+@RequiredArgsConstructor
+@Slf4j
 @RequestMapping("/api/v1/products/inventory")
 public class InventoryController {
 
-    private static final Logger logger = LoggerFactory.getLogger(InventoryController.class);
     private final InventoryControlService icService;
-    private final PoServiceInIc poServiceInIc;
+    private final POServiceInInventory poServiceInIc;
     private final SoServiceInIc soServiceInIc;
-    @Autowired
-    public InventoryController(InventoryControlService icService, PoServiceInIc poServiceInIc, SoServiceInIc soServiceInIc) {
-        this.icService = icService;
-        this.poServiceInIc = poServiceInIc;
-        this.soServiceInIc = soServiceInIc;
-    }
-
 
     @GetMapping
     public ResponseEntity<?> getInventoryControlPageData(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        logger.info("IC: getInventoryControlPageData() calling with page {} and size {}...", page, size);
+        log.info("IC: getInventoryControlPageData() calling with page {} and size {}...", page, size);
         InventoryPageResponse inventoryPageResponse = icService.getInventoryControlPageData(page, size);
         return ResponseEntity.ok(inventoryPageResponse);
     }
@@ -61,7 +54,7 @@ public class InventoryController {
     public ResponseEntity<?> receiveIncomingStockOrder(@Valid @RequestBody ReceiveStockRequestDto receiveRequest,
                                                        @PathVariable Long orderId,
                                                        @RequestHeader("Authorization") String token) throws BadRequestException, AccessDeniedException {
-        logger.info("IC: receiveIncomingStockOrder() calling...");
+        log.info("IC: receiveIncomingStockOrder() calling...");
         if(token != null && !token.trim().isEmpty()) {
             String jwtToken = TokenUtils.extractToken(token);
             ApiResponse<Void> response =  poServiceInIc.receivePurchaseOrder(orderId, receiveRequest, jwtToken);
@@ -76,7 +69,7 @@ public class InventoryController {
     @PreAuthorize("@securityUtils.hasAccess()")
     public ResponseEntity<?> bulkStockOutOrders(@Valid @RequestBody ProcessSalesOrderRequestDto request,
                                                 @RequestHeader("Authorization") String token){
-        logger.info("IC: bulkStockOutOrders() called with {} orders", request.getItemQuantities().size());
+        log.info("IC: bulkStockOutOrders() called with {} orders", request.getItemQuantities().size());
         if (token == null || token.trim().isEmpty()) {
             throw new IllegalArgumentException("IC: bulkStockOutOrders() Invalid Token provided.");
         }
@@ -90,7 +83,7 @@ public class InventoryController {
     @PreAuthorize("@securityUtils.hasAccess()")
     public ResponseEntity<?> cancelOutgoingStockOrder(@PathVariable Long orderId,
                                                       @RequestHeader("Authorization") String token) throws AccessDeniedException {
-        logger.info("IC: cancelOutgoingStockOrder() calling...");
+        log.info("IC: cancelOutgoingStockOrder() calling...");
         if(token != null && !token.trim().isEmpty()) {
             String jwtToken = TokenUtils.extractToken(token);
             ApiResponse<Void> response = soServiceInIc.cancelSalesOrder(orderId, jwtToken);
@@ -109,7 +102,7 @@ public class InventoryController {
             @RequestParam(required = false) String text,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size){
-        logger.info("IC: searchOutgoingInPendingProduct() calling...");
+        log.info("IC: searchOutgoingInPendingProduct() calling...");
         PaginatedResponse<PendingOrdersResponseInIC> pendingOrdersDtos =
                 icService.searchByTextPendingOrders(text, page, size);
         return ResponseEntity.ok(pendingOrdersDtos);
@@ -137,7 +130,7 @@ public class InventoryController {
                 try {
                     poStatus = PurchaseOrderStatus.valueOf(status.toUpperCase());
                 } catch (IllegalArgumentException ex) {
-                    logger.warn("Invalid status value: {}", status);
+                    log.warn("Invalid status value: {}", status);
                 }
             }
         }
@@ -148,7 +141,7 @@ public class InventoryController {
             try {
                 productCategory = ProductCategories.valueOf(category.toUpperCase());
             } catch (IllegalArgumentException e) {
-                logger.warn("Invalid category value: {}", category);
+                log.warn("Invalid category value: {}", category);
             }
         }
 

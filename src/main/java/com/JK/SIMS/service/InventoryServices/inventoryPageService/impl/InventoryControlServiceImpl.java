@@ -21,7 +21,7 @@ import com.JK.SIMS.service.InventoryServices.damageLossService.DamageLossService
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.InventoryControlService;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.searchLogic.PendingOrdersSearchStrategy;
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
-import com.JK.SIMS.service.InventoryServices.poService.PoServiceInIc;
+import com.JK.SIMS.service.InventoryServices.poService.POServiceInInventory;
 import com.JK.SIMS.service.InventoryServices.soService.SoServiceInIc;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import lombok.RequiredArgsConstructor;
@@ -47,7 +47,7 @@ public class InventoryControlServiceImpl implements InventoryControlService {
     private final IC_repository icRepository;
     private final SoServiceInIc soServiceInIc;
     private final DamageLossService damageLossService;
-    private final PoServiceInIc poServiceInIc;
+    private final POServiceInInventory poServiceInIc;
     private final GlobalServiceHelper globalServiceHelper;
     private final InventoryServiceHelper inventoryServiceHelper;
     private final PendingOrdersSearchStrategy searchPendingStrategy;
@@ -65,7 +65,7 @@ public class InventoryControlServiceImpl implements InventoryControlService {
                     metrics.getTotalCount(),
                     metrics.getLowStockCount(), // Checks against the VALID products only
                     poServiceInIc.getTotalValidPoSize(),
-                    soServiceInIc.getWaitingStockSize(),
+                    soServiceInIc.countOutgoingSalesOrders(),
                     damageLossService.getDamageLossMetrics().getTotalReport(),
                     allPendingOrders
             );
@@ -85,7 +85,7 @@ public class InventoryControlServiceImpl implements InventoryControlService {
     public PaginatedResponse<PendingOrdersResponseInIC> getAllPendingOrders(int page, int size) {
         // Fetch all pending orders (SO and PO)
         PaginatedResponse<SummarySalesOrderView> allPendingSalesOrders =
-                soServiceInIc.getAllWaitingSalesOrders(page, size, "orderDate", "desc");
+                soServiceInIc.getAllOutgoingSalesOrders(page, size, "orderDate", "desc");
 
         PaginatedResponse<SummaryPurchaseOrderView> allPendingPurchaseOrders =
                 poServiceInIc.getAllPendingPurchaseOrders(page, size, "product.name", "asc");
@@ -248,7 +248,7 @@ public class InventoryControlServiceImpl implements InventoryControlService {
         if (type == null && soStatus == null && poStatus == null && category == null && dateOption == null) {
             // Fetch all pending Sales Orders
             PaginatedResponse<SummarySalesOrderView> salesOrders =
-                    soServiceInIc.getAllWaitingSalesOrders(page, size, sortBy, sortDirection);
+                    soServiceInIc.getAllOutgoingSalesOrders(page, size, sortBy, sortDirection);
             inventoryServiceHelper.fillWithSalesOrderView(combinedResults, salesOrders.getContent());
 
             // Fetch all pending Purchase Orders
@@ -266,7 +266,7 @@ public class InventoryControlServiceImpl implements InventoryControlService {
             if (isSalesOrderType && !hasSalesOrderFilters) {
                 // Fetch all Sales Orders (no filters)
                 PaginatedResponse<SummarySalesOrderView> allSalesOrders =
-                        soServiceInIc.getAllWaitingSalesOrders(page, size, sortBy, sortDirection);
+                        soServiceInIc.getAllOutgoingSalesOrders(page, size, sortBy, sortDirection);
                 inventoryServiceHelper.fillWithSalesOrderView(combinedResults, allSalesOrders.getContent());
             } else {
                 // Fetch filtered Sales Orders

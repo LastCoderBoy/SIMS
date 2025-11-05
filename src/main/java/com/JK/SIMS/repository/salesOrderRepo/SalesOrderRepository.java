@@ -1,7 +1,6 @@
 package com.JK.SIMS.repository.salesOrderRepo;
 
 import com.JK.SIMS.models.salesOrder.SalesOrder;
-import com.JK.SIMS.models.salesOrder.SalesOrderStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,15 +19,16 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long>, J
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT so FROM SalesOrder so WHERE so.orderReference LIKE CONCAT(:pattern, '%') ORDER BY so.orderReference DESC LIMIT 1")
-    Optional<SalesOrder> findLatestOrderWithPessimisticLock(@Param("pattern") String pattern);
-
-    Page<SalesOrder> findByStatus(SalesOrderStatus status, Pageable pageable);
+    Optional<SalesOrder> findLatestSalesOrderWithPessimisticLock(@Param("pattern") String pattern);
 
     @Query(value = "SELECT COUNT(*) FROM sales_order WHERE status IN ('PARTIALLY_APPROVED', 'PENDING', 'PARTIALLY_DELIVERED')", nativeQuery = true)
-    Long getWaitingStockSize();
+    Long countOutgoingSalesOrders(); // Used in the Inventory Control
+
+    @Query(value = "SELECT COUNT(*) FROM sales_order WHERE status NOT IN ('DELIVERED', 'CANCELLED')", nativeQuery = true)
+    Long countInProgressSalesOrders(); // Used in the Report section
 
     @Query("SELECT so FROM SalesOrder so WHERE so.status IN ('PARTIALLY_APPROVED', 'PENDING', 'PARTIALLY_DELIVERED')")
-    Page<SalesOrder> findAllWaitingSalesOrders(Pageable pageable);
+    Page<SalesOrder> findAllOutgoingSalesOrders(Pageable pageable);
 
     @Query("SELECT so FROM SalesOrder so WHERE so.status IN ('PARTIALLY_APPROVED', 'PENDING', 'PARTIALLY_DELIVERED') " +
             "AND so.estimatedDeliveryDate < :twoDaysFromNow")

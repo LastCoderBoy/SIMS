@@ -1,6 +1,7 @@
-package com.JK.SIMS.models.damage_loss;
+package com.JK.SIMS.models.damage_loss.dtos;
 
 import com.JK.SIMS.models.PM_models.ProductCategories;
+import com.JK.SIMS.models.damage_loss.LossReason;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;

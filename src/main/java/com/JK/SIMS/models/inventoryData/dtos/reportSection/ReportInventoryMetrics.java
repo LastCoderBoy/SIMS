@@ -9,6 +9,11 @@ import java.math.BigDecimal;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class InventoryStockValue {
+public class ReportInventoryMetrics {
     private BigDecimal totalStockValue;
+    private Integer totalStockQuantity;
+    private Integer lowStockItems;
+    private Integer outOfStockItems;
+    private Integer reservedStock;
+    private Integer availableStock;
 }

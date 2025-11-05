@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
-public class DashboardPmMetrics {
+public class ReportProductMetrics {
     private Long totalActiveProducts;
     private Long totalInactiveProducts;
 }

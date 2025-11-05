@@ -1,4 +1,4 @@
-package com.JK.SIMS.service.InventoryServices.poService;
+package com.JK.SIMS.service.InventoryServices.poService.impl;
 
 import com.JK.SIMS.config.security.utils.SecurityUtils;
 import com.JK.SIMS.exception.DatabaseException;
@@ -19,6 +19,7 @@ import com.JK.SIMS.models.stockMovements.StockMovementType;
 import com.JK.SIMS.repository.PurchaseOrder_repo.PurchaseOrderRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
+import com.JK.SIMS.service.InventoryServices.poService.POServiceInInventory;
 import com.JK.SIMS.service.productManagementService.impl.PMServiceHelper;
 import com.JK.SIMS.service.stockMovementService.StockMovementService;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
@@ -41,13 +42,14 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static com.JK.SIMS.service.utilities.EntityConstants.DEFAULT_SORT_BY_FOR_PO;
+import static com.JK.SIMS.service.utilities.EntityConstants.DEFAULT_SORT_DIRECTION;
+
 
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class PoServiceInIc {
-    private static final String DEFAULT_SORT_BY = "product.name";
-    private static final String DEFAULT_SORT_DIRECTION = "asc";
+public class POServiceInInventoryImpl implements POServiceInInventory {
     private final Clock clock;
 
     private final PurchaseOrderRepository purchaseOrderRepository;
@@ -61,10 +63,11 @@ public class PoServiceInIc {
     private final PoSearchStrategy icPoSearchStrategy;
     private final PoFilterStrategy filterWaitingPurchaseOrders;
 
+    @Override
     @Transactional(readOnly = true)
     public PaginatedResponse<SummaryPurchaseOrderView> getAllPendingPurchaseOrders(int page, int size, String sortBy, String sortDirection) {
         try {
-            String effectiveSortBy = (sortBy == null || sortBy.trim().isEmpty()) ? DEFAULT_SORT_BY : sortBy;
+            String effectiveSortBy = (sortBy == null || sortBy.trim().isEmpty()) ? DEFAULT_SORT_BY_FOR_PO : sortBy;
             String effectiveSortDirection = (sortDirection == null || sortDirection.trim().isEmpty()) ? DEFAULT_SORT_DIRECTION : sortDirection;
 
             Sort.Direction direction = effectiveSortDirection.equalsIgnoreCase("desc") ?
@@ -86,6 +89,7 @@ public class PoServiceInIc {
     }
 
     // STOCK IN button logic.
+    @Override
     @Transactional
     public ApiResponse<Void> receivePurchaseOrder(Long orderId, @Valid ReceiveStockRequestDto receiveRequest, String jwtToken) throws BadRequestException {
         try {
@@ -177,6 +181,7 @@ public class PoServiceInIc {
         purchaseOrderRepository.save(order);
     }
 
+    @Override
     @Transactional
     public ApiResponse<Void> cancelPurchaseOrderInternal(Long orderId, String jwtToken) throws BadRequestException {
         try {
@@ -216,18 +221,20 @@ public class PoServiceInIc {
         }
     }
 
+    @Override
     @Transactional(readOnly = true)
     public Long getTotalValidPoSize(){
-        return purchaseOrderRepository.getTotalValidPoSize();
+        return purchaseOrderRepository.countIncomingPurchaseOrders();
     }
 
+    @Override
     @Transactional(readOnly = true)
     public PaginatedResponse<SummaryPurchaseOrderView> searchInIncomingPurchaseOrders(String text, int page, int size, String sortBy, String sortDirection) {
         try {
             globalServiceHelper.validatePaginationParameters(page, size);
             if (text == null || text.trim().isEmpty()) {
                 log.warn("PO (searchInIncomingPurchaseOrders): Search text is null or empty, returning all incoming orders.");
-                return getAllPendingPurchaseOrders(page, size, DEFAULT_SORT_BY, DEFAULT_SORT_DIRECTION);
+                return getAllPendingPurchaseOrders(page, size, DEFAULT_SORT_BY_FOR_PO, DEFAULT_SORT_DIRECTION);
             }
             Page<PurchaseOrder> purchaseOrderPage = icPoSearchStrategy.searchInPos(text, page, size, sortBy, sortDirection);
             return poServiceHelper.transformToPaginatedSummaryView(purchaseOrderPage);
@@ -237,6 +244,7 @@ public class PoServiceInIc {
         }
     }
 
+    @Override
     @Transactional(readOnly = true)
     public PaginatedResponse<SummaryPurchaseOrderView> filterIncomingPurchaseOrders(PurchaseOrderStatus status, ProductCategories category,
                                                                            String sortBy, String sortDirection, int page, int size){
@@ -256,6 +264,7 @@ public class PoServiceInIc {
         }
     }
 
+    @Override
     @Transactional(readOnly = true)
     public PaginatedResponse<PurchaseOrderResponseDto> getAllOverduePurchaseOrders(int page, int size) {
         try {

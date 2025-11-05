@@ -16,13 +16,11 @@ import com.JK.SIMS.models.salesOrder.orderItem.OrderItem;
 import com.JK.SIMS.models.salesOrder.orderItem.dtos.BulkOrderItemsRequestDto;
 import com.JK.SIMS.models.salesOrder.orderItem.dtos.OrderItemRequest;
 import com.JK.SIMS.models.salesOrder.qrcode.SalesOrderQRCode;
-import com.JK.SIMS.repository.salesOrderRepo.OrderItemRepository;
 import com.JK.SIMS.repository.salesOrderRepo.SalesOrderRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
 import com.JK.SIMS.service.orderManagementService.salesOrderService.SalesOrderService;
 import com.JK.SIMS.service.orderManagementService.salesOrderService.SoQrCodeService;
 import com.JK.SIMS.service.productManagementService.ProductManagementService;
-import com.JK.SIMS.service.productManagementService.impl.PMServiceHelper;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import com.JK.SIMS.service.utilities.SalesOrderServiceHelper;
 import com.JK.SIMS.service.utilities.salesOrderFilterLogic.SoFilterStrategy;
@@ -32,8 +30,6 @@ import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -482,12 +478,23 @@ public class SalesOrderServiceImpl implements SalesOrderService {
         }
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Long countInProgressSalesOrders() {
+        try {
+            return salesOrderRepository.countInProgressSalesOrders();
+        } catch (DataAccessException e) {
+            log.error("OM-SO (getTotalSalesOrdersCount): Database error - {}", e.getMessage(), e);
+            throw new DatabaseException("Failed to count sales orders", e);
+        }
+    }
+
     // Note that: the Order Reference max prefix number is "SO-yyyy-MM-dd-999"
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public String generateOrderReference(LocalDate now) {
         try {
             // Get the latest order reference for today with pessimistic lock
-            Optional<SalesOrder> lastOrderOpt = salesOrderRepository.findLatestOrderWithPessimisticLock(
+            Optional<SalesOrder> lastOrderOpt = salesOrderRepository.findLatestSalesOrderWithPessimisticLock(
                     "SO-" + now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) + "%");
 
             DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");

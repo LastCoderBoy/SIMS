@@ -9,7 +9,7 @@ import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
-import com.JK.SIMS.models.PM_models.dtos.DashboardPmMetrics;
+import com.JK.SIMS.models.PM_models.dtos.ReportProductMetrics;
 import com.JK.SIMS.models.PM_models.dtos.ProductManagementRequest;
 import com.JK.SIMS.models.PM_models.dtos.ProductManagementResponse;
 import com.JK.SIMS.models.PaginatedResponse;
@@ -401,7 +401,7 @@ public class ProductManagementServiceImpl implements ProductManagementService {
 
     @Override
     @Transactional(readOnly = true)
-    public DashboardPmMetrics totalProductsByStatus(){
+    public ReportProductMetrics countTotalActiveInactiveProducts(){
         try {
             return pmRepository.countProductMetricsByStatus(ProductStatus.getActiveStatuses(), ProductStatus.getInactiveStatuses());
         } catch (Exception e) {

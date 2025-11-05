@@ -1,4 +1,4 @@
-package com.JK.SIMS.models.damage_loss;
+package com.JK.SIMS.models.damage_loss.dtos;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

@@ -22,7 +22,6 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -53,16 +52,16 @@ public class SoServiceInIc {
     // Will be used in the SORT logic and the normal GET all logic.
     // Can be only sorted using Status.
     @Transactional(readOnly = true)
-    public PaginatedResponse<SummarySalesOrderView> getAllWaitingSalesOrders(@Min(0) int page,
-                                                                             @Min(1) @Max(100) int size,
-                                                                             String sortBy, String sortDir) {
+    public PaginatedResponse<SummarySalesOrderView> getAllOutgoingSalesOrders(@Min(0) int page,
+                                                                              @Min(1) @Max(100) int size,
+                                                                              String sortBy, String sortDir) {
         try {
             Pageable pageable = globalServiceHelper.preparePageable(page, size, sortBy, sortDir);
-            Page<SalesOrder> salesOrders = salesOrderRepository.findAllWaitingSalesOrders(pageable);
-            log.info("IC-SO (getAllWaitingSalesOrders): Returning {} paginated data", salesOrders.getContent().size());
+            Page<SalesOrder> salesOrders = salesOrderRepository.findAllOutgoingSalesOrders(pageable);
+            log.info("IC-SO (getAllOutgoingSalesOrders): Returning {} paginated data", salesOrders.getContent().size());
             return salesOrderServiceHelper.transformToSummarySalesOrderView(salesOrders);
         } catch (Exception e) {
-            log.error("IC-SO (getAllSalesOrdersSorted): Error fetching orders - {}", e.getMessage());
+            log.error("IC-SO (getAllOutgoingSalesOrders): Error fetching orders - {}", e.getMessage());
             throw new ServiceException("Failed to fetch orders", e);
         }
     }
@@ -146,7 +145,7 @@ public class SoServiceInIc {
             globalServiceHelper.validatePaginationParameters(page, size);
             if(text == null || text.trim().isEmpty()){
                 log.warn("IcSo (searchInWaitingSalesOrders): Search text is null or empty, returning all waiting orders.");
-                return getAllWaitingSalesOrders(page, size, "id", "asc");
+                return getAllOutgoingSalesOrders(page, size, "id", "asc");
             }
             Page<SalesOrder> salesOrderPage = icSoSearchStrategy.searchInSo(text, page, size, sortBy, sortDir);
             return salesOrderServiceHelper.transformToSummarySalesOrderView(salesOrderPage);
@@ -165,9 +164,9 @@ public class SoServiceInIc {
     }
 
     @Transactional(readOnly = true)
-    public Long getWaitingStockSize() {
+    public Long countOutgoingSalesOrders() {
         try {
-            return salesOrderRepository.getWaitingStockSize();
+            return salesOrderRepository.countOutgoingSalesOrders();
         } catch (Exception e) {
             log.error("IC-SO (totalOutgoingStockSize): Error getting outgoing stock size - {}", e.getMessage());
             throw new ServiceException("Failed to get total outgoing stock size", e);

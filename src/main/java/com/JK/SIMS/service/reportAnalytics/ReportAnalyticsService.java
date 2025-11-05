@@ -1,13 +1,7 @@
 package com.JK.SIMS.service.reportAnalytics;
 
+import com.JK.SIMS.models.reportAnalyticsModels.DashboardMetrics;
+
 public interface ReportAnalyticsService {
-    // Total Active and Inactive Products
-
-    // Total Stock Value
-
-    // Total Sales Orders
-
-    // Total Purchase Orders
-
-    // Total Damage/Loss Products
+    DashboardMetrics getDashboardMetrics();
 }

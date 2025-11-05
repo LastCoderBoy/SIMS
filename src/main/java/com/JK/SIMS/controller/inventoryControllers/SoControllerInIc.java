@@ -42,10 +42,10 @@ public class SoControllerInIc {
             @RequestParam(defaultValue = "orderDate") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir) {
 
-        logger.info("IcSo: getAllWaitingSalesOrders() fetching orders - page: {}, size: {}, sortBy: {}, sortDir: {}",
+        logger.info("IcSo: getAllOutgoingSalesOrders() fetching orders - page: {}, size: {}, sortBy: {}, sortDir: {}",
                 page, size, sortBy, sortDir);
         PaginatedResponse<SummarySalesOrderView> orders =
-                soServiceInIc.getAllWaitingSalesOrders(page, size, sortBy, sortDir);
+                soServiceInIc.getAllOutgoingSalesOrders(page, size, sortBy, sortDir);
         return ResponseEntity.ok(orders);
     }
 
