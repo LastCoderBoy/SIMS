@@ -27,5 +27,4 @@ public interface InventoryControlService {
                                                                      LocalDate startDate, LocalDate endDate,
                                                                      ProductCategories category, String sortBy,
                                                                      String sortDirection, int page, int size);
-    BigDecimal getInventoryStockValue();
 }

@@ -85,6 +85,9 @@ public interface IC_repository extends JpaRepository<InventoryControlData, Strin
     @Query("SELECT i FROM InventoryControlData i WHERE i.pmProduct.productID = :productId")
     InventoryControlData findByProductIdWithLock(@Param("productId") String productId);
 
+
+    // ******* Report & Analytics related methods *******
+
     @Query(value = """
     SELECT COALESCE(SUM(ic.current_stock * pm.price), 0) AS per_stock_value
     FROM inventory_control_data ic
@@ -92,4 +95,19 @@ public interface IC_repository extends JpaRepository<InventoryControlData, Strin
     WHERE ic.status != 'INVALID'
     """, nativeQuery = true)
     BigDecimal getInventoryStockValue();
+
+    @Query(value = "SELECT SUM(current_stock) FROM inventory_control_data", nativeQuery = true)
+    Long countTotalStockQuantity();
+
+    @Query(value = "SELECT SUM(reserved_stock) FROM inventory_control_data", nativeQuery = true)
+    Long countReservedStockQuantity();
+
+    @Query(value = "SELECT SUM(current_stock=0) FROM inventory_control_data WHERE status!='INVALID'", nativeQuery = true)
+    Long countOutOfStockQuantity();
+
+    @Query(value = "SELECT SUM(current_stock<min_level) FROM inventory_control_data WHERE status!='INVALID'", nativeQuery = true)
+    Long countLowStockQuantity();
+
+    @Query(value = "SELECT SUM(current_stock>min_level) FROM inventory_control_data WHERE status!='INVALID'", nativeQuery = true)
+    Long countInStockQuantity();
 }

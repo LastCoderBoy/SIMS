@@ -301,22 +301,4 @@ public class InventoryControlServiceImpl implements InventoryControlService {
                 new PageImpl<>(combinedResults, PageRequest.of(page, size), combinedResults.size())
         );
     }
-
-    // Used in the Report & Analytics section
-    @Override
-    @Transactional(readOnly = true)
-    public BigDecimal getInventoryStockValue() {
-        try {
-            BigDecimal value = icRepository.getInventoryStockValue();
-            return value != null ? value : BigDecimal.ZERO;
-        } catch (DataAccessException e) {
-            log.error("IC (getInventoryStockValue): Database error: {}", e.getMessage());
-            throw new DatabaseException("Failed to calculate inventory stock value", e);
-        } catch (Exception e) {
-            log.error("IC (getInventoryStockValue): Unexpected error: {}", e.getMessage());
-            throw new ServiceException("Internal Service Error occurred", e);
-        }
-    }
-
-
 }

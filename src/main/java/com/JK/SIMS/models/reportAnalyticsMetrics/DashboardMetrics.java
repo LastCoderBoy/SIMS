@@ -1,4 +1,4 @@
-package com.JK.SIMS.models.reportAnalyticsModels;
+package com.JK.SIMS.models.reportAnalyticsMetrics;
 
 import com.JK.SIMS.models.PM_models.dtos.ReportProductMetrics;
 import lombok.Builder;
