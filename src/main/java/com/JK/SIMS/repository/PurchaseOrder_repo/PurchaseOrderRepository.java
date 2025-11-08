@@ -1,6 +1,7 @@
 package com.JK.SIMS.repository.PurchaseOrder_repo;
 
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrder;
+import com.JK.SIMS.models.reportAnalyticsMetrics.orderOverview.PurchaseOrderSummary;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -43,4 +44,18 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, Lo
             "WHERE po.status IN ('DELIVERY_IN_PROCESS', 'PARTIALLY_RECEIVED', 'AWAITING_APPROVAL')" +
             "AND po.expectedArrivalDate < CURRENT DATE ")
     Page<PurchaseOrder> findAllOverdueOrders(Pageable pageable);
+
+
+    // ******* Report & Analytics related methods *******
+    @Query("""
+    SELECT new com.JK.SIMS.models.reportAnalyticsMetrics.orderOverview.PurchaseOrderSummary(
+        COUNT(CASE WHEN po.status = 'AWAITING_APPROVAL' THEN 1 END),
+        COUNT(CASE WHEN po.status = 'DELIVERY_IN_PROCESS' THEN 1 END),
+        COUNT(CASE WHEN po.status = 'PARTIALLY_RECEIVED' THEN 1 END),
+        COUNT(CASE WHEN po.status = 'RECEIVED' THEN 1 END),
+        COUNT(CASE WHEN po.status = 'CANCELLED' THEN 1 END),
+        COUNT(CASE WHEN po.status = 'FAILED' THEN 1 END))
+    FROM PurchaseOrder po
+""")
+    PurchaseOrderSummary getPurchaseOrderSummaryMetrics();
 }

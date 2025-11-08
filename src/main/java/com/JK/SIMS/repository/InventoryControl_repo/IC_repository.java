@@ -4,6 +4,7 @@ import com.JK.SIMS.models.inventoryData.InventoryControlData;
 import com.JK.SIMS.models.inventoryData.InventoryDataStatus;
 import com.JK.SIMS.models.inventoryData.dtos.InventoryMetrics;
 import com.JK.SIMS.models.PM_models.ProductCategories;
+import com.JK.SIMS.models.reportAnalyticsMetrics.inventoryHealth.InventoryReportMetrics;
 import jakarta.persistence.LockModeType;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
@@ -13,7 +14,6 @@ import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -88,26 +88,21 @@ public interface IC_repository extends JpaRepository<InventoryControlData, Strin
 
     // ******* Report & Analytics related methods *******
 
-    @Query(value = """
-    SELECT COALESCE(SUM(ic.current_stock * pm.price), 0) AS per_stock_value
-    FROM inventory_control_data ic
-    JOIN products_for_management pm USING(productid)
+    @Query("""
+    SELECT new com.JK.SIMS.models.reportAnalyticsMetrics.InventoryReportMetrics(
+        CAST(COALESCE(SUM(ic.currentStock * pm.price), 0.0) AS BigDecimal),
+        CAST(COALESCE(SUM(ic.currentStock), 0) AS long),
+        CAST(COALESCE(SUM(ic.reservedStock), 0) AS long),
+        CAST(COALESCE(SUM(CASE WHEN ic.currentStock > ic.reservedStock
+            THEN ic.currentStock - ic.reservedStock
+            ELSE 0 END), 0) AS long),
+        COUNT(CASE WHEN ic.currentStock = 0 THEN 1 END),
+        COUNT(CASE WHEN ic.currentStock <= ic.minLevel AND ic.currentStock > 0 AND ic.status!='INVALID' THEN 1 END),
+        COUNT(CASE WHEN ic.currentStock > ic.minLevel THEN 1 END)
+        )
+    FROM InventoryControlData ic
+    JOIN ic.pmProduct pm
     WHERE ic.status != 'INVALID'
-    """, nativeQuery = true)
-    BigDecimal getInventoryStockValue();
-
-    @Query(value = "SELECT SUM(current_stock) FROM inventory_control_data", nativeQuery = true)
-    Long countTotalStockQuantity();
-
-    @Query(value = "SELECT SUM(reserved_stock) FROM inventory_control_data", nativeQuery = true)
-    Long countReservedStockQuantity();
-
-    @Query(value = "SELECT SUM(current_stock=0) FROM inventory_control_data WHERE status!='INVALID'", nativeQuery = true)
-    Long countOutOfStockQuantity();
-
-    @Query(value = "SELECT SUM(current_stock<min_level) FROM inventory_control_data WHERE status!='INVALID'", nativeQuery = true)
-    Long countLowStockQuantity();
-
-    @Query(value = "SELECT SUM(current_stock>min_level) FROM inventory_control_data WHERE status!='INVALID'", nativeQuery = true)
-    Long countInStockQuantity();
+""")
+    InventoryReportMetrics getInventoryReportMetrics();
 }

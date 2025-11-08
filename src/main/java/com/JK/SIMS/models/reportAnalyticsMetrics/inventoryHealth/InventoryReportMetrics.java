@@ -1,4 +1,4 @@
-package com.JK.SIMS.models.reportAnalyticsMetrics;
+package com.JK.SIMS.models.reportAnalyticsMetrics.inventoryHealth;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -11,14 +11,16 @@ import java.math.BigDecimal;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class ReportInventoryMetrics {
-    private BigDecimal totalStockValue;
+public class InventoryReportMetrics {
+    private BigDecimal totalStockValueAtRetail;
     private Long totalStockQuantity;
     private Long totalReservedStock;
     private Long availableStock;         // currentStock - reservedStock
-    private Long outOfStockItems;        // currentStock = 0
-    private Long lowStockItems;          // currentStock <= minLevel AND > 0
-    private Long inStockItems;           // currentStock > minLevel;
+
+    // ========== Stock Health Breakdown ==========
+    private Long inStockItems;                  // currentStock > minLevel (healthy)
+    private Long lowStockItems;                 // currentStock <= minLevel AND > 0 (warning)
+    private Long outOfStockItems;               // currentStock = 0 (critical)
 
     // Calculated fields
     public Double getStockUtilization() {
@@ -36,5 +38,14 @@ public class ReportInventoryMetrics {
         double outOfStockPenalty = (outOfStockItems * 100.0 / totalItems) * 1.0;
 
         return Math.max(0, 100.0 - lowStockPenalty - outOfStockPenalty);
+    }
+
+    public String getHealthStatus() {
+        double score = getHealthScore();
+        if (score >= 90) return "EXCELLENT";
+        if (score >= 75) return "GOOD";
+        if (score >= 60) return "FAIR";
+        if (score >= 40) return "POOR";
+        return "CRITICAL";
     }
 }

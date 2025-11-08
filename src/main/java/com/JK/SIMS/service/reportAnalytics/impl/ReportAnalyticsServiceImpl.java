@@ -28,7 +28,7 @@ public class ReportAnalyticsServiceImpl implements ReportAnalyticsService {
     private final DamageLossService damageLossService;
 
     @Override
-    public DashboardMetrics getDashboardMetrics() {
+    public DashboardMetrics getMainDashboardMetrics() {
         ReportProductMetrics totalActiveInactiveProducts = pmService.countTotalActiveInactiveProducts();
         BigDecimal inventoryStockValue = inventoryHealthService.getInventoryStockValue();
         Long inProgressSalesOrders = salesOrderService.countInProgressSalesOrders();

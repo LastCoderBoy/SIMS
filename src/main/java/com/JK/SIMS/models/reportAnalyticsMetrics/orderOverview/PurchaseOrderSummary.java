@@ -1,4 +1,4 @@
-package com.JK.SIMS.models.reportAnalyticsMetrics;
+package com.JK.SIMS.models.reportAnalyticsMetrics.orderOverview;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

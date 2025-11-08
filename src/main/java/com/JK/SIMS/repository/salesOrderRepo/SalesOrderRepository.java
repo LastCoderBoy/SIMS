@@ -1,5 +1,6 @@
 package com.JK.SIMS.repository.salesOrderRepo;
 
+import com.JK.SIMS.models.reportAnalyticsMetrics.orderOverview.SalesOrderSummary;
 import com.JK.SIMS.models.salesOrder.SalesOrder;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
@@ -23,9 +24,6 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long>, J
 
     @Query(value = "SELECT COUNT(*) FROM sales_order WHERE status IN ('PARTIALLY_APPROVED', 'PENDING', 'PARTIALLY_DELIVERED')", nativeQuery = true)
     Long countOutgoingSalesOrders(); // Used in the Inventory Control
-
-    @Query(value = "SELECT COUNT(*) FROM sales_order WHERE status NOT IN ('DELIVERED', 'CANCELLED')", nativeQuery = true)
-    Long countInProgressSalesOrders(); // Used in the Report section
 
     @Query("SELECT so FROM SalesOrder so WHERE so.status IN ('PARTIALLY_APPROVED', 'PENDING', 'PARTIALLY_DELIVERED')")
     Page<SalesOrder> findAllOutgoingSalesOrders(Pageable pageable);
@@ -59,4 +57,33 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long>, J
        OR LOWER(o.orderReference) LIKE LOWER(CONCAT('%', :text, '%'))
     """)
     Page<SalesOrder> searchInSalesOrders(String text, Pageable pageable);
+
+
+    // ******* Report & Analytics related methods *******
+
+    @Query(value = "SELECT COUNT(*) FROM sales_order WHERE status NOT IN ('DELIVERED', 'CANCELLED')", nativeQuery = true)
+    Long countInProgressSalesOrders();
+
+    @Query("""
+    SELECT COUNT(*)
+    FROM SalesOrder so
+    WHERE so.orderDate BETWEEN :startDate AND :endDate
+    AND so.status IN ('DELIVERED', 'COMPLETED')
+""")
+    Long countCompletedSalesOrdersBetween(@Param("startDate") LocalDateTime startDate,
+                                      @Param("endDate") LocalDateTime endDate);
+
+
+    @Query("""
+    SELECT new com.JK.SIMS.models.reportAnalyticsMetrics.orderOverview.SalesOrderSummary(
+        COUNT(CASE WHEN so.status = 'PENDING' THEN 1 END),
+        COUNT(CASE WHEN so.status = 'DELIVERY_IN_PROCESS' THEN 1 END),
+        COUNT(CASE WHEN so.status = 'DELIVERED' THEN 1 END),
+        COUNT(CASE WHEN so.status = 'APPROVED' THEN 1 END),
+        COUNT(CASE WHEN so.status = 'PARTIALLY_APPROVED' THEN 1 END),
+        COUNT(CASE WHEN so.status = 'PARTIALLY_DELIVERED' THEN 1 END),
+        COUNT(CASE WHEN so.status = 'CANCELLED' THEN 1 END))
+    FROM SalesOrder so
+""")
+    SalesOrderSummary getSalesOrderSummaryMetrics();
 }

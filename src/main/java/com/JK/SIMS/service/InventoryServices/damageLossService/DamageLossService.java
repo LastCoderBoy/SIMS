@@ -14,7 +14,7 @@ import com.JK.SIMS.models.damage_loss.dtos.DamageLossPageResponse;
 import com.JK.SIMS.models.damage_loss.dtos.DamageLossRequest;
 import com.JK.SIMS.models.damage_loss.dtos.DamageLossResponse;
 import com.JK.SIMS.models.inventoryData.InventoryControlData;
-import com.JK.SIMS.repository.InventoryControl_repo.DamageLossRepository;
+import com.JK.SIMS.repository.damageLossRepo.DamageLossRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
 import lombok.RequiredArgsConstructor;
