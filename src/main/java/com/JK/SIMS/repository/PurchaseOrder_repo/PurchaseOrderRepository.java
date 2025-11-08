@@ -33,7 +33,7 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, Lo
             """)
     Page<PurchaseOrder> searchInPendingOrders(String text, Pageable pageable);
 
-    @Query(value = "SELECT COUNT(*) FROM purchase_order WHERE status IN ('DELIVERY_IN_PROCESS', 'PARTIALLY_RECEIVED') ", nativeQuery = true)
+    @Query(value = "SELECT COUNT(*) FROM purchase_order WHERE status IN ('DELIVERY_IN_PROCESS', 'PARTIALLY_RECEIVED', 'AWAITING_APPROVAL') ", nativeQuery = true)
     Long countIncomingPurchaseOrders();
 
     @Query("SELECT po FROM PurchaseOrder po WHERE " +

@@ -399,11 +399,15 @@ public class ProductManagementServiceImpl implements ProductManagementService {
         return "PRD001";
     }
 
+    // ======== Report Analytics helper method =========
     @Override
     @Transactional(readOnly = true)
     public ReportProductMetrics countTotalActiveInactiveProducts(){
         try {
             return pmRepository.countProductMetricsByStatus(ProductStatus.getActiveStatuses(), ProductStatus.getInactiveStatuses());
+        } catch (DataAccessException e) {
+            log.error("PM (totalProductsByStatus): Failed to retrieve product metrics due to database error: {}", e.getMessage());
+            throw new DatabaseException("PM (totalProductsByStatus): Failed to retrieve product metrics", e);
         } catch (Exception e) {
             log.error("PM (totalProductsByStatus): Failed to retrieve product metrics: {}", e.getMessage());
             throw new ServiceException("Internal Service Error occurred", e);

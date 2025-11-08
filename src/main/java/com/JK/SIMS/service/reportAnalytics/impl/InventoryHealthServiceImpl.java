@@ -11,6 +11,8 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -28,6 +30,17 @@ public class InventoryHealthServiceImpl implements InventoryHealthService {
         } catch (Exception e) {
             log.error("RA (getInventoryHealth): Unexpected error: {}", e.getMessage());
             throw new ServiceException("Internal Service Error occurred", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public BigDecimal calculateInventoryStockValueAtRetail() {
+        try{
+            return icRepository.getInventoryStockValueAtRetail();
+        } catch (DataAccessException e) {
+            log.error("RA (getInventoryStockValue): Database error: {}", e.getMessage());
+            throw new DatabaseException("Failed to calculate inventory stock value", e);
         }
     }
 }

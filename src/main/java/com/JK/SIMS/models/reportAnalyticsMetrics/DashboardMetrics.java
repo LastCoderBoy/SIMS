@@ -7,9 +7,10 @@ import java.math.BigDecimal;
 
 @Builder
 public record DashboardMetrics (
-    ReportProductMetrics totalActiveInactivatedProducts,
-    BigDecimal totalInventoryStockValue,
-    Long totalInProgressSalesOrders,
-    Long totalValidPurchaseOrders,
-    Long totalDamagedProducts
+        Long totalActiveProducts,
+        Long totalInactiveProducts,
+        BigDecimal totalInventoryStockValue,
+        Long totalInProgressSalesOrders,
+        Long totalValidPurchaseOrders,
+        Long totalDamagedProducts
 ){}

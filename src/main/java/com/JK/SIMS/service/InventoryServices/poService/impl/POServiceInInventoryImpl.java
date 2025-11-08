@@ -224,7 +224,12 @@ public class POServiceInInventoryImpl implements POServiceInInventory {
     @Override
     @Transactional(readOnly = true)
     public Long getTotalValidPoSize(){
-        return purchaseOrderRepository.countIncomingPurchaseOrders();
+        try{
+            return purchaseOrderRepository.countIncomingPurchaseOrders();
+        } catch (DataAccessException da){
+            log.error("PO (getTotalValidPoSize): Database error while retrieving total valid orders", da);
+            throw new DatabaseException("Failed to retrieve total valid orders due to database error");
+        }
     }
 
     @Override

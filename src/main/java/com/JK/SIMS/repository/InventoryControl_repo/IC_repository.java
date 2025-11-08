@@ -14,6 +14,7 @@ import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -89,7 +90,7 @@ public interface IC_repository extends JpaRepository<InventoryControlData, Strin
     // ******* Report & Analytics related methods *******
 
     @Query("""
-    SELECT new com.JK.SIMS.models.reportAnalyticsMetrics.InventoryReportMetrics(
+    SELECT new com.JK.SIMS.models.reportAnalyticsMetrics.inventoryHealth.InventoryReportMetrics(
         CAST(COALESCE(SUM(ic.currentStock * pm.price), 0.0) AS BigDecimal),
         CAST(COALESCE(SUM(ic.currentStock), 0) AS long),
         CAST(COALESCE(SUM(ic.reservedStock), 0) AS long),
@@ -105,4 +106,12 @@ public interface IC_repository extends JpaRepository<InventoryControlData, Strin
     WHERE ic.status != 'INVALID'
 """)
     InventoryReportMetrics getInventoryReportMetrics();
+
+    @Query(value = """
+    SELECT COALESCE(SUM(ic.current_stock * pm.price), 0) AS per_stock_value
+    FROM inventory_control_data ic
+    JOIN products_for_management pm USING(productid)
+    WHERE ic.status != 'INVALID'
+    """, nativeQuery = true)
+    BigDecimal getInventoryStockValueAtRetail();
 }
