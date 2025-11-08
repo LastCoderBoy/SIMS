@@ -97,9 +97,9 @@ public interface IC_repository extends JpaRepository<InventoryControlData, Strin
         CAST(COALESCE(SUM(CASE WHEN ic.currentStock > ic.reservedStock
             THEN ic.currentStock - ic.reservedStock
             ELSE 0 END), 0) AS long),
-        COUNT(CASE WHEN ic.currentStock = 0 THEN 1 END),
+        COUNT(CASE WHEN ic.currentStock > ic.minLevel THEN 1 END),
         COUNT(CASE WHEN ic.currentStock <= ic.minLevel AND ic.currentStock > 0 AND ic.status!='INVALID' THEN 1 END),
-        COUNT(CASE WHEN ic.currentStock > ic.minLevel THEN 1 END)
+        COUNT(CASE WHEN ic.currentStock = 0 THEN 1 END)
         )
     FROM InventoryControlData ic
     JOIN ic.pmProduct pm
