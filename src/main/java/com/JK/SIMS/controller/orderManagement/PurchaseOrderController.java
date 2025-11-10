@@ -20,6 +20,8 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import static com.JK.SIMS.service.utilities.GlobalServiceHelper.validateAndExtractToken;
+
 @RestController
 @RequiredArgsConstructor
 @Slf4j
@@ -52,27 +54,20 @@ public class PurchaseOrderController {
     public ResponseEntity<?> createPurchaseOrder(@Valid @RequestBody PurchaseOrderRequestDto stockRequest,
                                                  @RequestHeader("Authorization") String token) throws BadRequestException, AccessDeniedException {
         log.info("OM-PO: createPurchaseOrder() calling...");
-        if(token != null && !token.trim().isEmpty()) {
-            String jwtToken = TokenUtils.extractToken(token);
-            ApiResponse<PurchaseOrderRequestDto> response =
-                    purchaseOrderService.createPurchaseOrder(stockRequest, jwtToken);
-            return new ResponseEntity<>(response, HttpStatus.CREATED);
-        }
-        throw new InvalidTokenException("OM-PO: createPurchaseOrder() Invalid Token provided.");
+        String jwtToken = validateAndExtractToken(token);
+        ApiResponse<PurchaseOrderRequestDto> response =
+                purchaseOrderService.createPurchaseOrder(stockRequest, jwtToken);
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
     @PutMapping("{orderId}/cancel-purchaseorder")
     @PreAuthorize("@securityUtils.hasAccess()")
     public ResponseEntity<?> cancelIncomingStockInternal(@PathVariable Long orderId,
                                                          @RequestHeader("Authorization") String token) throws BadRequestException, AccessDeniedException {
-        if(token != null && !token.trim().isEmpty()) {
-            String jwtToken = TokenUtils.extractToken(token);
-            ApiResponse<Void> response = poServiceInIc.cancelPurchaseOrderInternal(orderId, jwtToken);
-            log.info("OM-PO: cancelIncomingStockInternal() called for ID: {} is cancelled successfully.", orderId);
-            return ResponseEntity.ok(response);
-        }
-        log.error("OM-PO: cancelIncomingStockInternal() Invalid Token provided. {}", token);
-        throw new InvalidTokenException("Invalid Token provided. Please re-login.");
+        String jwtToken = validateAndExtractToken(token);
+        ApiResponse<Void> response = poServiceInIc.cancelPurchaseOrderInternal(orderId, jwtToken);
+        log.info("OM-PO: cancelIncomingStockInternal() called for ID: {} is cancelled successfully.", orderId);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/search")

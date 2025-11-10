@@ -13,6 +13,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -57,6 +58,34 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long>, J
        OR LOWER(o.orderReference) LIKE LOWER(CONCAT('%', :text, '%'))
     """)
     Page<SalesOrder> searchInSalesOrders(String text, Pageable pageable);
+
+
+    /**
+     * Count active orders for a product
+     */
+    @Query("""
+        SELECT COUNT(DISTINCT so.id)
+        FROM SalesOrder so
+        JOIN so.items oi
+        WHERE oi.product.productID = :productId
+        AND so.status IN ('PENDING', 'PARTIALLY_APPROVED', 'PARTIALLY_DELIVERED', 
+                         'APPROVED', 'DELIVERY_IN_PROCESS')
+    """)
+    long countActiveOrdersForProduct(@Param("productId") String productId);
+
+    /**
+     * Get all active orders for a product (for detailed error message)
+     */
+    @Query("""
+        SELECT DISTINCT so
+        FROM SalesOrder so
+        JOIN so.items oi
+        WHERE oi.product.productID = :productId
+        AND so.status IN ('PENDING', 'PARTIALLY_APPROVED', 'PARTIALLY_DELIVERED',
+                         'APPROVED', 'DELIVERY_IN_PROCESS')
+    """)
+    List<SalesOrder> findActiveOrdersForProduct(@Param("productId") String productId);
+
 
 
     // ******* Report & Analytics related methods *******

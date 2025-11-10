@@ -1,24 +1,23 @@
 package com.JK.SIMS.service.email_service.impl;
 
 import com.JK.SIMS.models.ApiResponse;
+import com.JK.SIMS.models.PM_models.ProductStatus;
+import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.inventoryData.InventoryControlData;
 import com.JK.SIMS.models.inventoryData.InventoryDataStatus;
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrderStatus;
 import com.JK.SIMS.models.purchaseOrder.confirmationToken.ConfirmationToken;
 import com.JK.SIMS.models.purchaseOrder.confirmationToken.ConfirmationTokenStatus;
-import com.JK.SIMS.models.PM_models.ProductStatus;
-import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.repository.PurchaseOrder_repo.PurchaseOrderRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.InventoryControlService;
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
 import com.JK.SIMS.service.confirmTokenService.ConfirmationTokenService;
 import com.JK.SIMS.service.email_service.EmailServiceForPo;
-import com.JK.SIMS.service.productManagementService.impl.PMServiceHelper;
+import com.JK.SIMS.service.productManagementService.ProductManagementService;
 import jakarta.persistence.OptimisticLockException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,24 +26,16 @@ import java.time.LocalDate;
 import java.util.Optional;
 
 @Service
+@Slf4j
+@RequiredArgsConstructor
 public class EmailServiceForPoImpl implements EmailServiceForPo {
-
-    private static final Logger logger = LoggerFactory.getLogger(EmailServiceForPoImpl.class);
 
     private final ConfirmationTokenService confirmationTokenService;
     private final InventoryServiceHelper inventoryServiceHelper;
     private final InventoryControlService inventoryControlService;
-    private final PMServiceHelper pmServiceHelper;
+    private final ProductManagementService productManagementService;
 
     private final PurchaseOrderRepository purchaseOrderRepository;
-    @Autowired
-    public EmailServiceForPoImpl(ConfirmationTokenService confirmationTokenService, InventoryServiceHelper inventoryServiceHelper, InventoryControlService inventoryControlService, PMServiceHelper pmServiceHelper, PurchaseOrderRepository purchaseOrderRepository) {
-        this.confirmationTokenService = confirmationTokenService;
-        this.inventoryServiceHelper = inventoryServiceHelper;
-        this.inventoryControlService = inventoryControlService;
-        this.pmServiceHelper = pmServiceHelper;
-        this.purchaseOrderRepository = purchaseOrderRepository;
-    }
 
     // Method for the Email Confirmation
     @Override
@@ -72,14 +63,14 @@ public class EmailServiceForPoImpl implements EmailServiceForPo {
                 // Update token
                 confirmationTokenService.updateConfirmationToken(confirmationToken, ConfirmationTokenStatus.CONFIRMED);
 
-                logger.info("OM (confirmPurchaseOrder): Order confirmed by supplier. PO Number: {}", order.getPONumber());
+                log.info("OM (confirmPurchaseOrder): Order confirmed by supplier. PO Number: {}", order.getPONumber());
                 return new ApiResponse<>(true, "Order " + order.getPONumber() + " confirmed successfully with expected arrival: " + expectedArrivalDate);
             } catch (OptimisticLockingFailureException | OptimisticLockException e) {
-                logger.warn("Race condition detected when confirming order. Order ID: {}", order.getId());
+                log.warn("Race condition detected when confirming order. Order ID: {}", order.getId());
                 return new ApiResponse<>(false, "This order has already been processed by someone else.");
             }
         } else {
-            logger.warn("OM (confirmPurchaseOrder): Order ID {} is not in AWAITING_APPROVAL status. Current status: {}", order.getId(), order.getStatus());
+            log.warn("OM (confirmPurchaseOrder): Order ID {} is not in AWAITING_APPROVAL status. Current status: {}", order.getId(), order.getStatus());
             return new ApiResponse<>(false, "Order already confirmed or cancelled.");
         }
     }
@@ -99,7 +90,7 @@ public class EmailServiceForPoImpl implements EmailServiceForPo {
     private void handlePlanningStatusUpdate(ProductsForPM orderedProduct, Optional<InventoryControlData> inventoryProductOpt) {
         // Update the product status from PLANNING to ON_ORDER
         orderedProduct.setStatus(ProductStatus.ON_ORDER);
-        pmServiceHelper.saveProduct(orderedProduct);
+        productManagementService.saveProduct(orderedProduct);
 
         if (inventoryProductOpt.isEmpty()) {
             // Product not in inventory, add it
@@ -142,14 +133,14 @@ public class EmailServiceForPoImpl implements EmailServiceForPo {
                 // Change the status from PLANNING -> ACTIVE
 //                pmService.updateIncomingProductStatusInPm(order.getProduct());
 
-                logger.info("IS (cancelPurchaseOrder): SalesOrder cancelled by supplier. PO Number: {}", order.getPONumber());
+                log.info("IS (cancelPurchaseOrder): SalesOrder cancelled by supplier. PO Number: {}", order.getPONumber());
                 return buildConfirmationPage("SalesOrder " + order.getPONumber() + " has been successfully cancelled!", "alert-success");
             } catch (OptimisticLockingFailureException | OptimisticLockException e) {
-                logger.warn("Race condition detected when cancelling order. SalesOrder ID: {}", order.getId());
+                log.warn("Race condition detected when cancelling order. SalesOrder ID: {}", order.getId());
                 return buildConfirmationPage("This order has already been processed by someone else.", "alert-danger");
             }
         } else {
-            logger.warn("IS (cancelPurchaseOrder): SalesOrder ID {} is not in AWAITING_SUPPLIER_CONFIRMATION status. Current status: {}", order.getId(), order.getStatus());
+            log.warn("IS (cancelPurchaseOrder): SalesOrder ID {} is not in AWAITING_SUPPLIER_CONFIRMATION status. Current status: {}", order.getId(), order.getStatus());
             return buildConfirmationPage("SalesOrder already confirmed or cancelled.", "alert-danger");
         }
     }

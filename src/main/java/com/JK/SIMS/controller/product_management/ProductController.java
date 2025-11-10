@@ -44,9 +44,11 @@ public class ProductController {
             throw new ValidationException("Request for Product cannot be null");
         }
         //Only the Admins and Managers can add new products.
-        log.info("PM: addProduct() calling...");
-        ApiResponse<Void> response = pmService.addProduct(newProduct);
-        return new ResponseEntity<>(response, HttpStatus.CREATED);
+        log.info("PM: addProduct() calling for product: {}", newProduct.getName());
+        ProductManagementResponse response = pmService.addProduct(newProduct);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new ApiResponse<>(true, "Product added successfully", response));
     }
 
     @PutMapping("/{id}")

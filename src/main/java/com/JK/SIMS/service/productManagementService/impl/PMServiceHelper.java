@@ -1,33 +1,28 @@
 package com.JK.SIMS.service.productManagementService.impl;
 
-import com.JK.SIMS.exception.DatabaseException;
-import com.JK.SIMS.exception.ServiceException;
 import com.JK.SIMS.exception.ValidationException;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PM_models.dtos.ProductManagementRequest;
 import com.JK.SIMS.models.PM_models.dtos.ProductManagementResponse;
 import com.JK.SIMS.models.PaginatedResponse;
-import com.JK.SIMS.repository.ProductManagement_repo.PM_repository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.regex.Pattern;
 
+/**
+ * Pure utility class for Product Management operations
+ * Contains ONLY stateless transformation and validation logic
+ * NO database access - keeps helper lightweight and reusable
+ */
 @Component
 @Slf4j
-@RequiredArgsConstructor
 public class PMServiceHelper {
 
     private static final Pattern LOCATION_PATTERN = Pattern.compile("^[A-Za-z]\\d{1,2}-\\d{3}$");
-
-    private final PM_repository pmRepository;
 
     /**
      * Validates a product entity by checking all required fields and their formats.
@@ -36,7 +31,7 @@ public class PMServiceHelper {
      * @return true if validation passes
      * @throws ValidationException if any validation rule is violated, with detailed error message
      */
-    protected static boolean validateProduct(ProductManagementRequest product) throws ValidationException {
+    public boolean validateProduct(ProductManagementRequest product) throws ValidationException {
         StringBuilder errorMessage = new StringBuilder();
 
         if (product.getName() == null || product.getName().trim().isEmpty()) {
@@ -66,7 +61,7 @@ public class PMServiceHelper {
         return true;
     }
 
-    protected static boolean isAllFieldsNull(ProductManagementRequest product) {
+    public boolean isAllFieldsNull(ProductManagementRequest product) {
         return product.getName() == null &&
                 product.getCategory() == null &&
                 product.getPrice() == null &&
@@ -75,42 +70,16 @@ public class PMServiceHelper {
     }
 
 
-    protected static boolean validateStatusBeforeAdding(ProductStatus currentStatus, ProductStatus newStatus){
+    public boolean validateStatusBeforeAdding(ProductStatus currentStatus, ProductStatus newStatus){
         if(currentStatus.equals(ProductStatus.PLANNING) || currentStatus.equals(ProductStatus.ARCHIVED)){
             return !newStatus.equals(ProductStatus.PLANNING);
         }
         return false;
     }
 
-    protected static void validateLocationFormat(String location) {
+    public void validateLocationFormat(String location) {
         if (!LOCATION_PATTERN.matcher(location).matches()) {
             throw new ValidationException("PM (updateProduct): Invalid location format. Expected format: section-shelf (e.g., A1-101). ");
-        }
-    }
-
-
-    @Transactional(propagation = Propagation.MANDATORY)
-    public void updateIncomingProductStatusInPm(ProductsForPM orderedProduct) {
-        if (orderedProduct.getStatus() == ProductStatus.ON_ORDER) {
-            orderedProduct.setStatus(ProductStatus.ACTIVE);
-            pmRepository.save(orderedProduct);
-        }
-    }
-
-    @Transactional(propagation = Propagation.MANDATORY)
-    public void saveProduct(ProductsForPM product) {
-        try {
-            pmRepository.save(product);
-            log.info("PM (saveProduct): Successfully saved/updated product with ID {}",
-                    product.getProductID());
-        } catch (DataAccessException da) {
-            log.error("PM (saveProduct): Database error while saving product: {}",
-                    da.getMessage());
-            throw new DatabaseException("Failed to save product", da);
-        } catch (Exception e) {
-            log.error("PM (saveProduct): Unexpected error while saving product: {}",
-                    e.getMessage());
-            throw new ServiceException("Failed to save product", e);
         }
     }
 

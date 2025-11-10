@@ -9,7 +9,6 @@ import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
-import com.JK.SIMS.models.PM_models.dtos.ReportProductMetrics;
 import com.JK.SIMS.models.PM_models.dtos.ProductManagementRequest;
 import com.JK.SIMS.models.PM_models.dtos.ProductManagementResponse;
 import com.JK.SIMS.models.PaginatedResponse;
@@ -18,26 +17,27 @@ import com.JK.SIMS.models.inventoryData.InventoryDataStatus;
 import com.JK.SIMS.repository.ProductManagement_repo.PM_repository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.InventoryControlService;
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
+import com.JK.SIMS.service.orderManagementService.salesOrderService.queryService.SalesOrderQueryService;
 import com.JK.SIMS.service.productManagementService.ProductManagementService;
 import com.JK.SIMS.service.utilities.ExcelReporterHelper;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.coyote.BadRequestException;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
 
-import static com.JK.SIMS.service.productManagementService.impl.PMServiceHelper.*;
 import static com.JK.SIMS.service.productManagementService.excelReporter.ExcelReporterForPM.createHeaderRow;
 import static com.JK.SIMS.service.productManagementService.excelReporter.ExcelReporterForPM.populateDataRows;
 import static com.JK.SIMS.service.utilities.GlobalServiceHelper.amongInvalidStatus;
@@ -47,15 +47,20 @@ import static com.JK.SIMS.service.utilities.GlobalServiceHelper.amongInvalidStat
 @RequiredArgsConstructor
 public class ProductManagementServiceImpl implements ProductManagementService {
 
-    private final PM_repository pmRepository;
-    private final InventoryControlService icService;
+    // ========== Helpers ==========
     private final InventoryServiceHelper inventoryServiceHelper;
-    private final JWTService jwtService;
     private final PMServiceHelper pmServiceHelper;
 
-    @Override
-    @Transactional(readOnly = true)
-    public ProductsForPM findProductById(String productId) {
+    // ========== Services ==========
+    private final InventoryControlService icService;
+    private final JWTService jwtService;
+    private final SalesOrderQueryService salesOrderQueryService;
+
+    // ========== Repositories ==========
+    private final PM_repository pmRepository;
+
+
+    private ProductsForPM findProductById(String productId) {
         return pmRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product with ID " + productId + " not found"));
     }
@@ -100,9 +105,9 @@ public class ProductManagementServiceImpl implements ProductManagementService {
      */
     @Override
     @Transactional
-    public ApiResponse<Void> addProduct(ProductManagementRequest newProduct){
+    public ProductManagementResponse addProduct(ProductManagementRequest newProduct){
         try {
-            if (validateProduct(newProduct)) {
+            if (pmServiceHelper.validateProduct(newProduct)) {
                 ProductsForPM product = new ProductsForPM();
                 String newID = generateProductId();
                 // Populate the entity with the new data
@@ -114,19 +119,36 @@ public class ProductManagementServiceImpl implements ProductManagementService {
                 product.setStatus(newProduct.getStatus());
 
                 // Save the entity and modify the relationship entity based on the status
-                pmRepository.save(product);
+                ProductsForPM savedProduct = pmRepository.save(product);
                 if (!newProduct.getStatus().equals(ProductStatus.PLANNING)) {
-                    icService.addProduct(product, false);
+                    icService.addProduct(savedProduct, false);
                 }
                 log.info("PM (addProduct): New product added: ID = {}, Name = {}", newID, newProduct.getName());
-                return new ApiResponse<>(true, "Product added successfully with ID: " + newID);
+                return pmServiceHelper.convertToDTO(savedProduct);
             }
             throw new ValidationException("PM (addProduct): Invalid product details");
         } catch (ValidationException ve) {
             throw ve;
+        } catch (DataIntegrityViolationException e) {
+            log.error("PM (addProduct): Duplicate product - {}", e.getMessage());
+            throw new ValidationException("Product with this name already exists");
         } catch (Exception e) {
             throw new ServiceException("PM (addProduct): Failed to add product ", e);
         }
+    }
+
+    /**
+     * Helper method to create ProductsForPM entity from DTO
+     */
+    private ProductsForPM createProductEntity(ProductManagementRequest request) {
+        ProductsForPM product = new ProductsForPM();
+        product.setProductID(generateProductId());
+        product.setName(request.getName());
+        product.setCategory(request.getCategory());
+        product.setPrice(request.getPrice());
+        product.setLocation(request.getLocation());
+        product.setStatus(request.getStatus());
+        return product;
     }
 
     /**
@@ -135,31 +157,44 @@ public class ProductManagementServiceImpl implements ProductManagementService {
      *
      * @param id The unique identifier of the product to be deleted
      * @return ResponseEntity containing success message if deletion is successful
-     * @throws BadRequestException if the product with given ID is not found
+     * @throws ResourceNotFoundException if the product with given ID is not found
      * @throws DatabaseException if there's an error during database operation
      * @throws ServiceException if any other error occurs during deletion
      */
+    // Service
     @Override
     @Transactional
-    public ApiResponse<Void> deleteProduct(String id, String jwtToken) throws BadRequestException {
+    public ApiResponse<Void> deleteProduct(String id, String jwtToken) {
         try {
-            Optional<ProductsForPM> productNeedsToBeDeleted = pmRepository.findById(id);
             String username = jwtService.extractUsername(jwtToken);
-            if (productNeedsToBeDeleted.isPresent()) {
-                icService.deleteByProductId(id); // Delete first from the Inventory as they have a connection with each other.
-                pmRepository.delete(productNeedsToBeDeleted.get());
-                log.info("PM (deleteProduct): Product with ID {} is deleted successfully by {}.", id, username);
-                return new ApiResponse<>(true, "Product with ID " + id + " deleted successfully!");
+
+            ProductsForPM product = findProductById(id);  // Throws ResourceNotFoundException if not found
+
+            // If the product is used in active orders (prevent accidental deletion)
+            long activeOrdersCount = salesOrderQueryService.countActiveOrdersForProduct(id);
+            if (activeOrdersCount > 0) {
+                throw new ValidationException(
+                        "Active orders found: " + activeOrdersCount + ". Cannot delete product with active orders. Please cancel orders first."
+                );
             }
-            log.info("PM (deleteProduct): Attempt for deletion product with ID {} by {} is failed.", id, username);
-            log.info("PM (deleteProduct): Product with ID {} not found", id);
-            throw new BadRequestException("PM (deleteProduct): Product with ID " + id + " not found");
-        } catch (BadRequestException e) {
+
+            // Delete from IC first (cascade)
+            icService.deleteByProductId(id);
+
+            // Delete from PM
+            pmRepository.delete(product);
+
+            log.info("PM (deleteProduct): Product {} deleted successfully by {}", id, username);
+            return new ApiResponse<>(true, "Product deleted successfully");
+        } catch (ResourceNotFoundException | ValidationException e) {
+            log.warn("PM (deleteProduct): Cannot delete product {} - {}", id, e.getMessage());
             throw e;
         } catch (DataAccessException e) {
-            throw new DatabaseException("PM (deleteProduct): Database error occurred.", e);
+            log.error("PM (deleteProduct): Database error - {}", e.getMessage(), e);
+            throw new DatabaseException("Failed to delete product", e);
         } catch (Exception e) {
-            throw new ServiceException("PM (deleteProduct): Failed to delete product with ID " + id, e);
+            log.error("PM (deleteProduct): Unexpected error - {}", e.getMessage(), e);
+            throw new ServiceException("Failed to delete product", e);
         }
     }
 
@@ -180,7 +215,7 @@ public class ProductManagementServiceImpl implements ProductManagementService {
     public ApiResponse<Void> updateProduct(String productId, ProductManagementRequest updateProductRequest) {
         try {
             ProductsForPM currentProduct = findProductById(productId);
-            if(isAllFieldsNull(updateProductRequest)){
+            if(pmServiceHelper.isAllFieldsNull(updateProductRequest)){
                 log.info("PM (updateProduct): No fields to update. Product with ID {} not updated.", productId);
                 return new ApiResponse<>(false, "Missing fields to update.");
             }
@@ -216,7 +251,7 @@ public class ProductManagementServiceImpl implements ProductManagementService {
             currentProduct.setPrice(newProductRequest.getPrice());
         }
         if (newProductRequest.getLocation() != null) {
-            validateLocationFormat(newProductRequest.getLocation());
+            pmServiceHelper.validateLocationFormat(newProductRequest.getLocation());
             currentProduct.setLocation(newProductRequest.getLocation());
         }
     }
@@ -228,7 +263,7 @@ public class ProductManagementServiceImpl implements ProductManagementService {
             ProductStatus currentStatus = currentProduct.getStatus();
             ProductStatus newStatus = updateProductRequest.getStatus();
 
-            if (validateStatusBeforeAdding(currentStatus, newStatus)) {
+            if (pmServiceHelper.validateStatusBeforeAdding(currentStatus, newStatus)) {
                 currentProduct.setStatus(newStatus);
                 handleStatusChange(currentProduct, newStatus, currentStatus, productInIcOpt);
             } else {
@@ -388,6 +423,32 @@ public class ProductManagementServiceImpl implements ProductManagementService {
         ExcelReporterHelper.writeWorkbookToResponse(response, workbook);
     }
 
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void updateIncomingProductStatusInPm(ProductsForPM orderedProduct) {
+        if (orderedProduct.getStatus() == ProductStatus.ON_ORDER) {
+            orderedProduct.setStatus(ProductStatus.ACTIVE);
+            pmRepository.save(orderedProduct);
+        }
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void saveProduct(ProductsForPM product) {
+        try {
+            pmRepository.save(product);
+            log.info("PM (saveProduct): Successfully saved/updated product with ID {}",
+                    product.getProductID());
+        } catch (DataAccessException da) {
+            log.error("PM (saveProduct): Database error while saving product: {}",
+                    da.getMessage());
+            throw new DatabaseException("Failed to save product", da);
+        } catch (Exception e) {
+            log.error("PM (saveProduct): Unexpected error while saving product: {}",
+                    e.getMessage());
+            throw new ServiceException("Failed to save product", e);
+        }
+    }
 
     private String generateProductId() {
         Optional<String> lastIdOpt = pmRepository.getLastId();
@@ -397,24 +458,6 @@ public class ProductManagementServiceImpl implements ProductManagementService {
             return String.format("PRD%03d", lastNumber + 1);
         }
         return "PRD001";
-    }
-
-    // ======== Report Analytics helper method =========
-    @Override
-    @Transactional(readOnly = true)
-    public ReportProductMetrics countTotalActiveInactiveProducts(){
-        try {
-            return pmRepository.countProductMetricsByStatus(
-                    ProductStatus.getActiveStatuses(),
-                    ProductStatus.getInactiveStatuses()
-            );
-        } catch (DataAccessException e) {
-            log.error("PM (totalProductsByStatus): Failed to retrieve product metrics due to database error: {}", e.getMessage());
-            throw new DatabaseException("PM (totalProductsByStatus): Failed to retrieve product metrics", e);
-        } catch (Exception e) {
-            log.error("PM (totalProductsByStatus): Failed to retrieve product metrics: {}", e.getMessage());
-            throw new ServiceException("Internal Service Error occurred", e);
-        }
     }
 }
 

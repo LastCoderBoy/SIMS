@@ -21,6 +21,7 @@ import com.JK.SIMS.service.confirmTokenService.ConfirmationTokenService;
 import com.JK.SIMS.service.email_service.EmailSender;
 import com.JK.SIMS.service.orderManagementService.purchaseOrderService.PurchaseOrderService;
 import com.JK.SIMS.service.productManagementService.ProductManagementService;
+import com.JK.SIMS.service.productManagementService.queryService.ProductQueryService;
 import com.JK.SIMS.service.supplierService.SupplierService;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import com.JK.SIMS.service.utilities.ProductCategoriesConverter;
@@ -53,32 +54,41 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class PurchaseOrderServiceImpl implements PurchaseOrderService {
 
+    // =========== Constants ===========
     private static final int MAX_PO_GENERATION_RETRIES = 5;
     private final Clock clock;
 
-    private final PurchaseOrderRepository purchaseOrderRepository;
-
+    // =========== Helpers & Utilities ===========
     private final SecurityUtils securityUtils;
     private final GlobalServiceHelper globalServiceHelper;
-    private final SupplierService supplierService;
-    private final EmailSender emailSender;
-    private final ProductManagementService pmService;
-    private final ConfirmationTokenService confirmationTokenService;
     private final PurchaseOrderServiceHelper purchaseOrderServiceHelper;
-    private final PurchaseOrderStatusConverter purchaseOrderStatusConverter;
-    private final ProductCategoriesConverter productCategoriesConverter;
+
+    // =========== Components ===========
     private final PoSearchStrategy omPoSearchStrategy;
     private final PoFilterStrategy filterPurchaseOrders;
+    private final PurchaseOrderStatusConverter purchaseOrderStatusConverter;
+    private final ProductCategoriesConverter productCategoriesConverter;
+
+    // =========== External Services ===========
+    private final SupplierService supplierService;
+    private final ProductQueryService productQueryService;
+    private final ConfirmationTokenService confirmationTokenService;
+    private final EmailSender emailSender;
+
+    // =========== Repositories ===========
+    private final PurchaseOrderRepository purchaseOrderRepository;
+
 
     @Override
     @Transactional
-    public ApiResponse<PurchaseOrderRequestDto> createPurchaseOrder(@Valid PurchaseOrderRequestDto stockRequest, String jwtToken) throws BadRequestException {
+    public ApiResponse<PurchaseOrderRequestDto> createPurchaseOrder(@Valid PurchaseOrderRequestDto stockRequest,
+                                                                    String jwtToken) throws BadRequestException {
         try {
             String orderedPerson = securityUtils.validateAndExtractUsername(jwtToken);
             ProductsForPM orderedProduct = validateAndGetProduct(stockRequest.getProductId());
             PurchaseOrder order = createOrderEntity(stockRequest, orderedProduct, orderedPerson);
             saveAndRequestPurchaseOrder(order);
-            log.info("IS (createPurchaseOrder): Product ordered successfully. PO Number: {}", order.getPONumber());
+            log.info("OM-PO (createPurchaseOrder): Product ordered successfully. PO Number: {}", order.getPONumber());
             return new ApiResponse<>(true, "Order created successfully. PO Number: " + order.getPONumber(), stockRequest);
         } catch (DataIntegrityViolationException de) {
             log.error("OM-PO (createPurchaseOrder): Failed to create incoming stock due to PO Number collision. Please try again. : {}", de.getMessage(), de);
@@ -186,7 +196,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
 
     // Private helper methods
     private ProductsForPM validateAndGetProduct(String productId) throws ResourceNotFoundException, ValidationException {
-        ProductsForPM product = pmService.findProductById(productId);
+        ProductsForPM product = productQueryService.findById(productId);
         if (product.isInInvalidStatus()) {
             throw new ValidationException("Product is not for sale and cannot be ordered. Please update the status in the PM section first.");
         }

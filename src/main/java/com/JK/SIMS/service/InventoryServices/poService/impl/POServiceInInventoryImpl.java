@@ -20,6 +20,7 @@ import com.JK.SIMS.repository.PurchaseOrder_repo.PurchaseOrderRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
 import com.JK.SIMS.service.InventoryServices.poService.POServiceInInventory;
+import com.JK.SIMS.service.productManagementService.ProductManagementService;
 import com.JK.SIMS.service.productManagementService.impl.PMServiceHelper;
 import com.JK.SIMS.service.stockMovementService.StockMovementService;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
@@ -50,18 +51,25 @@ import static com.JK.SIMS.service.utilities.EntityConstants.DEFAULT_SORT_DIRECTI
 @Slf4j
 @RequiredArgsConstructor
 public class POServiceInInventoryImpl implements POServiceInInventory {
+
+    // =========== Constants ===========
     private final Clock clock;
 
-    private final PurchaseOrderRepository purchaseOrderRepository;
+    // =========== Utils ===========
     private final SecurityUtils securityUtils;
     private final PurchaseOrderServiceHelper poServiceHelper;
     private final GlobalServiceHelper globalServiceHelper;
-    private final PMServiceHelper pmServiceHelper;
+    private final ProductManagementService productManagementService;
+    private final InventoryServiceHelper inventoryServiceHelper;
+
+    // =========== Services ===========
     private final StockManagementLogic stockManagementLogic;
     private final StockMovementService stockMovementService; // Used to log the stock movement
-    private final InventoryServiceHelper inventoryServiceHelper;
     private final PoSearchStrategy icPoSearchStrategy;
     private final PoFilterStrategy filterWaitingPurchaseOrders;
+
+    // =========== Repositories ===========
+    private final PurchaseOrderRepository purchaseOrderRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -148,7 +156,7 @@ public class POServiceInInventoryImpl implements POServiceInInventory {
     private void updateOrderStatus(PurchaseOrder order) {
         if (order.getReceivedQuantity() >= order.getOrderedQuantity()) {
             order.setStatus(PurchaseOrderStatus.RECEIVED);
-            pmServiceHelper.updateIncomingProductStatusInPm(order.getProduct());
+            productManagementService.updateIncomingProductStatusInPm(order.getProduct());
         } else if (order.getReceivedQuantity() > 0) {
             order.setStatus(PurchaseOrderStatus.PARTIALLY_RECEIVED);
         }
@@ -199,7 +207,7 @@ public class POServiceInInventoryImpl implements POServiceInInventory {
             purchaseOrder.setUpdatedBy(user);
 
             // Return back the Product Management section into the previous state
-            pmServiceHelper.updateIncomingProductStatusInPm(purchaseOrder.getProduct());
+            productManagementService.updateIncomingProductStatusInPm(purchaseOrder.getProduct());
 
             // Return back the Inventory Control into the previous state
             Optional<InventoryControlData> inventoryProductOpt =

@@ -20,6 +20,8 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import static com.JK.SIMS.service.utilities.GlobalServiceHelper.validateAndExtractToken;
+
 @RestController
 @RequiredArgsConstructor
 @Slf4j
@@ -56,7 +58,8 @@ public class PoControllerInIc {
             @RequestParam(defaultValue = "product.name") String sortBy,
             @RequestParam(defaultValue = "asc") String sortDirection){
         log.info("IcPo: searchProduct() calling with text: {}", text);
-        PaginatedResponse<SummaryPurchaseOrderView> dtoResponse = poServiceInIc.searchInIncomingPurchaseOrders(text, page, size, sortBy, sortDirection);
+        PaginatedResponse<SummaryPurchaseOrderView> dtoResponse =
+                poServiceInIc.searchInIncomingPurchaseOrders(text, page, size, sortBy, sortDirection);
         return ResponseEntity.ok(dtoResponse);
     }
 
@@ -80,12 +83,10 @@ public class PoControllerInIc {
                                                        @PathVariable Long orderId,
                                                        @RequestHeader("Authorization") String token) throws BadRequestException, AccessDeniedException {
         log.info("IcPo receivePurchaseOrder() calling...");
-        if(token != null && !token.trim().isEmpty()) {
-            String jwtToken = TokenUtils.extractToken(token);
-            ApiResponse<Void> response =  poServiceInIc.receivePurchaseOrder(orderId, receiveRequest, jwtToken);
-            return new ResponseEntity<>(response, HttpStatus.OK);
-        }
-        throw new InvalidTokenException("IcPo: receivePurchaseOrder() Invalid Token provided.");
+        String jwtToken = validateAndExtractToken(token);
+        // TODO: Dont allow to accept quantity more than ordered
+        ApiResponse<Void> response =  poServiceInIc.receivePurchaseOrder(orderId, receiveRequest, jwtToken);
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
     // Cancel button in the PO section.
@@ -94,12 +95,9 @@ public class PoControllerInIc {
     public ResponseEntity<?> cancelPurchaseOrderInternal(@PathVariable Long orderId,
                                                          @RequestHeader("Authorization") String token) throws AccessDeniedException, BadRequestException {
         log.info("IcPo cancelPurchaseOrderInternal() calling...");
-        if(token != null && !token.trim().isEmpty()) {
-            String jwtToken = TokenUtils.extractToken(token);
-            ApiResponse<Void> response = poServiceInIc.cancelPurchaseOrderInternal(orderId, jwtToken);
-            return new ResponseEntity<>(response, HttpStatus.OK);
-        }
-        throw new InvalidTokenException("IcPo: cancelPurchaseOrderInternal() Invalid Token provided.");
+        String jwtToken = validateAndExtractToken(token);
+        ApiResponse<Void> response = poServiceInIc.cancelPurchaseOrderInternal(orderId, jwtToken);
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
     //TODO:

@@ -10,6 +10,7 @@ import com.JK.SIMS.service.InventoryServices.damageLossService.DamageLossService
 import com.JK.SIMS.service.InventoryServices.poService.POServiceInInventory;
 import com.JK.SIMS.service.orderManagementService.salesOrderService.SalesOrderService;
 import com.JK.SIMS.service.productManagementService.ProductManagementService;
+import com.JK.SIMS.service.productManagementService.queryService.ProductQueryService;
 import com.JK.SIMS.service.reportAnalytics.FinancialOverviewService;
 import com.JK.SIMS.service.reportAnalytics.InventoryHealthService;
 import com.JK.SIMS.service.reportAnalytics.OrderSummaryService;
@@ -27,7 +28,7 @@ import java.time.LocalDate;
 @RequiredArgsConstructor
 public class ReportAnalyticsServiceImpl implements ReportAnalyticsService {
 
-    private final ProductManagementService pmService;
+    private final ProductQueryService productQueryService;
     private final SalesOrderService salesOrderService;
     private final POServiceInInventory poServiceInInventory;
     private final DamageLossService damageLossService;
@@ -40,7 +41,7 @@ public class ReportAnalyticsServiceImpl implements ReportAnalyticsService {
     @Override
     @Transactional(readOnly = true)
     public DashboardMetrics getMainDashboardMetrics() {
-        ReportProductMetrics totalActiveInactiveProducts = pmService.countTotalActiveInactiveProducts();
+        ReportProductMetrics totalActiveInactiveProducts = productQueryService.countTotalActiveInactiveProducts();
         BigDecimal inventoryStockValue = inventoryHealthService.calculateInventoryStockValueAtRetail();
         Long inProgressSalesOrders = salesOrderService.countInProgressSalesOrders();
         Long totalValidPoSize = poServiceInInventory.getTotalValidPoSize();

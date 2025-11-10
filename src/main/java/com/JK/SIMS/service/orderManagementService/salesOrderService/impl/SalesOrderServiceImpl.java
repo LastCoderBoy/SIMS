@@ -20,7 +20,7 @@ import com.JK.SIMS.repository.salesOrderRepo.SalesOrderRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
 import com.JK.SIMS.service.orderManagementService.salesOrderService.SalesOrderService;
 import com.JK.SIMS.service.orderManagementService.salesOrderService.SoQrCodeService;
-import com.JK.SIMS.service.productManagementService.ProductManagementService;
+import com.JK.SIMS.service.productManagementService.queryService.ProductQueryService;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import com.JK.SIMS.service.utilities.SalesOrderServiceHelper;
 import com.JK.SIMS.service.utilities.salesOrderFilterLogic.SoFilterStrategy;
@@ -51,15 +51,25 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class SalesOrderServiceImpl implements SalesOrderService {
 
+    // ========== Helpers & Utilities ==========
     private final GlobalServiceHelper globalServiceHelper;
-    private final ProductManagementService pmService;
-    private final StockManagementLogic stockManagementLogic;
     private final SalesOrderServiceHelper salesOrderServiceHelper;
     private final SecurityUtils securityUtils;
-    private final SoQrCodeService soQrCodeService;
-    private final SalesOrderRepository salesOrderRepository;
+
+    // ========== Components ==========
+    private final StockManagementLogic stockManagementLogic;
     private final SoSearchStrategy omSoSearchStrategy;
     private final SoFilterStrategy filterSalesOrdersInOm;
+
+    // ========== Services ==========
+    private final ProductQueryService productQueryService;
+    private final SoQrCodeService soQrCodeService;
+
+    // ========== Repositories ==========
+    private final SalesOrderRepository salesOrderRepository;
+
+
+
 
     @Override
     @Transactional(readOnly = true)
@@ -376,7 +386,7 @@ public class SalesOrderServiceImpl implements SalesOrderService {
      */
     private void populateSalesOrderWithItems(SalesOrder salesOrder, List<OrderItemRequest> orderItemRequestList){
         for (OrderItemRequest itemDto : orderItemRequestList) {
-            ProductsForPM product = pmService.findProductById(itemDto.getProductId());
+            ProductsForPM product = productQueryService.findById(itemDto.getProductId());
 
             // Validate product status
             if (product.getStatus() != ProductStatus.ACTIVE && product.getStatus() != ProductStatus.ON_ORDER) {
