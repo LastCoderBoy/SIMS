@@ -30,7 +30,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Date;
 
 @Service
-@RequiredArgsConstructor @Slf4j
+@RequiredArgsConstructor
+@Slf4j
 public class UserService {
 
     @Value("${jwt.refresh.cookie.name}")
@@ -39,13 +40,16 @@ public class UserService {
     @Value("${jwt.refresh.cookie.max-age}") // 7 days in seconds
     private int refreshTokenCookieMaxAge;
 
-
+    // =========== Dependencies ===========
     private final AuthenticationManager authManager;
-    private final JWTService jwtService;
-    private final RefreshTokenService refreshTokenService;
     private final BCryptPasswordEncoder passwordsEncoder;
     private final SecurityUtils securityUtils;
 
+    // =========== Services ===========
+    private final JWTService jwtService;
+    private final RefreshTokenService refreshTokenService;
+
+    // =========== Repositories ===========
     private final BlackListTokenRepository blackListTokenRepository;
     private final UserRepository userRepository;
 

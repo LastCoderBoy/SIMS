@@ -17,7 +17,7 @@ import com.JK.SIMS.models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.salesOrder.dtos.views.SummarySalesOrderView;
 import com.JK.SIMS.repository.InventoryControl_repo.IC_repository;
-import com.JK.SIMS.service.InventoryServices.damageLossService.DamageLossService;
+import com.JK.SIMS.service.InventoryServices.damageLossService.damageLossQueryService.DamageLossQueryService;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.InventoryControlService;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.searchLogic.PendingOrdersSearchStrategy;
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
@@ -33,7 +33,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -44,13 +43,20 @@ import java.util.Optional;
 @Slf4j
 @RequiredArgsConstructor
 public class InventoryControlServiceImpl implements InventoryControlService {
-    private final IC_repository icRepository;
-    private final SoServiceInIc soServiceInIc;
-    private final DamageLossService damageLossService;
-    private final POServiceInInventory poServiceInIc;
+    // =========== Helpers & Utilities ===========
     private final GlobalServiceHelper globalServiceHelper;
     private final InventoryServiceHelper inventoryServiceHelper;
+
+    // =========== Components ===========
     private final PendingOrdersSearchStrategy searchPendingStrategy;
+
+    // =========== Services ===========
+    private final SoServiceInIc soServiceInIc;
+    private final DamageLossQueryService damageLossQueryService;
+    private final POServiceInInventory poServiceInIc;
+
+    // =========== Repositories ===========
+    private final IC_repository icRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -66,7 +72,7 @@ public class InventoryControlServiceImpl implements InventoryControlService {
                     metrics.getLowStockCount(), // Checks against the VALID products only
                     poServiceInIc.getTotalValidPoSize(),
                     soServiceInIc.countOutgoingSalesOrders(),
-                    damageLossService.getDamageLossMetrics().getTotalReport(),
+                    damageLossQueryService.countTotalDamagedProducts(),
                     allPendingOrders
             );
             log.info("IC (getInventoryControlPageData): Sending page {} with {} products.", page, allPendingOrders.getContent().size());
@@ -100,6 +106,7 @@ public class InventoryControlServiceImpl implements InventoryControlService {
         );
     }
 
+    // Helper method for external use
     @Override
     @Transactional
     public void addProduct(ProductsForPM product, boolean isUnderTransfer){

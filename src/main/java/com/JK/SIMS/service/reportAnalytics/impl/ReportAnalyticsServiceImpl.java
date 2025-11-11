@@ -7,6 +7,7 @@ import com.JK.SIMS.models.reportAnalyticsMetrics.financial.FinancialOverviewMetr
 import com.JK.SIMS.models.reportAnalyticsMetrics.inventoryHealth.InventoryReportMetrics;
 import com.JK.SIMS.models.reportAnalyticsMetrics.orderOverview.OrderSummaryMetrics;
 import com.JK.SIMS.service.InventoryServices.damageLossService.DamageLossService;
+import com.JK.SIMS.service.InventoryServices.damageLossService.damageLossQueryService.DamageLossQueryService;
 import com.JK.SIMS.service.InventoryServices.poService.POServiceInInventory;
 import com.JK.SIMS.service.orderManagementService.salesOrderService.SalesOrderService;
 import com.JK.SIMS.service.productManagementService.ProductManagementService;
@@ -31,7 +32,7 @@ public class ReportAnalyticsServiceImpl implements ReportAnalyticsService {
     private final ProductQueryService productQueryService;
     private final SalesOrderService salesOrderService;
     private final POServiceInInventory poServiceInInventory;
-    private final DamageLossService damageLossService;
+    private final DamageLossQueryService damageLossQueryService;
 
     // =========== Report Analytics Services ===========
     private final InventoryHealthService inventoryHealthService;
@@ -45,7 +46,7 @@ public class ReportAnalyticsServiceImpl implements ReportAnalyticsService {
         BigDecimal inventoryStockValue = inventoryHealthService.calculateInventoryStockValueAtRetail();
         Long inProgressSalesOrders = salesOrderService.countInProgressSalesOrders();
         Long totalValidPoSize = poServiceInInventory.getTotalValidPoSize();
-        Long totalDamagedProducts = damageLossService.countTotalDamagedProducts();
+        Long totalDamagedProducts = damageLossQueryService.countTotalDamagedProducts();
 
         return DashboardMetrics.builder()
                 .totalActiveProducts(totalActiveInactiveProducts.getTotalActiveProducts())

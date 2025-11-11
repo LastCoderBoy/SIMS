@@ -9,7 +9,7 @@ import com.JK.SIMS.models.inventoryData.InventoryControlData;
 import com.JK.SIMS.models.inventoryData.dtos.InventoryControlRequest;
 import com.JK.SIMS.models.inventoryData.dtos.InventoryControlResponse;
 import com.JK.SIMS.models.inventoryData.InventoryDataStatus;
-import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
+import com.JK.SIMS.service.InventoryServices.inventoryPageService.stockManagement.StockManagementLogic;
 import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
 import com.JK.SIMS.service.InventoryServices.totalItemsService.filterLogic.InventorySpecification;
 import com.JK.SIMS.models.PM_models.ProductCategories;

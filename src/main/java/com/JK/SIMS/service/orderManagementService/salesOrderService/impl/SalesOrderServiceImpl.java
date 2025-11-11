@@ -17,7 +17,7 @@ import com.JK.SIMS.models.salesOrder.orderItem.dtos.BulkOrderItemsRequestDto;
 import com.JK.SIMS.models.salesOrder.orderItem.dtos.OrderItemRequest;
 import com.JK.SIMS.models.salesOrder.qrcode.SalesOrderQRCode;
 import com.JK.SIMS.repository.salesOrderRepo.SalesOrderRepository;
-import com.JK.SIMS.service.InventoryServices.inventoryPageService.StockManagementLogic;
+import com.JK.SIMS.service.InventoryServices.inventoryPageService.stockManagement.StockManagementLogic;
 import com.JK.SIMS.service.orderManagementService.salesOrderService.SalesOrderService;
 import com.JK.SIMS.service.orderManagementService.salesOrderService.SoQrCodeService;
 import com.JK.SIMS.service.productManagementService.queryService.ProductQueryService;

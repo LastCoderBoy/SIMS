@@ -1,4 +1,4 @@
-package com.JK.SIMS.service.InventoryServices.inventoryPageService;
+package com.JK.SIMS.service.InventoryServices.inventoryPageService.stockManagement;
 
 import com.JK.SIMS.exception.DatabaseException;
 import com.JK.SIMS.exception.InsufficientStockException;

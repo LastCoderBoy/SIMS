@@ -2,6 +2,7 @@ package com.JK.SIMS.config.security.utils;
 
 import com.JK.SIMS.config.security.JWTService;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import org.apache.coyote.BadRequestException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
@@ -9,13 +10,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class SecurityUtils {
 
     private final JWTService jwtService;
-    @Autowired
-    public SecurityUtils(JWTService jwtService) {
-        this.jwtService = jwtService;
-    }
 
     public boolean hasAccess(){
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
