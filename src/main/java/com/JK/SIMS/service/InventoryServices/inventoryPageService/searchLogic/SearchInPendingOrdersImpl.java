@@ -5,7 +5,7 @@ import com.JK.SIMS.models.inventoryData.dtos.PendingOrdersResponseInIC;
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.salesOrder.SalesOrder;
 import com.JK.SIMS.models.PaginatedResponse;
-import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
+import com.JK.SIMS.service.InventoryServices.inventoryUtils.InventoryServiceHelper;
 import com.JK.SIMS.service.utilities.purchaseOrderSearchLogic.PoSearchStrategy;
 import com.JK.SIMS.service.utilities.salesOrderSearchLogic.SoSearchStrategy;
 import lombok.extern.slf4j.Slf4j;

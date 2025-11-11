@@ -17,7 +17,7 @@ import com.JK.SIMS.models.inventoryData.InventoryControlData;
 import com.JK.SIMS.repository.damageLossRepo.DamageLossRepository;
 import com.JK.SIMS.service.InventoryServices.damageLossService.damageLossQueryService.DamageLossQueryService;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.stockManagement.StockManagementLogic;
-import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
+import com.JK.SIMS.service.InventoryServices.inventoryQueryService.InventoryQueryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.coyote.BadRequestException;
@@ -44,9 +44,9 @@ public class DamageLossService {
     private final JWTService jWTService;
     private final StockManagementLogic stockManagementLogic;
     private final DamageLossQueryService damageLossQueryService;
+    private final InventoryQueryService inventoryQueryService;
 
     // =========== Helpers & Utilities ===========
-    private final InventoryServiceHelper inventoryServiceHelper;
     private final DamageLossHelper damageLossHelper;
 
     // =========== Repositories ===========
@@ -76,7 +76,7 @@ public class DamageLossService {
             damageLossHelper.validateDamageLossDto(dtoRequest);
 
             InventoryControlData inventoryProduct =
-                    inventoryServiceHelper.getInventoryDataBySku(dtoRequest.sku());
+                    inventoryQueryService.getInventoryDataBySku(dtoRequest.sku());
             damageLossHelper.validateStockInput(inventoryProduct, dtoRequest.quantityLost());
 
             String username = jWTService.extractUsername(jwtToken);

@@ -20,7 +20,7 @@ import com.JK.SIMS.repository.salesOrderRepo.SalesOrderRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.stockManagement.StockManagementLogic;
 import com.JK.SIMS.service.orderManagementService.salesOrderService.SalesOrderService;
 import com.JK.SIMS.service.orderManagementService.salesOrderService.SoQrCodeService;
-import com.JK.SIMS.service.productManagementService.queryService.ProductQueryService;
+import com.JK.SIMS.service.productManagementService.utils.queryService.ProductQueryService;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import com.JK.SIMS.service.utilities.SalesOrderServiceHelper;
 import com.JK.SIMS.service.utilities.salesOrderFilterLogic.SoFilterStrategy;

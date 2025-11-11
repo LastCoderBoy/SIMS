@@ -6,6 +6,8 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +24,8 @@ import java.util.Map;
 import java.util.function.Function;
 
 @Service
+@RequiredArgsConstructor
+@Slf4j
 public class JWTService {
     @Value("${jwt.secret}")
     private String secretKey;
@@ -29,12 +33,8 @@ public class JWTService {
     @Value("${jwt.access.expiration}") // 1 hour in milliseconds
     private Long accessTokenDurationMs;
 
-    private static final Logger logger = LoggerFactory.getLogger(JWTService.class);
     private final BlackListTokenRepository blackListTokenRepository;
-    @Autowired
-    public JWTService(BlackListTokenRepository blackListTokenRepository) {
-        this.blackListTokenRepository = blackListTokenRepository;
-    }
+
 
     public String generateAccessToken(String username, String role) {
         Map<String, Object> claims = new HashMap<>();
@@ -72,9 +72,9 @@ public class JWTService {
                     .filter(token -> token.getBlacklistedAt().before(expirationThreshold))
                     .forEach(blackListTokenRepository::delete);
 
-            logger.info("Cleaned up expired blacklisted tokens");
+            log.info("Cleaned up expired blacklisted tokens");
         } catch (Exception e) {
-            logger.error("Error during blacklisted tokens cleanup: {}", e.getMessage());
+            log.error("Error during blacklisted tokens cleanup: {}", e.getMessage());
         }
     }
 

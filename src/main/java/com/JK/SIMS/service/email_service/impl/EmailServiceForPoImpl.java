@@ -11,7 +11,7 @@ import com.JK.SIMS.models.purchaseOrder.confirmationToken.ConfirmationToken;
 import com.JK.SIMS.models.purchaseOrder.confirmationToken.ConfirmationTokenStatus;
 import com.JK.SIMS.repository.PurchaseOrder_repo.PurchaseOrderRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.InventoryControlService;
-import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
+import com.JK.SIMS.service.InventoryServices.inventoryQueryService.InventoryQueryService;
 import com.JK.SIMS.service.confirmTokenService.ConfirmationTokenService;
 import com.JK.SIMS.service.email_service.EmailServiceForPo;
 import com.JK.SIMS.service.productManagementService.ProductManagementService;
@@ -31,7 +31,7 @@ import java.util.Optional;
 public class EmailServiceForPoImpl implements EmailServiceForPo {
 
     private final ConfirmationTokenService confirmationTokenService;
-    private final InventoryServiceHelper inventoryServiceHelper;
+    private final InventoryQueryService inventoryQueryService;
     private final InventoryControlService inventoryControlService;
     private final ProductManagementService productManagementService;
 
@@ -78,7 +78,7 @@ public class EmailServiceForPoImpl implements EmailServiceForPo {
 
     private void handleInventoryStatusUpdates(ProductsForPM orderedProduct) {
         Optional<InventoryControlData> inventoryProductOpt =
-                inventoryServiceHelper.getInventoryProductByProductId(orderedProduct.getProductID());
+                inventoryQueryService.getInventoryProductByProductId(orderedProduct.getProductID());
 
         if (orderedProduct.getStatus() == ProductStatus.PLANNING) {
             handlePlanningStatusUpdate(orderedProduct, inventoryProductOpt);

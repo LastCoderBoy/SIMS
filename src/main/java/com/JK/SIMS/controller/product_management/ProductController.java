@@ -4,11 +4,14 @@ import com.JK.SIMS.config.security.utils.TokenUtils;
 import com.JK.SIMS.exception.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
+import com.JK.SIMS.models.PM_models.dtos.BatchProductRequest;
+import com.JK.SIMS.models.PM_models.dtos.BatchProductResponse;
 import com.JK.SIMS.models.PM_models.dtos.ProductManagementRequest;
 import com.JK.SIMS.models.PM_models.dtos.ProductManagementResponse;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.productManagementService.ProductManagementService;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.coyote.BadRequestException;
@@ -38,7 +41,7 @@ public class ProductController {
 
     @PostMapping
     @PreAuthorize("@securityUtils.hasAccess()")
-    public ResponseEntity<ApiResponse<Void>> addProduct(@RequestBody ProductManagementRequest newProduct){
+    public ResponseEntity<ApiResponse<ProductManagementResponse>> addProduct(@RequestBody @Valid ProductManagementRequest newProduct){
         if (newProduct == null) {
             log.error("PM: addProduct() Request for Product cannot be null");
             throw new ValidationException("Request for Product cannot be null");
@@ -49,6 +52,34 @@ public class ProductController {
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new ApiResponse<>(true, "Product added successfully", response));
+    }
+
+    // Batch product creation
+    @PostMapping("/batch")
+    @PreAuthorize("@securityUtils.hasAccess()")
+    public ResponseEntity<ApiResponse<BatchProductResponse>> addProductsBatch(@RequestBody @Valid BatchProductRequest batchRequest) {
+        if (batchRequest == null || batchRequest.getProducts() == null ||
+                batchRequest.getProducts().isEmpty()) {
+            throw new ValidationException("Batch request must contain at least one product");
+        }
+        if (batchRequest.getProducts().size() > 100) {
+            throw new ValidationException("Cannot add more than 100 products at once");
+        }
+
+        log.info("PM: addProductsBatch() calling for {} products", batchRequest.getProducts().size());
+        BatchProductResponse response = pmService.addProductsBatch(batchRequest.getProducts());
+
+        HttpStatus status = response.getFailureCount() > 0
+                ? HttpStatus.MULTI_STATUS  // 207: Some succeeded, some failed
+                : HttpStatus.CREATED;       // 201: All succeeded
+
+        return ResponseEntity.status(status).body(new ApiResponse<>(
+                        response.getFailureCount() == 0,
+                        String.format("Added %d/%d products successfully",
+                                response.getSuccessCount(),
+                                response.getTotalRequested()),
+                        response
+                ));
     }
 
     @PutMapping("/{id}")
@@ -73,7 +104,7 @@ public class ProductController {
             String jwtToken = TokenUtils.extractToken(token);
             log.info("PM: deleteProduct() calling...");
             ApiResponse<Void> response = pmService.deleteProduct(id, jwtToken);
-            return new ResponseEntity<>(response, HttpStatus.NO_CONTENT);
+            return ResponseEntity.ok(response);
         }
         throw new AccessDeniedException("PM: deleteProduct() Invalid Token provided.");
     }

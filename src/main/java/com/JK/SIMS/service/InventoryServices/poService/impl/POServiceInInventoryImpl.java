@@ -18,9 +18,10 @@ import com.JK.SIMS.models.stockMovements.StockMovementReferenceType;
 import com.JK.SIMS.models.stockMovements.StockMovementType;
 import com.JK.SIMS.repository.PurchaseOrder_repo.PurchaseOrderRepository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.stockManagement.StockManagementLogic;
-import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
+import com.JK.SIMS.service.InventoryServices.inventoryQueryService.InventoryQueryService;
+import com.JK.SIMS.service.InventoryServices.inventoryUtils.InventoryStatusModifier;
 import com.JK.SIMS.service.InventoryServices.poService.POServiceInInventory;
-import com.JK.SIMS.service.productManagementService.ProductManagementService;
+import com.JK.SIMS.service.productManagementService.utils.productStatusModifier.ProductStatusModifier;
 import com.JK.SIMS.service.stockMovementService.StockMovementService;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import com.JK.SIMS.service.utilities.PurchaseOrderServiceHelper;
@@ -50,19 +51,20 @@ import static com.JK.SIMS.service.utilities.EntityConstants.DEFAULT_SORT_DIRECTI
 @Slf4j
 @RequiredArgsConstructor
 public class POServiceInInventoryImpl implements POServiceInInventory {
-
-    // =========== Constants ===========
     private final Clock clock;
 
     // =========== Utils ===========
     private final SecurityUtils securityUtils;
     private final PurchaseOrderServiceHelper poServiceHelper;
     private final GlobalServiceHelper globalServiceHelper;
-    private final ProductManagementService productManagementService;
-    private final InventoryServiceHelper inventoryServiceHelper;
+
+    // =========== Components ===========
+    private final InventoryQueryService inventoryQueryService;
+    private final InventoryStatusModifier inventoryStatusModifier;
+    private final ProductStatusModifier productStatusModifier;
+    private final StockManagementLogic stockManagementLogic;
 
     // =========== Services ===========
-    private final StockManagementLogic stockManagementLogic;
     private final StockMovementService stockMovementService; // Used to log the stock movement
     private final PoSearchStrategy icPoSearchStrategy;
     private final PoFilterStrategy filterWaitingPurchaseOrders;
@@ -155,7 +157,7 @@ public class POServiceInInventoryImpl implements POServiceInInventory {
     private void updateOrderStatus(PurchaseOrder order) {
         if (order.getReceivedQuantity() >= order.getOrderedQuantity()) {
             order.setStatus(PurchaseOrderStatus.RECEIVED);
-            productManagementService.updateIncomingProductStatusInPm(order.getProduct());
+            productStatusModifier.updateIncomingProductStatusInPm(order.getProduct());
         } else if (order.getReceivedQuantity() > 0) {
             order.setStatus(PurchaseOrderStatus.PARTIALLY_RECEIVED);
         }
@@ -168,7 +170,7 @@ public class POServiceInInventoryImpl implements POServiceInInventory {
         }
         try {
             Optional<InventoryControlData> inventoryProductOpt =
-                    inventoryServiceHelper.getInventoryProductByProductId(order.getProduct().getProductID());
+                    inventoryQueryService.getInventoryProductByProductId(order.getProduct().getProductID());
             if(inventoryProductOpt.isPresent()){
                 InventoryControlData inventoryProduct = inventoryProductOpt.get();
                 int newStockLevel = inventoryProduct.getCurrentStock() + receivedQuantity;
@@ -206,12 +208,12 @@ public class POServiceInInventoryImpl implements POServiceInInventory {
             purchaseOrder.setUpdatedBy(user);
 
             // Return back the Product Management section into the previous state
-            productManagementService.updateIncomingProductStatusInPm(purchaseOrder.getProduct());
+            productStatusModifier.updateIncomingProductStatusInPm(purchaseOrder.getProduct());
 
             // Return back the Inventory Control into the previous state
             Optional<InventoryControlData> inventoryProductOpt =
-                    inventoryServiceHelper.getInventoryProductByProductId(purchaseOrder.getProduct().getProductID());
-            inventoryProductOpt.ifPresent(inventoryServiceHelper::updateInventoryStatus);
+                    inventoryQueryService.getInventoryProductByProductId(purchaseOrder.getProduct().getProductID());
+            inventoryProductOpt.ifPresent(inventoryStatusModifier::updateInventoryStatus);
 
             purchaseOrderRepository.save(purchaseOrder);
             log.info("PO (cancelPurchaseOrderInternal): SalesOrder cancelled successfully. PO Number: {}", purchaseOrder.getPONumber());

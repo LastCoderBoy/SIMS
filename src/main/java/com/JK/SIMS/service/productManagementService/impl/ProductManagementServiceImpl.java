@@ -9,6 +9,7 @@ import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
+import com.JK.SIMS.models.PM_models.dtos.BatchProductResponse;
 import com.JK.SIMS.models.PM_models.dtos.ProductManagementRequest;
 import com.JK.SIMS.models.PM_models.dtos.ProductManagementResponse;
 import com.JK.SIMS.models.PaginatedResponse;
@@ -16,9 +17,10 @@ import com.JK.SIMS.models.inventoryData.InventoryControlData;
 import com.JK.SIMS.models.inventoryData.InventoryDataStatus;
 import com.JK.SIMS.repository.ProductManagement_repo.PM_repository;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.InventoryControlService;
-import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
+import com.JK.SIMS.service.InventoryServices.inventoryQueryService.InventoryQueryService;
 import com.JK.SIMS.service.orderManagementService.salesOrderService.queryService.SalesOrderQueryService;
 import com.JK.SIMS.service.productManagementService.ProductManagementService;
+import com.JK.SIMS.service.productManagementService.utils.PMServiceHelper;
 import com.JK.SIMS.service.utilities.ExcelReporterHelper;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +37,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -48,8 +51,10 @@ import static com.JK.SIMS.service.utilities.GlobalServiceHelper.amongInvalidStat
 public class ProductManagementServiceImpl implements ProductManagementService {
 
     // ========== Helpers ==========
-    private final InventoryServiceHelper inventoryServiceHelper;
     private final PMServiceHelper pmServiceHelper;
+
+    // ========== Components ==========
+    private final InventoryQueryService inventoryQueryService;
 
     // ========== Services ==========
     private final InventoryControlService icService;
@@ -98,32 +103,26 @@ public class ProductManagementServiceImpl implements ProductManagementService {
      * Adds a new product to the system after validation and generates a new product ID.
      * If the product status is NOT Equal to PLANNING, it will be added to IC section.
      *
-     * @param newProduct The product object containing all required product details
+     * @param productRequest The product object containing all required product details
      * @return ApiResponse object containing success status and message
      * @throws ValidationException   if product details are invalid
      * @throws ServiceException      if there's an error during product addition
      */
     @Override
     @Transactional
-    public ProductManagementResponse addProduct(ProductManagementRequest newProduct){
+    public ProductManagementResponse addProduct(ProductManagementRequest productRequest){
         try {
-            if (pmServiceHelper.validateProduct(newProduct)) {
-                ProductsForPM product = new ProductsForPM();
-                String newID = generateProductId();
-                // Populate the entity with the new data
-                product.setProductID(newID);
-                product.setName(newProduct.getName());
-                product.setCategory(newProduct.getCategory());
-                product.setPrice(newProduct.getPrice());
-                product.setLocation(newProduct.getLocation());
-                product.setStatus(newProduct.getStatus());
-
-                // Save the entity and modify the relationship entity based on the status
+            if (pmServiceHelper.validateProduct(productRequest)) {
+                ProductsForPM product = createProductEntity(productRequest);
                 ProductsForPM savedProduct = pmRepository.save(product);
-                if (!newProduct.getStatus().equals(ProductStatus.PLANNING)) {
+
+                // Add to inventory if status is not PLANNING
+                if (!productRequest.getStatus().equals(ProductStatus.PLANNING)) {
                     icService.addProduct(savedProduct, false);
                 }
-                log.info("PM (addProduct): New product added: ID = {}, Name = {}", newID, newProduct.getName());
+                log.info("PM (addProduct): Product added - ID: {}, Name: {}",
+                        savedProduct.getProductID(), savedProduct.getName());
+
                 return pmServiceHelper.convertToDTO(savedProduct);
             }
             throw new ValidationException("PM (addProduct): Invalid product details");
@@ -135,6 +134,57 @@ public class ProductManagementServiceImpl implements ProductManagementService {
         } catch (Exception e) {
             throw new ServiceException("PM (addProduct): Failed to add product ", e);
         }
+    }
+
+    /**
+     * Adds multiple products in a single transaction
+     * Continues processing even if some products fail (partial success)
+     */
+    @Override
+    @Transactional
+    public BatchProductResponse addProductsBatch(List<ProductManagementRequest> products) {
+        log.info("PM (addProductsBatch): Processing {} products", products.size());
+
+        List<String> successfulIds = new ArrayList<>();
+        List<BatchProductResponse.ProductError> errors = new ArrayList<>();
+
+        for (int i = 0; i < products.size(); i++) {
+            ProductManagementRequest productRequest = products.get(i);
+            try {
+                if (pmServiceHelper.validateProduct(productRequest)) {
+                    ProductsForPM product = createProductEntity(productRequest);
+                    ProductsForPM savedProduct = pmRepository.save(product);
+
+                    // Add to inventory if needed
+                    if (!productRequest.getStatus().equals(ProductStatus.PLANNING)) {
+                        icService.addProduct(savedProduct, false);
+                    }
+
+                    successfulIds.add(savedProduct.getProductID());
+                    log.debug("PM (addProductsBatch): Product {} added successfully", savedProduct.getProductID());
+                }
+            } catch (Exception e) {
+                log.warn("PM (addProductsBatch): Failed to add product at index {} - {}", i, e.getMessage());
+                errors.add(new BatchProductResponse.ProductError(
+                        i,
+                        productRequest,
+                        e.getMessage()
+                ));
+            }
+        }
+
+        BatchProductResponse response = BatchProductResponse.builder()
+                .totalRequested(products.size())
+                .successCount(successfulIds.size())
+                .failureCount(errors.size())
+                .successfulProductIds(successfulIds)
+                .errors(errors)
+                .build();
+
+        log.info("PM (addProductsBatch): Completed - {}/{} successful",
+                response.getSuccessCount(), response.getTotalRequested());
+
+        return response;
     }
 
     /**
@@ -259,7 +309,7 @@ public class ProductManagementServiceImpl implements ProductManagementService {
     private void updateProductAndInventoryStatus(ProductsForPM currentProduct, ProductManagementRequest updateProductRequest, String productId) {
         if (updateProductRequest.getStatus() != null && !updateProductRequest.getStatus().equals(currentProduct.getStatus())) {
             Optional<InventoryControlData> productInIcOpt =
-                    inventoryServiceHelper.getInventoryProductByProductId(productId);
+                    inventoryQueryService.getInventoryProductByProductId(productId);
             ProductStatus currentStatus = currentProduct.getStatus();
             ProductStatus newStatus = updateProductRequest.getStatus();
 
@@ -421,15 +471,6 @@ public class ProductManagementServiceImpl implements ProductManagementService {
         populateDataRows(sheet, allProducts);
         log.info("PM (GeneratePmReport): Retrieved {} products from database for report generation.)", allProducts.size());
         ExcelReporterHelper.writeWorkbookToResponse(response, workbook);
-    }
-
-    @Override
-    @Transactional(propagation = Propagation.MANDATORY)
-    public void updateIncomingProductStatusInPm(ProductsForPM orderedProduct) {
-        if (orderedProduct.getStatus() == ProductStatus.ON_ORDER) {
-            orderedProduct.setStatus(ProductStatus.ACTIVE);
-            pmRepository.save(orderedProduct);
-        }
     }
 
     @Override

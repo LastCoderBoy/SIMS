@@ -1,6 +1,5 @@
-package com.JK.SIMS.service.InventoryServices.inventoryServiceHelper;
+package com.JK.SIMS.service.InventoryServices.inventoryUtils;
 
-import com.JK.SIMS.exception.ResourceNotFoundException;
 import com.JK.SIMS.exception.ValidationException;
 import com.JK.SIMS.models.inventoryData.InventoryControlData;
 import com.JK.SIMS.models.inventoryData.dtos.InventoryControlRequest;
@@ -14,34 +13,20 @@ import com.JK.SIMS.models.salesOrder.dtos.views.SummarySalesOrderView;
 import com.JK.SIMS.models.salesOrder.orderItem.OrderItem;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.stockMovements.StockMovementReferenceType;
-import com.JK.SIMS.repository.InventoryControl_repo.IC_repository;
 import com.JK.SIMS.service.email_service.LowStockScheduler;
-import org.apache.coyote.BadRequestException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 @Component
+@Slf4j
+@RequiredArgsConstructor
 public class InventoryServiceHelper {
-
-    private static final Logger logger = LoggerFactory.getLogger(InventoryServiceHelper.class);
-
-    // TODO: Remove repository from the Helper
-    private final IC_repository icRepository;
     private final LowStockScheduler lowStockAlert;
-    @Autowired
-    public InventoryServiceHelper(IC_repository icRepository, LowStockScheduler lowStockAlert) {
-        this.icRepository = icRepository;
-        this.lowStockAlert = lowStockAlert;
-    }
-
 
     public static void validateUpdateRequest(InventoryControlRequest inventoryControlRequest) {
         List<String> errors = new ArrayList<>();
@@ -59,29 +44,6 @@ public class InventoryServiceHelper {
         }
         if (!errors.isEmpty()) {
             throw new ValidationException(errors);
-        }
-    }
-
-    @Transactional(readOnly = true)
-    public InventoryControlData getInventoryDataBySku(String sku) throws BadRequestException {
-        return icRepository.findBySKU(sku)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "IC (updateProduct): No product with SKU " + sku + " found"));
-    }
-
-    @Transactional(readOnly = true)
-    public Optional<InventoryControlData> getInventoryProductByProductId(String productId) {
-        return icRepository.findByPmProduct_ProductID(productId);
-    }
-
-    public void updateInventoryStatus(InventoryControlData product) {
-        if(product.getStatus() != InventoryDataStatus.INVALID) {
-            if (product.getCurrentStock() <= product.getMinLevel()) {
-                product.setStatus(InventoryDataStatus.LOW_STOCK);
-                lowStockAlert.sendDailyLowStockAlert();
-            } else {
-                product.setStatus(InventoryDataStatus.IN_STOCK);
-            }
         }
     }
 
@@ -157,7 +119,7 @@ public class InventoryServiceHelper {
                                                         .map(this::convertToInventoryDTO).toList());
         dtoResponse.setTotalPages(inventoryPage.getTotalPages());
         dtoResponse.setTotalElements(inventoryPage.getTotalElements());
-        logger.info("TotalItems (getInventoryDataDTOList): {} products retrieved.", inventoryPage.getContent().size());
+        log.info("TotalItems (getInventoryDataDTOList): {} products retrieved.", inventoryPage.getContent().size());
         return dtoResponse;
     }
 

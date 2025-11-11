@@ -6,9 +6,9 @@ import com.JK.SIMS.exception.ResourceNotFoundException;
 import com.JK.SIMS.exception.ServiceException;
 import com.JK.SIMS.models.inventoryData.InventoryControlData;
 import com.JK.SIMS.repository.InventoryControl_repo.IC_repository;
-import com.JK.SIMS.service.InventoryServices.inventoryServiceHelper.InventoryServiceHelper;
+import com.JK.SIMS.service.InventoryServices.inventoryUtils.InventoryStatusModifier;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
@@ -18,16 +18,11 @@ import java.util.Optional;
 
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class StockManagementLogic {
 
-    private final InventoryServiceHelper inventoryServiceHelper;
+    private final InventoryStatusModifier inventoryStatusModifier;
     private final IC_repository icRepository;
-    @Autowired
-    public StockManagementLogic(InventoryServiceHelper inventoryServiceHelper, IC_repository icRepository) {
-        this.inventoryServiceHelper = inventoryServiceHelper;
-        this.icRepository = icRepository;
-    }
-
 
     // Reserve stock atomically - throws exception if insufficient stock
     @Transactional
@@ -79,7 +74,7 @@ public class StockManagementLogic {
             inventory.setReservedStock(inventory.getReservedStock() - approvedQuantity);
 
             // Update status based on the new stock level
-            inventoryServiceHelper.updateInventoryStatus(inventory);
+            inventoryStatusModifier.updateInventoryStatus(inventory);
             icRepository.save(inventory);
             log.info("IC (fulfillReservation): Fulfilled reservation of {} units for product {}", approvedQuantity, productId);
         } catch (DataAccessException e) {
@@ -125,7 +120,7 @@ public class StockManagementLogic {
         newMinLevel.ifPresent(existingProduct::setMinLevel);
 
         //Update the status based on the latest update
-        inventoryServiceHelper.updateInventoryStatus(existingProduct);
+        inventoryStatusModifier.updateInventoryStatus(existingProduct);
 
         icRepository.save(existingProduct);
     }

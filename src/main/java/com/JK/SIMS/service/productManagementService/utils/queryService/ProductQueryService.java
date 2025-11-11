@@ -1,4 +1,4 @@
-package com.JK.SIMS.service.productManagementService.queryService;
+package com.JK.SIMS.service.productManagementService.utils.queryService;
 
 
 import com.JK.SIMS.exception.DatabaseException;

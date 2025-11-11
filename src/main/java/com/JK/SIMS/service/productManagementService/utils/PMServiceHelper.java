@@ -1,4 +1,4 @@
-package com.JK.SIMS.service.productManagementService.impl;
+package com.JK.SIMS.service.productManagementService.utils;
 
 import com.JK.SIMS.exception.ValidationException;
 import com.JK.SIMS.models.PM_models.ProductStatus;
