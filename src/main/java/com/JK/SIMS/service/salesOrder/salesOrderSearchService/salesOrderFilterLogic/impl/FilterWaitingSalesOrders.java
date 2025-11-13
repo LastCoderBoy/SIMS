@@ -1,9 +1,9 @@
-package com.JK.SIMS.service.utilities.salesOrderFilterLogic.impl;
+package com.JK.SIMS.service.salesOrder.salesOrderSearchService.salesOrderFilterLogic.impl;
 
 import com.JK.SIMS.models.salesOrder.SalesOrder;
 import com.JK.SIMS.repository.salesOrderRepo.SalesOrderRepository;
-import com.JK.SIMS.service.utilities.salesOrderFilterLogic.AbstractSoFilterStrategy;
-import com.JK.SIMS.service.utilities.salesOrderFilterLogic.filterSpecification.SalesOrderSpecification;
+import com.JK.SIMS.service.salesOrder.salesOrderSearchService.salesOrderFilterLogic.AbstractSoFilterStrategy;
+import com.JK.SIMS.service.salesOrder.salesOrderSearchService.salesOrderFilterLogic.filterSpecification.SalesOrderSpecification;
 import org.jetbrains.annotations.Nullable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;

@@ -1,4 +1,4 @@
-package com.JK.SIMS.service.utilities.purchaseOrderFilterLogic;
+package com.JK.SIMS.service.purchaseOrder.purchaseOrderSearchService.purchaseOrderFilterLogic;
 
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrderStatus;
 import com.JK.SIMS.models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;

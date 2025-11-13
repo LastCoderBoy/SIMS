@@ -1,4 +1,4 @@
-package com.JK.SIMS.service.utilities.purchaseOrderFilterLogic;
+package com.JK.SIMS.service.purchaseOrder.purchaseOrderSearchService.purchaseOrderFilterLogic;
 
 import com.JK.SIMS.exception.ServiceException;
 import com.JK.SIMS.exception.ValidationException;
@@ -9,7 +9,7 @@ import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.PurchaseOrder_repo.PurchaseOrderRepository;
 import com.JK.SIMS.service.utilities.PurchaseOrderServiceHelper;
-import com.JK.SIMS.service.utilities.purchaseOrderFilterLogic.filterSpecification.PurchaseOrderSpecification;
+import com.JK.SIMS.service.purchaseOrder.purchaseOrderSearchService.purchaseOrderFilterLogic.filterSpecification.PurchaseOrderSpecification;
 import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,8 +51,7 @@ public abstract class AbstractPoFilterStrategy implements PoFilterStrategy {
             Page<PurchaseOrder> filterResult = purchaseOrderRepository.findAll(spec, pageable);
             return poServiceHelper.transformToPaginatedSummaryView(filterResult);
         } catch (IllegalArgumentException iae) {
-            logger.error("{}: Invalid pagination parameters: {}", getClass().getSimpleName(), iae.getMessage());
-            throw new ValidationException("Invalid pagination parameters: " + iae.getMessage());
+            throw new ValidationException("Invalid parameters: " + iae.getMessage());
         } catch (Exception e) {
             logger.error("{}: Error filtering orders - {}", getClass().getSimpleName(), e.getMessage());
             throw new ServiceException("Failed to filter orders", e);

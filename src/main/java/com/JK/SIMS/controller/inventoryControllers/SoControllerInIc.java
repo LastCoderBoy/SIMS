@@ -9,6 +9,7 @@ import com.JK.SIMS.models.salesOrder.dtos.views.SummarySalesOrderView;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryServices.soService.SoServiceInIc;
 import jakarta.validation.Valid;
+import jakarta.validation.ValidationException;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.slf4j.Logger;
@@ -116,7 +117,7 @@ public class SoControllerInIc {
             try {
                 soStatus = SalesOrderStatus.valueOf(status.toUpperCase());
             } catch (IllegalArgumentException e) {
-                logger.warn("Invalid status value: {}", status);
+                throw new ValidationException("Invalid status value provided: " + status);
             }
         }
 

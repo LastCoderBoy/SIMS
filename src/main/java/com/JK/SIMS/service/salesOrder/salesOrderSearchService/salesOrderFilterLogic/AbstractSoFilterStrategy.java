@@ -1,11 +1,12 @@
-package com.JK.SIMS.service.utilities.salesOrderFilterLogic;
+package com.JK.SIMS.service.salesOrder.salesOrderSearchService.salesOrderFilterLogic;
 
 import com.JK.SIMS.exception.ServiceException;
 import com.JK.SIMS.models.salesOrder.SalesOrder;
 import com.JK.SIMS.models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.repository.salesOrderRepo.SalesOrderRepository;
-import com.JK.SIMS.service.utilities.salesOrderFilterLogic.filterSpecification.SalesOrderSpecification;
+import com.JK.SIMS.service.salesOrder.salesOrderSearchService.salesOrderFilterLogic.filterSpecification.SalesOrderSpecification;
 import jakarta.annotation.Nullable;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,12 +16,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 
 @Slf4j
+@RequiredArgsConstructor
 public abstract class AbstractSoFilterStrategy implements SoFilterStrategy {
     protected final SalesOrderRepository salesOrderRepository;
-
-    protected AbstractSoFilterStrategy(SalesOrderRepository salesOrderRepository) {
-        this.salesOrderRepository = salesOrderRepository;
-    }
 
     protected @Nullable
     abstract Specification<SalesOrder> baseSpecType();

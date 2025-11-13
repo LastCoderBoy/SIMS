@@ -1,4 +1,4 @@
-package com.JK.SIMS.service.orderManagementService.salesOrderService.queryService;
+package com.JK.SIMS.service.salesOrder.salesOrderQueryService;
 
 import com.JK.SIMS.models.salesOrder.SalesOrder;
 import com.JK.SIMS.repository.salesOrderRepo.SalesOrderRepository;

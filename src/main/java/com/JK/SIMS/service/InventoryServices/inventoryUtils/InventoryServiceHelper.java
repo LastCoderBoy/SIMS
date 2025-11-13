@@ -26,8 +26,6 @@ import java.util.List;
 @Slf4j
 @RequiredArgsConstructor
 public class InventoryServiceHelper {
-    private final LowStockScheduler lowStockAlert;
-
     public static void validateUpdateRequest(InventoryControlRequest inventoryControlRequest) {
         List<String> errors = new ArrayList<>();
         Integer newCurrentStock = inventoryControlRequest.getCurrentStock();

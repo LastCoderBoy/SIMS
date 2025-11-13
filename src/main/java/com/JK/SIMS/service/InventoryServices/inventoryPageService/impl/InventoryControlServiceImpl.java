@@ -21,8 +21,9 @@ import com.JK.SIMS.service.InventoryServices.damageLossService.damageLossQuerySe
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.InventoryControlService;
 import com.JK.SIMS.service.InventoryServices.inventoryPageService.searchLogic.PendingOrdersSearchStrategy;
 import com.JK.SIMS.service.InventoryServices.inventoryUtils.InventoryServiceHelper;
-import com.JK.SIMS.service.InventoryServices.poService.POServiceInInventory;
 import com.JK.SIMS.service.InventoryServices.soService.SoServiceInIc;
+import com.JK.SIMS.service.purchaseOrder.purchaseOrderQueryService.PurchaseOrderQueryService;
+import com.JK.SIMS.service.purchaseOrder.purchaseOrderSearchService.PurchaseOrderSearchService;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -53,7 +54,8 @@ public class InventoryControlServiceImpl implements InventoryControlService {
     // =========== Services ===========
     private final SoServiceInIc soServiceInIc;
     private final DamageLossQueryService damageLossQueryService;
-    private final POServiceInInventory poServiceInIc;
+    private final PurchaseOrderQueryService purchaseOrderQueryService;
+    private final PurchaseOrderSearchService purchaseOrderSearchService;
 
     // =========== Repositories ===========
     private final IC_repository icRepository;
@@ -70,7 +72,7 @@ public class InventoryControlServiceImpl implements InventoryControlService {
             InventoryPageResponse inventoryPageResponse = new InventoryPageResponse(
                     metrics.getTotalCount(),
                     metrics.getLowStockCount(), // Checks against the VALID products only
-                    poServiceInIc.getTotalValidPoSize(),
+                    purchaseOrderQueryService.getTotalValidPoSize(),
                     soServiceInIc.countOutgoingSalesOrders(),
                     damageLossQueryService.countTotalDamagedProducts(),
                     allPendingOrders
@@ -94,7 +96,7 @@ public class InventoryControlServiceImpl implements InventoryControlService {
                 soServiceInIc.getAllOutgoingSalesOrders(page, size, "orderDate", "desc");
 
         PaginatedResponse<SummaryPurchaseOrderView> allPendingPurchaseOrders =
-                poServiceInIc.getAllPendingPurchaseOrders(page, size, "product.name", "asc");
+                purchaseOrderQueryService.getAllPendingPurchaseOrders(page, size, "product.name", "asc");
 
         // Combine and sort
         List<PendingOrdersResponseInIC> combinedResults = new ArrayList<>();
@@ -260,7 +262,7 @@ public class InventoryControlServiceImpl implements InventoryControlService {
 
             // Fetch all pending Purchase Orders
             PaginatedResponse<SummaryPurchaseOrderView> purchaseOrders =
-                    poServiceInIc.getAllPendingPurchaseOrders(page, size, sortBy, sortDirection);
+                    purchaseOrderQueryService.getAllPendingPurchaseOrders(page, size, sortBy, sortDirection);
             inventoryServiceHelper.fillWithPurchaseOrderView(combinedResults, purchaseOrders.getContent());
         }
 
@@ -272,6 +274,7 @@ public class InventoryControlServiceImpl implements InventoryControlService {
         if (isSalesOrderType || hasSalesOrderFilters) {
             if (isSalesOrderType && !hasSalesOrderFilters) {
                 // Fetch all Sales Orders (no filters)
+                // TODO: Use SO Query and Search Services.
                 PaginatedResponse<SummarySalesOrderView> allSalesOrders =
                         soServiceInIc.getAllOutgoingSalesOrders(page, size, sortBy, sortDirection);
                 inventoryServiceHelper.fillWithSalesOrderView(combinedResults, allSalesOrders.getContent());
@@ -291,12 +294,12 @@ public class InventoryControlServiceImpl implements InventoryControlService {
             if (isPurchaseOrderType && !hasPurchaseOrderFilters) {
                 // Fetch all Purchase Orders (no filters)
                 PaginatedResponse<SummaryPurchaseOrderView> allPurchaseOrders =
-                        poServiceInIc.getAllPendingPurchaseOrders(page, size, sortBy, sortDirection);
+                        purchaseOrderQueryService.getAllPendingPurchaseOrders(page, size, sortBy, sortDirection);
                 inventoryServiceHelper.fillWithPurchaseOrderView(combinedResults, allPurchaseOrders.getContent());
             } else {
                 // Fetch filtered Purchase Orders
                 PaginatedResponse<SummaryPurchaseOrderView> purchaseOrders =
-                        poServiceInIc.filterIncomingPurchaseOrders(poStatus, category, sortBy, sortDirection, page, size);
+                        purchaseOrderSearchService.filterPending(poStatus, category, sortBy, sortDirection, page, size);
                 inventoryServiceHelper.fillWithPurchaseOrderView(combinedResults, purchaseOrders.getContent());
             }
         }

@@ -1,6 +1,7 @@
 package com.JK.SIMS.exception.exceptionHandler;
 
 import com.JK.SIMS.exception.*;
+import com.JK.SIMS.models.ApiResponse;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import lombok.extern.slf4j.Slf4j;
@@ -12,6 +13,7 @@ import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 
@@ -151,5 +153,33 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorObject> handleCustomS3Exception(CustomS3Exception ex) {
         return handleException(ex, HttpStatus.INTERNAL_SERVER_ERROR, LogLevel.ERROR,
                 "{}Custom S3 error: {}");
+    }
+
+    /**
+     * Handle enum conversion failures
+     * Triggered when @RequestParam enum conversion fails
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiResponse<Map<String, String>>> handleTypeMismatch(
+            MethodArgumentTypeMismatchException ex) {
+
+        log.error("Type mismatch error: {}", ex.getMessage());
+
+        String error = String.format("Invalid value '%s' for parameter '%s'",
+                ex.getValue(),
+                ex.getName());
+
+        // If it's an enum, show valid values
+        if (ex.getRequiredType() != null && ex.getRequiredType().isEnum()) {
+            Object[] enumConstants = ex.getRequiredType().getEnumConstants();
+            error += ". Valid values: " + java.util.Arrays.toString(enumConstants);
+        }
+
+        Map<String, String> errors = new HashMap<>();
+        errors.put(ex.getName(), error);
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(new ApiResponse<>(false, "Invalid request parameter", errors));
     }
 }

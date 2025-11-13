@@ -10,7 +10,7 @@ import java.time.LocalDate;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class PurchaseOrderRequestDto {
+public class PurchaseOrderRequest {
     @NotBlank(message = "Product ID is required")
     private String productId;
 

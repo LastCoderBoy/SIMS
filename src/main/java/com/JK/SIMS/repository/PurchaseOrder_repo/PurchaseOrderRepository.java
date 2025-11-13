@@ -9,6 +9,8 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, Long>, JpaSpecificationExecutor<PurchaseOrder> {
 
@@ -58,4 +60,8 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, Lo
     FROM PurchaseOrder po
 """)
     PurchaseOrderSummary getPurchaseOrderSummaryMetrics();
+
+    List<PurchaseOrder> findByProduct_ProductID(String productId);
+
+    List<PurchaseOrder> findBySupplier_Id(Long supplierId);
 }

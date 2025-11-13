@@ -1,12 +1,9 @@
 package com.JK.SIMS.controller.inventoryControllers;
 
-import com.JK.SIMS.config.security.utils.TokenUtils;
-import com.JK.SIMS.exception.InvalidTokenException;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrderStatus;
-import com.JK.SIMS.models.purchaseOrder.dtos.PurchaseOrderResponseDto;
 import com.JK.SIMS.models.purchaseOrder.dtos.ReceiveStockRequestDto;
 import com.JK.SIMS.models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.service.InventoryServices.poService.POServiceInInventory;
@@ -43,10 +40,10 @@ public class PoControllerInIc {
     }
 
     @GetMapping("/overdue")
-    public ResponseEntity<?> getAllOverduePurchaseOrders(@RequestParam(defaultValue = "0") int page,
+    public ResponseEntity<PaginatedResponse<SummaryPurchaseOrderView>> getAllOverduePurchaseOrders(@RequestParam(defaultValue = "0") int page,
                                                             @RequestParam(defaultValue = "10") int size){
         log.info("IcPo: getPendingStockRecordsByStatus() calling with page {} and size {}", page, size);
-        PaginatedResponse<PurchaseOrderResponseDto> response = poServiceInIc.getAllOverduePurchaseOrders(page, size);
+        PaginatedResponse<SummaryPurchaseOrderView> response = poServiceInIc.getAllOverduePurchaseOrders(page, size);
         return ResponseEntity.ok(response);
     }
 
@@ -72,6 +69,7 @@ public class PoControllerInIc {
                                          @RequestParam(defaultValue = "10") int size) {
         PaginatedResponse<SummaryPurchaseOrderView> filterResponse =
                 poServiceInIc.filterIncomingPurchaseOrders(status, category, sortBy, sortDirection, page, size);
+        log.debug("status: {}", status); // DEBUG
         log.info("IcPo filterStock(): Returning {} paginated data", filterResponse.getContent().size());
         return ResponseEntity.ok(filterResponse);
     }

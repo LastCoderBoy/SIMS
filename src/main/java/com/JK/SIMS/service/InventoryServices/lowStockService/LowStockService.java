@@ -3,19 +3,18 @@ package com.JK.SIMS.service.InventoryServices.lowStockService;
 import com.JK.SIMS.exception.DatabaseException;
 import com.JK.SIMS.exception.ServiceException;
 import com.JK.SIMS.exception.ValidationException;
-import com.JK.SIMS.models.inventoryData.InventoryControlData;
-import com.JK.SIMS.models.inventoryData.dtos.InventoryControlResponse;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
+import com.JK.SIMS.models.inventoryData.InventoryControlData;
+import com.JK.SIMS.models.inventoryData.dtos.InventoryControlResponse;
 import com.JK.SIMS.repository.InventoryControl_repo.IC_repository;
 import com.JK.SIMS.service.InventoryServices.inventoryUtils.InventoryServiceHelper;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -27,24 +26,21 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
 
+import static com.JK.SIMS.service.utilities.EntityConstants.DEFAULT_SORT_DIRECTION;
 import static com.JK.SIMS.service.utilities.ExcelReporterHelper.*;
 
 @Service
+@Slf4j
+@RequiredArgsConstructor
 public class LowStockService {
-    private static final Logger logger = LoggerFactory.getLogger(LowStockService.class);
-
     private static final String DEFAULT_SORT_BY = "pmProduct.name";
-    private static final String DEFAULT_SORT_DIRECTION = "asc";
 
     private final InventoryServiceHelper inventoryServiceHelper;
     private final GlobalServiceHelper globalServiceHelper;
+
+    // =========== Repository ===========
     private final IC_repository icRepository;
-    @Autowired
-    public LowStockService(InventoryServiceHelper inventoryServiceHelper, GlobalServiceHelper globalServiceHelper, IC_repository icRepository) {
-        this.inventoryServiceHelper = inventoryServiceHelper;
-        this.globalServiceHelper = globalServiceHelper;
-        this.icRepository = icRepository;
-    }
+
     @Transactional(readOnly = true)
     public PaginatedResponse<InventoryControlResponse> getAllPaginatedLowStockRecords(String sortBy, String sortDirection, int page, int size) {
         try {
@@ -59,10 +55,10 @@ public class LowStockService {
             Page<InventoryControlData> inventoryPage = icRepository.getLowStockItems(pageable);
             return inventoryServiceHelper.transformToPaginatedInventoryDTOResponse(inventoryPage);
         }catch (DataAccessException da){
-            logger.error("LowStockService (getAllPaginatedLowStockRecords): Failed to retrieve products due to database error: {}", da.getMessage(), da);
+            log.error("LowStockService (getAllPaginatedLowStockRecords): Failed to retrieve products due to database error: {}", da.getMessage(), da);
             throw new DatabaseException("LowStockService (getAllPaginatedLowStockRecords): Failed to retrieve products due to database error", da);
         }catch (Exception e){
-            logger.error("LowStockService (getAllPaginatedLowStockRecords): Failed to retrieve products: {}", e.getMessage(), e);
+            log.error("LowStockService (getAllPaginatedLowStockRecords): Failed to retrieve products: {}", e.getMessage(), e);
             throw new RuntimeException("LowStockService (getAllPaginatedLowStockRecords): Failed to retrieve products", e);
         }
     }
@@ -73,20 +69,20 @@ public class LowStockService {
             globalServiceHelper.validatePaginationParameters(page, size);
             Optional<String> inputText = Optional.ofNullable((text));
             if (inputText.isPresent() && !inputText.get().trim().isEmpty()) {
-                Pageable pageable = PageRequest.of(page, size, Sort.by(DEFAULT_SORT_BY).ascending());
+                Pageable pageable = PageRequest.of(page, size, Sort.by(DEFAULT_SORT_BY).descending());
                 Page<InventoryControlData> inventoryData =
                         icRepository.searchInLowStockProducts(inputText.get().trim().toLowerCase(), pageable);
 
-                logger.info("LowStockService (searchProduct): {} products retrieved.", inventoryData.getContent().size());
+                log.info("LowStockService (searchProduct): {} products retrieved.", inventoryData.getContent().size());
                 return inventoryServiceHelper.transformToPaginatedInventoryDTOResponse(inventoryData) ;
             }
-            logger.info("LowStockService (searchProduct): No search text provided. Retrieving first page with default size.");
+            log.info("LowStockService (searchProduct): No search text provided. Retrieving first page with default size.");
             return getAllPaginatedLowStockRecords(DEFAULT_SORT_BY, DEFAULT_SORT_DIRECTION, page,size);
         } catch (DataAccessException e) {
-            logger.error("LowStockService (searchProduct): Database error: {}", e.getMessage(), e);
+            log.error("LowStockService (searchProduct): Database error: {}", e.getMessage(), e);
             throw new DatabaseException("LowStockService (searchProduct): Database error", e);
         } catch (Exception e) {
-            logger.error("LowStockService (searchProduct): Failed to retrieve products: {}", e.getMessage(), e);
+            log.error("LowStockService (searchProduct): Failed to retrieve products: {}", e.getMessage(), e);
             throw new ServiceException("LowStockService (searchProduct): Failed to retrieve products", e);
         }
     }
@@ -96,7 +92,7 @@ public class LowStockService {
         try {
             globalServiceHelper.validatePaginationParameters(page, size);
 
-            logger.info("SortBy: {}, SortDirection: {}", sortBy, sortDirection);
+            log.info("SortBy: {}, SortDirection: {}", sortBy, sortDirection);
 
             // Parse sort direction
             Sort.Direction direction = sortDirection.equalsIgnoreCase("desc") ?
@@ -108,7 +104,7 @@ public class LowStockService {
 
             Page<InventoryControlData> resultPage = icRepository.getLowStockItemsByCategory(category, pageable);
 
-            logger.info("TotalItems (filterProducts): {} products retrieved.", resultPage.getContent().size());
+            log.info("TotalItems (filterProducts): {} products retrieved.", resultPage.getContent().size());
             return inventoryServiceHelper.transformToPaginatedInventoryDTOResponse(resultPage);
         } catch (IllegalArgumentException iae) {
             throw new ValidationException("TotalItems (filterProducts): Invalid filterBy value: " + iae.getMessage());
@@ -125,7 +121,7 @@ public class LowStockService {
         List<InventoryControlResponse> allLowStockProducts = getAllLowStockProducts(sortBy, sortDirection);
         createHeaderRowForInventoryDto(sheet);
         populateDataRowsForInventoryDto(sheet, allLowStockProducts);
-        logger.info("TotalItems (generateTotalItemsReport): {} products retrieved.", allLowStockProducts.size());
+        log.info("TotalItems (generateTotalItemsReport): {} products retrieved.", allLowStockProducts.size());
         writeWorkbookToResponse(response, workbook);
     }
 
@@ -142,10 +138,10 @@ public class LowStockService {
             // Convert to DTOs
             return inventoryList.stream().map(inventoryServiceHelper::convertToInventoryDTO).toList();
         } catch (DataAccessException da) {
-            logger.error("TotalItems (getAllInventoryData): Failed to retrieve products due to database error: {}", da.getMessage(), da);
+            log.error("TotalItems (getAllInventoryData): Failed to retrieve products due to database error: {}", da.getMessage(), da);
             throw new DatabaseException("TotalItems (getAllInventoryData): Failed to retrieve products due to database error", da);
         } catch (Exception e) {
-            logger.error("TotalItems (getAllInventoryData): Failed to retrieve products: {}", e.getMessage(), e);
+            log.error("TotalItems (getAllInventoryData): Failed to retrieve products: {}", e.getMessage(), e);
             throw new ServiceException("TotalItems (getAllInventoryData): Failed to retrieve products", e);
         }
     }

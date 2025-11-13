@@ -6,6 +6,7 @@ import com.JK.SIMS.models.purchaseOrder.dtos.ConfirmPoRequestDto;
 import com.JK.SIMS.service.confirmTokenService.ConfirmationTokenService;
 import com.JK.SIMS.service.email_service.EmailServiceForPo;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -15,16 +16,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/v1/email") // this endpoint will not be authenticated.
 public class EmailControllerForPurchaseOrder {
 
     private final ConfirmationTokenService confirmationTokenService;
     private final EmailServiceForPo emailServiceForPo;
-    @Autowired
-    public EmailControllerForPurchaseOrder(ConfirmationTokenService confirmationTokenService, EmailServiceForPo emailServiceForPo) {
-        this.confirmationTokenService = confirmationTokenService;
-        this.emailServiceForPo = emailServiceForPo;
-    }
+
 
     @GetMapping("/confirm-form")
     public ResponseEntity<?> getConfirmationFormData(@RequestParam String token) {

@@ -4,6 +4,7 @@ package com.JK.SIMS.service.productManagementService.utils.queryService;
 import com.JK.SIMS.exception.DatabaseException;
 import com.JK.SIMS.exception.ResourceNotFoundException;
 import com.JK.SIMS.exception.ServiceException;
+import com.JK.SIMS.exception.ValidationException;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PM_models.dtos.ReportProductMetrics;
@@ -13,8 +14,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Optional;
 
 /**
  * Shared query service for product-related read operations
@@ -38,20 +37,13 @@ public class ProductQueryService {
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with ID: " + productId));
     }
 
-    /**
-     * Find product by ID - returns Optional
-     */
     @Transactional(readOnly = true)
-    public Optional<ProductsForPM> findByIdOptional(String productId) {
-        return pmRepository.findById(productId);
-    }
-
-    /**
-     * Check if the product exists
-     */
-    @Transactional(readOnly = true)
-    public boolean exists(String productId) {
-        return pmRepository.existsById(productId);
+    public ProductsForPM isProductFinalized(String productId) throws ResourceNotFoundException, ValidationException {
+        ProductsForPM product = findById(productId);
+        if (product.isInInvalidStatus()) {
+            throw new ValidationException("Product is not for sale and cannot be ordered. Please update the status in the PM section first.");
+        }
+        return product;
     }
 
 

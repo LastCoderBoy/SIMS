@@ -1,4 +1,4 @@
-package com.JK.SIMS.service.utilities.salesOrderSearchLogic;
+package com.JK.SIMS.service.salesOrder.salesOrderSearchService.salesOrderSearchLogic;
 
 import com.JK.SIMS.models.salesOrder.SalesOrder;
 import org.springframework.data.domain.Page;

@@ -54,7 +54,7 @@ public class SalesOrderController {
 
     @GetMapping("/{orderId}")
     public ResponseEntity<?> getDetailsForSalesOrderId(@PathVariable Long orderId){
-        log.info("OM-SO: getDetailsForPurchaseOrderId() is calling for ID: {}", orderId);
+        log.info("OM-SO: getDetailsForPurchaseOrder() is calling for ID: {}", orderId);
         DetailedSalesOrderView detailedView = salesOrderService.getDetailsForSalesOrderId(orderId);
         return new ResponseEntity<>(detailedView, HttpStatus.OK);
     }

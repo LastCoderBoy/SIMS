@@ -11,7 +11,6 @@ import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.inventoryData.InventoryControlData;
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrderStatus;
-import com.JK.SIMS.models.purchaseOrder.dtos.PurchaseOrderResponseDto;
 import com.JK.SIMS.models.purchaseOrder.dtos.ReceiveStockRequestDto;
 import com.JK.SIMS.models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.models.stockMovements.StockMovementReferenceType;
@@ -21,30 +20,22 @@ import com.JK.SIMS.service.InventoryServices.inventoryPageService.stockManagemen
 import com.JK.SIMS.service.InventoryServices.inventoryQueryService.InventoryQueryService;
 import com.JK.SIMS.service.InventoryServices.inventoryUtils.InventoryStatusModifier;
 import com.JK.SIMS.service.InventoryServices.poService.POServiceInInventory;
+import com.JK.SIMS.service.purchaseOrder.purchaseOrderQueryService.PurchaseOrderQueryService;
 import com.JK.SIMS.service.productManagementService.utils.productStatusModifier.ProductStatusModifier;
+import com.JK.SIMS.service.purchaseOrder.purchaseOrderSearchService.PurchaseOrderSearchService;
 import com.JK.SIMS.service.stockMovementService.StockMovementService;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
-import com.JK.SIMS.service.utilities.PurchaseOrderServiceHelper;
-import com.JK.SIMS.service.utilities.purchaseOrderFilterLogic.PoFilterStrategy;
-import com.JK.SIMS.service.utilities.purchaseOrderSearchLogic.PoSearchStrategy;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.coyote.BadRequestException;
 import org.springframework.dao.DataAccessException;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Optional;
-
-import static com.JK.SIMS.service.utilities.EntityConstants.DEFAULT_SORT_BY_FOR_PO;
-import static com.JK.SIMS.service.utilities.EntityConstants.DEFAULT_SORT_DIRECTION;
 
 
 @Service
@@ -55,19 +46,17 @@ public class POServiceInInventoryImpl implements POServiceInInventory {
 
     // =========== Utils ===========
     private final SecurityUtils securityUtils;
-    private final PurchaseOrderServiceHelper poServiceHelper;
-    private final GlobalServiceHelper globalServiceHelper;
 
     // =========== Components ===========
-    private final InventoryQueryService inventoryQueryService;
     private final InventoryStatusModifier inventoryStatusModifier;
     private final ProductStatusModifier productStatusModifier;
     private final StockManagementLogic stockManagementLogic;
 
     // =========== Services ===========
     private final StockMovementService stockMovementService; // Used to log the stock movement
-    private final PoSearchStrategy icPoSearchStrategy;
-    private final PoFilterStrategy filterWaitingPurchaseOrders;
+    private final InventoryQueryService inventoryQueryService;
+    private final PurchaseOrderQueryService purchaseOrderQueryService;
+    private final PurchaseOrderSearchService purchaseOrderSearchService;
 
     // =========== Repositories ===========
     private final PurchaseOrderRepository purchaseOrderRepository;
@@ -75,26 +64,8 @@ public class POServiceInInventoryImpl implements POServiceInInventory {
     @Override
     @Transactional(readOnly = true)
     public PaginatedResponse<SummaryPurchaseOrderView> getAllPendingPurchaseOrders(int page, int size, String sortBy, String sortDirection) {
-        try {
-            String effectiveSortBy = (sortBy == null || sortBy.trim().isEmpty()) ? DEFAULT_SORT_BY_FOR_PO : sortBy;
-            String effectiveSortDirection = (sortDirection == null || sortDirection.trim().isEmpty()) ? DEFAULT_SORT_DIRECTION : sortDirection;
-
-            Sort.Direction direction = effectiveSortDirection.equalsIgnoreCase("desc") ?
-                    Sort.Direction.DESC : Sort.Direction.ASC;
-
-            Pageable pageable = PageRequest.of(page, size, Sort.by(direction, effectiveSortBy));
-            Page<PurchaseOrder> entityResponse = purchaseOrderRepository.findAllPendingOrders(pageable);
-            PaginatedResponse<SummaryPurchaseOrderView> dtoResponse =
-                    poServiceHelper.transformToPaginatedSummaryView(entityResponse);
-            log.info("PO (getAllPendingPurchaseOrders): Returning {} paginated data", dtoResponse.getContent().size());
-            return dtoResponse;
-        }catch (DataAccessException da){
-            log.error("PO (getAllPendingPurchaseOrders): Database error occurred: {}", da.getMessage(), da);
-            throw new DatabaseException("PO (getAllPendingPurchaseOrders): Database error", da);
-        }catch (Exception e){
-            log.error("PO (getAllPendingPurchaseOrders): Service error occurred: {}", e.getMessage(), e);
-            throw new ServiceException("PO (getAllPendingPurchaseOrders): Service error occurred", e);
-        }
+        // Delegate to query service
+        return purchaseOrderQueryService.getAllPendingPurchaseOrders(page, size, sortBy, sortDirection);
     }
 
     // STOCK IN button logic.
@@ -103,9 +74,11 @@ public class POServiceInInventoryImpl implements POServiceInInventory {
     public ApiResponse<Void> receivePurchaseOrder(Long orderId, @Valid ReceiveStockRequestDto receiveRequest, String jwtToken) throws BadRequestException {
         try {
             String updatedPerson = securityUtils.validateAndExtractUsername(jwtToken);
-            poServiceHelper.validateOrderId(orderId); // check against null, throws an exception
+            if(orderId == null || orderId < 1){
+                throw new IllegalArgumentException("PO (receivePurchaseOrder): Invalid order ID provided: " + orderId);
+            }
 
-            PurchaseOrder order = poServiceHelper.getPurchaseOrderById(orderId);
+            PurchaseOrder order = purchaseOrderQueryService.findById(orderId);
 
             if(order.isFinalized()){
                 throw new ValidationException("PO (receivePurchaseOrder): Cannot receive stock for finalized order");
@@ -194,10 +167,12 @@ public class POServiceInInventoryImpl implements POServiceInInventory {
     @Transactional
     public ApiResponse<Void> cancelPurchaseOrderInternal(Long orderId, String jwtToken) throws BadRequestException {
         try {
-            poServiceHelper.validateOrderId(orderId); // check against null, throws an exception
+            if(orderId == null || orderId < 1){
+                throw new IllegalArgumentException("PO (cancelPurchaseOrderInternal): Invalid order ID provided: " + orderId);
+            }
             String user = securityUtils.validateAndExtractUsername(jwtToken);
 
-            PurchaseOrder purchaseOrder = poServiceHelper.getPurchaseOrderById(orderId);
+            PurchaseOrder purchaseOrder = purchaseOrderQueryService.findById(orderId);
 
             // Cancellation only allowed if not already received or failed
             if (purchaseOrder.isFinalized()) {
@@ -232,67 +207,21 @@ public class POServiceInInventoryImpl implements POServiceInInventory {
 
     @Override
     @Transactional(readOnly = true)
-    public Long getTotalValidPoSize(){
-        try{
-            return purchaseOrderRepository.countIncomingPurchaseOrders();
-        } catch (DataAccessException da){
-            log.error("PO (getTotalValidPoSize): Database error while retrieving total valid orders", da);
-            throw new DatabaseException("Failed to retrieve total valid orders due to database error");
-        }
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public PaginatedResponse<SummaryPurchaseOrderView> searchInIncomingPurchaseOrders(String text, int page, int size, String sortBy, String sortDirection) {
-        try {
-            globalServiceHelper.validatePaginationParameters(page, size);
-            if (text == null || text.trim().isEmpty()) {
-                log.warn("PO (searchInIncomingPurchaseOrders): Search text is null or empty, returning all incoming orders.");
-                return getAllPendingPurchaseOrders(page, size, DEFAULT_SORT_BY_FOR_PO, DEFAULT_SORT_DIRECTION);
-            }
-            Page<PurchaseOrder> purchaseOrderPage = icPoSearchStrategy.searchInPos(text, page, size, sortBy, sortDirection);
-            return poServiceHelper.transformToPaginatedSummaryView(purchaseOrderPage);
-        } catch (Exception e) {
-            log.error("PO (searchInIncomingPurchaseOrders): Error searching orders - {}", e.getMessage());
-            throw new ServiceException("Failed to search orders", e);
-        }
+        return purchaseOrderSearchService.searchPending(text, page, size, sortBy, sortDirection);
     }
 
     @Override
     @Transactional(readOnly = true)
     public PaginatedResponse<SummaryPurchaseOrderView> filterIncomingPurchaseOrders(PurchaseOrderStatus status, ProductCategories category,
                                                                            String sortBy, String sortDirection, int page, int size){
-        try {
-            // Parse sort direction
-            Sort.Direction direction = sortDirection.equalsIgnoreCase("desc") ?
-                    Sort.Direction.DESC : Sort.Direction.ASC;
-
-            // Create Pageable with the Sort
-            Sort sort = Sort.by(direction, sortBy);
-            Pageable pageable = PageRequest.of(page, size, sort);
-
-            return filterWaitingPurchaseOrders.filterPurchaseOrders(category, status, pageable);
-        } catch (Exception e) {
-            log.error("PO (filterIncomingPurchaseOrders): Error filtering orders - {}", e.getMessage());
-            throw new ServiceException("Failed to filter orders", e);
-        }
+        return purchaseOrderSearchService.filterPending(status, category, sortBy, sortDirection, page, size);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public PaginatedResponse<PurchaseOrderResponseDto> getAllOverduePurchaseOrders(int page, int size) {
-        try {
-            Sort sort = Sort.by(Sort.Direction.DESC, "product.name");
-            Pageable pageable = PageRequest.of(page, size, sort);
-            Page<PurchaseOrder> allOverdueOrders = purchaseOrderRepository.findAllOverdueOrders(pageable);
-            log.info("PO (getAllOverduePurchaseOrders): Retrieved {} overdue orders", allOverdueOrders.getTotalElements());
-            return poServiceHelper.transformToPaginatedDtoResponse(allOverdueOrders);
-        } catch (DataAccessException dae) {
-            log.error("PO (getAllOverduePurchaseOrders): Database error while retrieving overdue orders", dae);
-            throw new DatabaseException("Failed to retrieve overdue orders due to database error");
-        } catch (Exception e) {
-            log.error("PO (getAllOverduePurchaseOrders): Unexpected error while retrieving overdue orders", e);
-            throw new ServiceException("Failed to retrieve overdue orders: " + e.getMessage());
-        }
+    public PaginatedResponse<SummaryPurchaseOrderView> getAllOverduePurchaseOrders(int page, int size) {
+        // Delegate to query service
+        return purchaseOrderQueryService.getAllOverduePurchaseOrders(page, size);
     }
 }

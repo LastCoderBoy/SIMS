@@ -5,12 +5,12 @@ import com.JK.SIMS.models.purchaseOrder.PurchaseOrderStatus;
 import com.JK.SIMS.models.purchaseOrder.confirmationToken.ConfirmationToken;
 import com.JK.SIMS.models.purchaseOrder.confirmationToken.ConfirmationTokenStatus;
 import com.JK.SIMS.repository.confirmationTokenRepo.ConfirmationTokenRepository;
-import com.JK.SIMS.service.utilities.PurchaseOrderServiceHelper;
+import com.JK.SIMS.service.orderManagementService.purchaseOrderService.PurchaseOrderService;
+import com.JK.SIMS.service.purchaseOrder.purchaseOrderQueryService.PurchaseOrderQueryService;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,14 +23,12 @@ import java.util.Map;
 import static com.JK.SIMS.service.utilities.GlobalServiceHelper.generateToken;
 
 @Service
-@AllArgsConstructor
+@Slf4j
+@RequiredArgsConstructor
 public class ConfirmationTokenService {
-
-    private static final Logger logger = LoggerFactory.getLogger(ConfirmationTokenService.class);
-
-    private final ConfirmationTokenRepository tokenRepository;
-    private final PurchaseOrderServiceHelper poServiceHelper;
     private final Clock clock;
+    private final PurchaseOrderQueryService purchaseOrderQueryService;
+    private final ConfirmationTokenRepository tokenRepository;
 
     @Transactional
     public ConfirmationToken createConfirmationToken(PurchaseOrder order){
@@ -53,13 +51,14 @@ public class ConfirmationTokenService {
             PurchaseOrder order = token.getOrder();
             order.setStatus(PurchaseOrderStatus.FAILED);
 
-            poServiceHelper.saveIncomingStock(order);
+            purchaseOrderQueryService.save(order);
             tokenRepository.delete(token);
-            logger.info("Deleted {} Expired Confirmation Token", expiredTokens.size());
+            log.info("Deleted {} Expired Confirmation Token", expiredTokens.size());
         }
     }
 
     @Nullable
+    @Transactional(readOnly = true)
     public ConfirmationToken validateConfirmationToken(String token) {
         ConfirmationToken confirmationToken = getConfirmationToken(token);
         if (confirmationToken.getClickedAt() != null ||
@@ -69,8 +68,8 @@ public class ConfirmationTokenService {
         return confirmationToken;
     }
 
-    @Transactional(readOnly = true)
-    public ConfirmationToken getConfirmationToken(String token) {
+
+    private ConfirmationToken getConfirmationToken(String token) {
         return tokenRepository.findByToken(token).orElse(null);
     }
 
@@ -85,7 +84,7 @@ public class ConfirmationTokenService {
     public void updateConfirmationToken(ConfirmationToken token, ConfirmationTokenStatus status) {
         token.setClickedAt(GlobalServiceHelper.now(clock));
         token.setStatus(status);
-        logger.info("Token saved successfully: {}", token);
+        log.info("Token saved successfully: {}", token);
         tokenRepository.save(token);
     }
     

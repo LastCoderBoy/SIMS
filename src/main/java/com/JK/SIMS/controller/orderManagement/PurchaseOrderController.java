@@ -1,11 +1,11 @@
 package com.JK.SIMS.controller.orderManagement;
 
 
-import com.JK.SIMS.config.security.utils.TokenUtils;
-import com.JK.SIMS.exception.InvalidTokenException;
 import com.JK.SIMS.models.ApiResponse;
+import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
-import com.JK.SIMS.models.purchaseOrder.dtos.PurchaseOrderRequestDto;
+import com.JK.SIMS.models.purchaseOrder.PurchaseOrderStatus;
+import com.JK.SIMS.models.purchaseOrder.dtos.PurchaseOrderRequest;
 import com.JK.SIMS.models.purchaseOrder.dtos.views.DetailsPurchaseOrderView;
 import com.JK.SIMS.models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.service.InventoryServices.poService.POServiceInInventory;
@@ -44,19 +44,18 @@ public class PurchaseOrderController {
 
     @GetMapping("/{orderId}")
     public ResponseEntity<?> getDetailsForPurchaseOrderId(@PathVariable Long orderId){
-        log.info("OM-PO: getDetailsForPurchaseOrderId() calling for ID: {}", orderId);
-        DetailsPurchaseOrderView detailsForPurchaseOrder = purchaseOrderService.getDetailsForPurchaseOrderId(orderId);
+        log.info("OM-PO: getDetailsForPurchaseOrder() calling for ID: {}", orderId);
+        DetailsPurchaseOrderView detailsForPurchaseOrder = purchaseOrderService.getDetailsForPurchaseOrder(orderId);
         return ResponseEntity.ok(detailsForPurchaseOrder);
     }
 
     @PostMapping("/create")
     @PreAuthorize("@securityUtils.hasAccess()")
-    public ResponseEntity<?> createPurchaseOrder(@Valid @RequestBody PurchaseOrderRequestDto stockRequest,
+    public ResponseEntity<?> createPurchaseOrder(@Valid @RequestBody PurchaseOrderRequest stockRequest,
                                                  @RequestHeader("Authorization") String token) throws BadRequestException, AccessDeniedException {
         log.info("OM-PO: createPurchaseOrder() calling...");
         String jwtToken = validateAndExtractToken(token);
-        ApiResponse<PurchaseOrderRequestDto> response =
-                purchaseOrderService.createPurchaseOrder(stockRequest, jwtToken);
+        ApiResponse<PurchaseOrderRequest> response = purchaseOrderService.createPurchaseOrder(stockRequest, jwtToken);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
@@ -83,8 +82,8 @@ public class PurchaseOrderController {
     }
 
     @GetMapping("/filter")
-    public ResponseEntity<?> filterPurchaseOrders(@RequestParam(required = false) String category,
-                                                  @RequestParam(required = false) String status,
+    public ResponseEntity<?> filterPurchaseOrders(@RequestParam(required = false) ProductCategories category,
+                                                  @RequestParam(required = false) PurchaseOrderStatus status,
                                                   @RequestParam(defaultValue = "product.name") String sortBy,
                                                   @RequestParam(defaultValue = "asc") String sortDirection,
                                                   @RequestParam(defaultValue = "0") int page,

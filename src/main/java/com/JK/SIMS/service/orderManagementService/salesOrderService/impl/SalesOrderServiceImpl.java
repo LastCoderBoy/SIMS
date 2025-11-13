@@ -23,8 +23,8 @@ import com.JK.SIMS.service.orderManagementService.salesOrderService.SoQrCodeServ
 import com.JK.SIMS.service.productManagementService.utils.queryService.ProductQueryService;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import com.JK.SIMS.service.utilities.SalesOrderServiceHelper;
-import com.JK.SIMS.service.utilities.salesOrderFilterLogic.SoFilterStrategy;
-import com.JK.SIMS.service.utilities.salesOrderSearchLogic.SoSearchStrategy;
+import com.JK.SIMS.service.salesOrder.salesOrderSearchService.salesOrderFilterLogic.SoFilterStrategy;
+import com.JK.SIMS.service.salesOrder.salesOrderSearchService.salesOrderSearchLogic.SoSearchStrategy;
 import jakarta.annotation.Nullable;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;

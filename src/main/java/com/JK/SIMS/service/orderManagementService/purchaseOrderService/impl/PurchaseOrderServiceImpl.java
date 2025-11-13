@@ -12,7 +12,7 @@ import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrderStatus;
 import com.JK.SIMS.models.purchaseOrder.confirmationToken.ConfirmationToken;
-import com.JK.SIMS.models.purchaseOrder.dtos.PurchaseOrderRequestDto;
+import com.JK.SIMS.models.purchaseOrder.dtos.PurchaseOrderRequest;
 import com.JK.SIMS.models.purchaseOrder.dtos.views.DetailsPurchaseOrderView;
 import com.JK.SIMS.models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.models.supplier.Supplier;
@@ -21,26 +21,17 @@ import com.JK.SIMS.service.confirmTokenService.ConfirmationTokenService;
 import com.JK.SIMS.service.email_service.EmailSender;
 import com.JK.SIMS.service.orderManagementService.purchaseOrderService.PurchaseOrderService;
 import com.JK.SIMS.service.productManagementService.utils.queryService.ProductQueryService;
+import com.JK.SIMS.service.purchaseOrder.purchaseOrderQueryService.PurchaseOrderQueryService;
+import com.JK.SIMS.service.purchaseOrder.purchaseOrderSearchService.PurchaseOrderSearchService;
 import com.JK.SIMS.service.supplierService.SupplierService;
-import com.JK.SIMS.service.utilities.GlobalServiceHelper;
-import com.JK.SIMS.service.utilities.ProductCategoriesConverter;
-import com.JK.SIMS.service.utilities.PurchaseOrderServiceHelper;
-import com.JK.SIMS.service.utilities.PurchaseOrderStatusConverter;
-import com.JK.SIMS.service.utilities.purchaseOrderFilterLogic.PoFilterStrategy;
-import com.JK.SIMS.service.utilities.purchaseOrderSearchLogic.PoSearchStrategy;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.coyote.BadRequestException;
-import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
@@ -59,14 +50,10 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
 
     // =========== Helpers & Utilities ===========
     private final SecurityUtils securityUtils;
-    private final GlobalServiceHelper globalServiceHelper;
-    private final PurchaseOrderServiceHelper purchaseOrderServiceHelper;
 
     // =========== Components ===========
-    private final PoSearchStrategy omPoSearchStrategy;
-    private final PoFilterStrategy filterPurchaseOrders;
-    private final PurchaseOrderStatusConverter purchaseOrderStatusConverter;
-    private final ProductCategoriesConverter productCategoriesConverter;
+    private final PurchaseOrderSearchService purchaseOrderSearchService;
+    private final PurchaseOrderQueryService purchaseOrderQueryService;
 
     // =========== External Services ===========
     private final SupplierService supplierService;
@@ -77,18 +64,33 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     // =========== Repositories ===========
     private final PurchaseOrderRepository purchaseOrderRepository;
 
+    @Override
+    @Transactional(readOnly = true)
+    public PaginatedResponse<SummaryPurchaseOrderView> getAllPurchaseOrders(int page, int size, String sortBy, String sortDirection) {
+        return purchaseOrderQueryService.getAllPurchaseOrders(page, size, sortBy, sortDirection);
+    }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public DetailsPurchaseOrderView getDetailsForPurchaseOrder(Long orderId) throws ResourceNotFoundException {
+        return purchaseOrderQueryService.getDetailsForPurchaseOrder(orderId);
+    }
+
 
     @Override
     @Transactional
-    public ApiResponse<PurchaseOrderRequestDto> createPurchaseOrder(@Valid PurchaseOrderRequestDto stockRequest,
-                                                                    String jwtToken) throws BadRequestException {
+    public ApiResponse<PurchaseOrderRequest> createPurchaseOrder(@Valid PurchaseOrderRequest stockRequest,
+                                                                 String jwtToken) throws BadRequestException {
         try {
             String orderedPerson = securityUtils.validateAndExtractUsername(jwtToken);
-            ProductsForPM orderedProduct = validateAndGetProduct(stockRequest.getProductId());
+            ProductsForPM orderedProduct = productQueryService.isProductFinalized(stockRequest.getProductId()); // throws ValidationException if not finalized
             PurchaseOrder order = createOrderEntity(stockRequest, orderedProduct, orderedPerson);
             saveAndRequestPurchaseOrder(order);
+
             log.info("OM-PO (createPurchaseOrder): Product ordered successfully. PO Number: {}", order.getPONumber());
             return new ApiResponse<>(true, "Order created successfully. PO Number: " + order.getPONumber(), stockRequest);
+
         } catch (DataIntegrityViolationException de) {
             log.error("OM-PO (createPurchaseOrder): Failed to create incoming stock due to PO Number collision. Please try again. : {}", de.getMessage(), de);
             throw new DatabaseException("Failed to create incoming stock due to PO Number collision. Please try again.");
@@ -106,103 +108,17 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public PaginatedResponse<SummaryPurchaseOrderView> getAllPurchaseOrders(int page, int size, String sortBy, String sortDirection) {
-        try {
-            Sort sort = sortDirection.equalsIgnoreCase("desc")
-                    ? Sort.by(sortBy).descending()
-                    : Sort.by(sortBy).ascending();
-            Pageable pageable = PageRequest.of(page, size, sort);
-            // Retrieve the data and return the paginated response
-            Page<PurchaseOrder> entityResponse = purchaseOrderRepository.findAll(pageable);
-            log.info("OM-PO (getAllPurchaseOrders): Returning {} paginated data", entityResponse.getContent().size());
-            return purchaseOrderServiceHelper.transformToPaginatedSummaryView(entityResponse);
-        } catch (DataAccessException da) {
-            log.error("OM-PO (getAllPurchaseOrders): Database error occurred: {}", da.getMessage(), da);
-            throw new DatabaseException("Database error", da);
-        } catch (PropertyReferenceException e) {
-            log.error("OM-PO (getAllPurchaseOrders): Invalid sort field provided: {}", e.getMessage(), e);
-            throw new ValidationException("Invalid sort field provided: " + e.getMessage());
-        } catch (Exception e) {
-            log.error("OM-PO (getAllPurchaseOrders): Unexpected error occurred: {}", e.getMessage(), e);
-            throw new ServiceException("Internal Service Error occurred:", e);
-        }
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public DetailsPurchaseOrderView getDetailsForPurchaseOrderId(Long orderId) throws ResourceNotFoundException {
-        try {
-            purchaseOrderServiceHelper.validateOrderId(orderId);
-            PurchaseOrder purchaseOrder = purchaseOrderServiceHelper.getPurchaseOrderById(orderId);
-            log.info("OM-PO (getDetailsForPurchaseOrderId): Returning details for PO ID: {}", orderId);
-            return new DetailsPurchaseOrderView(purchaseOrder);
-        } catch (DataAccessException da) {
-            log.error("OM-PO (getDetailsForPurchaseOrderId): Database error occurred: {}", da.getMessage(), da);
-            throw new DatabaseException("Database error", da);
-        } catch (ResourceNotFoundException e) {
-            log.error("OM-PO (getDetailsForPurchaseOrderId): Order ID {} not found: {}", orderId, e.getMessage(), e);
-            throw new ResourceNotFoundException("Order ID " + orderId + " not found", e);
-        } catch (IllegalArgumentException e) {
-            log.error("OM-PO (getDetailsForPurchaseOrderId): Invalid order ID provided: {}", e.getMessage(), e);
-            throw new ValidationException("Invalid order ID provided: " + e.getMessage());
-        } catch (Exception e) {
-            log.error("OM-PO (getDetailsForPurchaseOrderId): Unexpected error occurred: {}", e.getMessage(), e);
-            throw new ServiceException("Internal Service Error occurred:", e);
-        }
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public PaginatedResponse<SummaryPurchaseOrderView> searchPurchaseOrders(String text, int page, int size, String sortBy, String sortDirection) {
-        globalServiceHelper.validatePaginationParameters(page, size);
-        if (text == null || text.trim().isEmpty()) {
-            log.warn("PO (searchPurchaseOrders): Search text is null or empty, returning all incoming orders.");
-            return getAllPurchaseOrders(page, size, sortBy, sortDirection);
-        }
-        Page<PurchaseOrder> purchaseOrderPage = omPoSearchStrategy.searchInPos(text, page, size, sortBy, sortDirection);
-        return purchaseOrderServiceHelper.transformToPaginatedSummaryView(purchaseOrderPage);
+        return purchaseOrderSearchService.searchAll(text, page, size, sortBy, sortDirection);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public PaginatedResponse<SummaryPurchaseOrderView> filterPurchaseOrders(String category, String status, String sortBy, String sortDirection, int page, int size) {
-        try {
-            globalServiceHelper.validatePaginationParameters(page, size);
-            Sort sort = sortDirection.equalsIgnoreCase("desc") ? Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
-            Pageable pageable = PageRequest.of(page, size, sort);
-            // Validate the category if provided
-            ProductCategories categoryValue = null;
-            if (category != null) {
-                categoryValue = productCategoriesConverter.convert(category); // throws ValidationException if invalid
-            }
-            // Validate the status if provided
-            PurchaseOrderStatus statusValue = null;
-            if (status != null) {
-                statusValue = purchaseOrderStatusConverter.convert(status);  // throws ValidationException if invalid
-            }
-            return filterPurchaseOrders.filterPurchaseOrders(categoryValue, statusValue, pageable);
-        } catch (DataAccessException da) {
-            log.error("OM-PO (FilterPurchaseOrders): Database error occurred: {}", da.getMessage(), da);
-            throw new DatabaseException("Internal error", da);
-        } catch (ValidationException ve){
-            log.error("OM-PO (FilterPurchaseOrders): Invalid filter provided: {}", ve.getMessage(), ve);
-            throw new ValidationException("Invalid filter provided: " + ve.getMessage());
-        } catch (Exception e) {
-            log.error("OM-PO (FilterPurchaseOrders): Unexpected error occurred: {}", e.getMessage(), e);
-            throw new ServiceException("Internal Service Error occurred:", e);
-        }
+    public PaginatedResponse<SummaryPurchaseOrderView> filterPurchaseOrders(ProductCategories category, PurchaseOrderStatus status, String sortBy, String sortDirection, int page, int size) {
+        return purchaseOrderSearchService.filterAll(category, status, sortBy, sortDirection, page, size);
     }
 
-    // Private helper methods
-    private ProductsForPM validateAndGetProduct(String productId) throws ResourceNotFoundException, ValidationException {
-        ProductsForPM product = productQueryService.findById(productId);
-        if (product.isInInvalidStatus()) {
-            throw new ValidationException("Product is not for sale and cannot be ordered. Please update the status in the PM section first.");
-        }
-        return product;
-    }
-
-    private PurchaseOrder createOrderEntity(PurchaseOrderRequestDto stockRequest,
+    private PurchaseOrder createOrderEntity(PurchaseOrderRequest stockRequest,
                                             ProductsForPM orderedProduct, String orderedPerson) throws ResourceNotFoundException {
         Supplier supplier = supplierService.getSupplierEntityById(stockRequest.getSupplierId());
         String poNumber = generatePoNumber(supplier.getId());
