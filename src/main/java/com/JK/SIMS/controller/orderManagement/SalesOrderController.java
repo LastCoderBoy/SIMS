@@ -11,7 +11,7 @@ import com.JK.SIMS.models.salesOrder.dtos.views.DetailedSalesOrderView;
 import com.JK.SIMS.models.salesOrder.dtos.views.SummarySalesOrderView;
 import com.JK.SIMS.models.salesOrder.orderItem.dtos.BulkOrderItemsRequestDto;
 import com.JK.SIMS.models.PaginatedResponse;
-import com.JK.SIMS.service.InventoryServices.soService.SoServiceInIc;
+import com.JK.SIMS.service.InventoryServices.soService.SoServiceInInventory;
 import com.JK.SIMS.service.orderManagementService.salesOrderService.SalesOrderService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
@@ -33,11 +33,11 @@ import static com.JK.SIMS.service.utilities.SalesOrderServiceHelper.validateSale
 @RequestMapping("/api/v1/products/manage-order/so")
 public class SalesOrderController {
 
-    private final SoServiceInIc soServiceInIc;
+    private final SoServiceInInventory soServiceInInventory;
     private final SalesOrderService salesOrderService;
     @Autowired
-    public SalesOrderController(SoServiceInIc soServiceInIc, SalesOrderService salesOrderService) {
-        this.soServiceInIc = soServiceInIc;
+    public SalesOrderController(SoServiceInInventory soServiceInInventory, SalesOrderService salesOrderService) {
+        this.soServiceInInventory = soServiceInInventory;
         this.salesOrderService = salesOrderService;
     }
 
@@ -128,7 +128,7 @@ public class SalesOrderController {
         log.info("OM-SO: cancelSalesOrder() calling...");
         if(token != null && !token.trim().isEmpty()) {
             String jwtToken = TokenUtils.extractToken(token);
-            ApiResponse<Void> response = soServiceInIc.cancelSalesOrder(orderId, jwtToken);
+            ApiResponse<Void> response = soServiceInInventory.cancelSalesOrder(orderId, jwtToken);
             return new ResponseEntity<>(response, HttpStatus.OK);
         }
         log.error("OM-SO: cancelSalesOrder() Invalid Token provided. {}", token);

@@ -11,7 +11,7 @@ import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.inventoryData.InventoryControlData;
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrderStatus;
-import com.JK.SIMS.models.purchaseOrder.dtos.ReceiveStockRequestDto;
+import com.JK.SIMS.models.purchaseOrder.dtos.ReceiveStockRequest;
 import com.JK.SIMS.models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.models.stockMovements.StockMovementReferenceType;
 import com.JK.SIMS.models.stockMovements.StockMovementType;
@@ -71,7 +71,7 @@ public class POServiceInInventoryImpl implements POServiceInInventory {
     // STOCK IN button logic.
     @Override
     @Transactional
-    public ApiResponse<Void> receivePurchaseOrder(Long orderId, @Valid ReceiveStockRequestDto receiveRequest, String jwtToken) throws BadRequestException {
+    public ApiResponse<Void> receivePurchaseOrder(Long orderId, @Valid ReceiveStockRequest receiveRequest, String jwtToken) throws BadRequestException {
         try {
             String updatedPerson = securityUtils.validateAndExtractUsername(jwtToken);
             if(orderId == null || orderId < 1){
@@ -106,7 +106,7 @@ public class POServiceInInventoryImpl implements POServiceInInventory {
         }
     }
 
-    private void updateOrderWithReceivedStock(PurchaseOrder order, ReceiveStockRequestDto receiveRequest) {
+    private void updateOrderWithReceivedStock(PurchaseOrder order, ReceiveStockRequest receiveRequest) {
         // Set actual arrival date
         if (receiveRequest.getActualArrivalDate() != null) {
             if (receiveRequest.getActualArrivalDate().isAfter(LocalDate.now())) {
@@ -120,8 +120,11 @@ public class POServiceInInventoryImpl implements POServiceInInventory {
         }
 
         // Update received quantity
-        int quantityToReceive = receiveRequest.getReceivedQuantity();
-        order.setReceivedQuantity(order.getReceivedQuantity() + quantityToReceive);
+        int receivedQuantity = receiveRequest.getReceivedQuantity();
+        if(receivedQuantity > order.getOrderedQuantity()){
+            throw new ValidationException("PO (receivePurchaseOrder): Cannot accept more than the ordered quantity");
+        }
+        order.setReceivedQuantity(order.getReceivedQuantity() + receivedQuantity);
 
         // Update status based on received quantity
         updateOrderStatus(order);
@@ -138,12 +141,10 @@ public class POServiceInInventoryImpl implements POServiceInInventory {
     }
 
     private void updateInventoryLevels(PurchaseOrder order, int receivedQuantity) {
-        if (receivedQuantity <= 0) {
-            return; // No inventory update needed
-        }
         try {
             Optional<InventoryControlData> inventoryProductOpt =
                     inventoryQueryService.getInventoryProductByProductId(order.getProduct().getProductID());
+
             if(inventoryProductOpt.isPresent()){
                 InventoryControlData inventoryProduct = inventoryProductOpt.get();
                 int newStockLevel = inventoryProduct.getCurrentStock() + receivedQuantity;

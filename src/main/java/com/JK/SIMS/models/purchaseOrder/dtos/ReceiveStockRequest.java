@@ -11,7 +11,7 @@ import java.time.LocalDate;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class ReceiveStockRequestDto {
+public class ReceiveStockRequest {
 
     @NotNull(message = "Received quantity is required")
     @Min(value = 0, message = "Received quantity must be at least 0")

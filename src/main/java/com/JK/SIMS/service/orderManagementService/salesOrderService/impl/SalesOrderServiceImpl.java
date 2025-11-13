@@ -21,10 +21,12 @@ import com.JK.SIMS.service.InventoryServices.inventoryPageService.stockManagemen
 import com.JK.SIMS.service.orderManagementService.salesOrderService.SalesOrderService;
 import com.JK.SIMS.service.orderManagementService.salesOrderService.SoQrCodeService;
 import com.JK.SIMS.service.productManagementService.utils.queryService.ProductQueryService;
-import com.JK.SIMS.service.utilities.GlobalServiceHelper;
-import com.JK.SIMS.service.utilities.SalesOrderServiceHelper;
+import com.JK.SIMS.service.salesOrder.salesOrderQueryService.SalesOrderQueryService;
+import com.JK.SIMS.service.salesOrder.salesOrderSearchService.SalesOrderSearchService;
 import com.JK.SIMS.service.salesOrder.salesOrderSearchService.salesOrderFilterLogic.SoFilterStrategy;
 import com.JK.SIMS.service.salesOrder.salesOrderSearchService.salesOrderSearchLogic.SoSearchStrategy;
+import com.JK.SIMS.service.utilities.GlobalServiceHelper;
+import com.JK.SIMS.service.utilities.SalesOrderServiceHelper;
 import jakarta.annotation.Nullable;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;
@@ -34,7 +36,6 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -62,52 +63,25 @@ public class SalesOrderServiceImpl implements SalesOrderService {
     private final SoFilterStrategy filterSalesOrdersInOm;
 
     // ========== Services ==========
+    private final SalesOrderQueryService salesOrderQueryService;
     private final ProductQueryService productQueryService;
+    private final SalesOrderSearchService salesOrderSearchService;
     private final SoQrCodeService soQrCodeService;
 
     // ========== Repositories ==========
     private final SalesOrderRepository salesOrderRepository;
 
 
-
-
     @Override
     @Transactional(readOnly = true)
     public PaginatedResponse<SummarySalesOrderView> getAllSummarySalesOrders(String sortBy, String sortDirection, int page, int size) {
-        try {
-            Pageable pageable = globalServiceHelper.preparePageable(page, size, sortBy, sortDirection);
-            Page<SalesOrder> salesOrderPage = salesOrderRepository.findAll(pageable);
-            log.info("OM-SO (getAllSummarySalesOrders): Returning {} paginated data", salesOrderPage.getContent().size());
-            return salesOrderServiceHelper.transformToSummarySalesOrderView(salesOrderPage);
-        } catch (DataAccessException da){
-            log.error("OM-SO (getAllSummarySalesOrders): Database error occurred: {}", da.getMessage(), da);
-            throw new DatabaseException("Database error occurred, please contact the administration");
-        } catch (PropertyReferenceException e) {
-            log.error("OM-SO (getAllSummarySalesOrders): Invalid sort field provided: {}", e.getMessage(), e);
-            throw new ValidationException("Invalid sort field provided. Check your request");
-        } catch (Exception e) {
-            log.error("OM-SO (getAllSummarySalesOrders): Unexpected error occurred: {}", e.getMessage(), e);
-            throw new ServiceException("Internal Service Error occurred: ", e);
-        }
+        return salesOrderQueryService.getAllSummarySalesOrders(sortBy, sortDirection, page, size);
     }
 
     @Override
     @Transactional(readOnly = true)
     public DetailedSalesOrderView getDetailsForSalesOrderId(Long orderId) {
-        try {
-            globalServiceHelper.validateOrderId(orderId, salesOrderRepository, "SalesOrder"); // might throw ValidationException
-            SalesOrder salesOrder = getSalesOrderById(orderId);
-            log.info("Returning detailed salesOrder view for ID: {}", orderId);
-            return new DetailedSalesOrderView(salesOrder);
-        } catch (ValidationException | ResourceNotFoundException e) {
-            throw e;
-        } catch (DataAccessException da) {
-            log.error("OM-SO (getDetailsForSalesOrderId): Database error occurred: {}", da.getMessage(), da);
-            throw new DatabaseException("Database error occurred, please contact the administration");
-        } catch (Exception e) {
-            log.error("OM-SO (getDetailsForSalesOrderId): Unexpected error occurred: {}", e.getMessage(), e);
-            throw new ServiceException("Internal Service Error occurred: ", e);
-        }
+        return salesOrderQueryService.getDetailsForSalesOrder(orderId);
     }
 
 
@@ -452,18 +426,7 @@ public class SalesOrderServiceImpl implements SalesOrderService {
     @Override
     @Transactional(readOnly = true)
     public PaginatedResponse<SummarySalesOrderView> searchInSalesOrders(String text, int page, int size, String sortBy, String sortDirection) {
-        try {
-            globalServiceHelper.validatePaginationParameters(page, size);
-            if(text == null || text.trim().isEmpty()){
-                log.info("OM-SO searchInSalesOrders(): No search text provided, returning all orders");
-                return getAllSummarySalesOrders(sortBy, sortDirection, page, size);
-            }
-            Page<SalesOrder> salesOrderPage = omSoSearchStrategy.searchInSo(text, page, size, sortBy, sortDirection);
-            return salesOrderServiceHelper.transformToSummarySalesOrderView(salesOrderPage);
-        } catch (Exception e) {
-            log.error("OM-SO searchInSalesOrders(): Unexpected error occurred: {}", e.getMessage(), e);
-            throw new ServiceException("Internal Service Error occurred: ", e);
-        }
+        return salesOrderSearchService.searchAll(text, page, size, sortBy, sortDirection);
     }
 
     @Override
@@ -471,32 +434,7 @@ public class SalesOrderServiceImpl implements SalesOrderService {
     public PaginatedResponse<SummarySalesOrderView> filterSalesOrders(SalesOrderStatus statusValue, String optionDateValue,
                                                                       LocalDate startDate, LocalDate endDate,
                                                                       int page, int size, String sortBy, String sortDirection){
-        try{
-            // Validate and prepare the pageable
-            Pageable pageable = globalServiceHelper.preparePageable(page, size, sortBy, sortDirection);
-
-            // Filter the orders
-            Page<SalesOrder> salesOrderPage =
-                    filterSalesOrdersInOm.filterSalesOrders(statusValue, optionDateValue, startDate, endDate, pageable);
-            return salesOrderServiceHelper.transformToSummarySalesOrderView(salesOrderPage);
-        } catch (IllegalArgumentException e) {
-            log.error("OM-SO filterSalesOrders(): Invalid filter parameters: {}", e.getMessage(), e);
-            throw new ValidationException("Invalid filter parameters: " + e.getMessage());
-        } catch (Exception e) {
-            log.error("OM-SO filterSalesOrders(): Unexpected error occurred: {}", e.getMessage(), e);
-            throw new ServiceException("Internal Service Error occurred: ", e);
-        }
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Long countInProgressSalesOrders() {
-        try {
-            return salesOrderRepository.countInProgressSalesOrders();
-        } catch (DataAccessException e) {
-            log.error("OM-SO (getTotalSalesOrdersCount): Database error - {}", e.getMessage(), e);
-            throw new DatabaseException("Failed to count sales orders", e);
-        }
+        return salesOrderSearchService.filterAll(statusValue, optionDateValue, startDate, endDate, page, size, sortBy, sortDirection);
     }
 
     // Note that: the Order Reference max prefix number is "SO-yyyy-MM-dd-999"

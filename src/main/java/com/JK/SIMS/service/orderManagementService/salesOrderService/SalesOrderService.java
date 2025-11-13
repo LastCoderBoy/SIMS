@@ -20,5 +20,4 @@ public interface SalesOrderService {
     ApiResponse<String> removeItemFromSalesOrder(Long orderId, Long itemId, String jwtToken);
     PaginatedResponse<SummarySalesOrderView> searchInSalesOrders(String text, int page, int size, String sortBy, String sortDirection);
     PaginatedResponse<SummarySalesOrderView> filterSalesOrders(SalesOrderStatus soStatus, String optionDateValue, LocalDate startDate, LocalDate endDate, int page, int size, String sortBy, String sortDirection);
-    Long countInProgressSalesOrders();
 }

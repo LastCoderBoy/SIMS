@@ -1,23 +1,17 @@
 package com.JK.SIMS.service.purchaseOrder.purchaseOrderSearchService;
 
-import com.JK.SIMS.exception.DatabaseException;
-import com.JK.SIMS.exception.ServiceException;
-import com.JK.SIMS.exception.ValidationException;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrderStatus;
 import com.JK.SIMS.models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.service.purchaseOrder.purchaseOrderQueryService.PurchaseOrderQueryService;
+import com.JK.SIMS.service.purchaseOrder.purchaseOrderSearchService.purchaseOrderFilterLogic.PoFilterStrategy;
 import com.JK.SIMS.service.purchaseOrder.purchaseOrderSearchService.purchaseOrderSearchLogic.PoSearchStrategy;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
-import com.JK.SIMS.service.utilities.ProductCategoriesConverter;
 import com.JK.SIMS.service.utilities.PurchaseOrderServiceHelper;
-import com.JK.SIMS.service.utilities.PurchaseOrderStatusConverter;
-import com.JK.SIMS.service.purchaseOrder.purchaseOrderSearchService.purchaseOrderFilterLogic.PoFilterStrategy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -32,8 +26,6 @@ public class PurchaseOrderSearchService {
     private final GlobalServiceHelper globalServiceHelper;
     private final PurchaseOrderServiceHelper poServiceHelper;
     private final PurchaseOrderQueryService queryService;
-    private final PurchaseOrderStatusConverter statusConverter;
-    private final ProductCategoriesConverter categoryConverter;
     // Search & Filters
     private final PoSearchStrategy icPoSearchStrategy;
     private final PoSearchStrategy omPoSearchStrategy;

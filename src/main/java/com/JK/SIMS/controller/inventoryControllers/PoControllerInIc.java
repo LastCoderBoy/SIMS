@@ -4,7 +4,7 @@ import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrderStatus;
-import com.JK.SIMS.models.purchaseOrder.dtos.ReceiveStockRequestDto;
+import com.JK.SIMS.models.purchaseOrder.dtos.ReceiveStockRequest;
 import com.JK.SIMS.models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.service.InventoryServices.poService.POServiceInInventory;
 import jakarta.validation.Valid;
@@ -69,7 +69,6 @@ public class PoControllerInIc {
                                          @RequestParam(defaultValue = "10") int size) {
         PaginatedResponse<SummaryPurchaseOrderView> filterResponse =
                 poServiceInIc.filterIncomingPurchaseOrders(status, category, sortBy, sortDirection, page, size);
-        log.debug("status: {}", status); // DEBUG
         log.info("IcPo filterStock(): Returning {} paginated data", filterResponse.getContent().size());
         return ResponseEntity.ok(filterResponse);
     }
@@ -77,12 +76,11 @@ public class PoControllerInIc {
     // Stock IN button in the PO section | High Roles can only accept the order
     @PutMapping("/{orderId}/receive")
     @PreAuthorize("@securityUtils.hasAccess()")
-    public ResponseEntity<?> receivePurchaseOrder(@Valid @RequestBody ReceiveStockRequestDto receiveRequest,
+    public ResponseEntity<?> receivePurchaseOrder(@Valid @RequestBody ReceiveStockRequest receiveRequest,
                                                        @PathVariable Long orderId,
                                                        @RequestHeader("Authorization") String token) throws BadRequestException, AccessDeniedException {
         log.info("IcPo receivePurchaseOrder() calling...");
         String jwtToken = validateAndExtractToken(token);
-        // TODO: Dont allow to accept quantity more than ordered
         ApiResponse<Void> response =  poServiceInIc.receivePurchaseOrder(orderId, receiveRequest, jwtToken);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }

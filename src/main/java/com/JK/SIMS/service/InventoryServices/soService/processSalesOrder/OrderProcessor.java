@@ -12,6 +12,7 @@ import com.JK.SIMS.service.InventoryServices.inventoryPageService.stockManagemen
 import com.JK.SIMS.service.stockMovementService.StockMovementService;
 import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import com.JK.SIMS.service.utilities.SalesOrderServiceHelper;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,20 +21,13 @@ import java.time.Clock;
 import java.util.Map;
 
 @Slf4j
+@RequiredArgsConstructor
 public abstract class OrderProcessor {
     protected final Clock clock;
 
     protected final SalesOrderServiceHelper salesOrderServiceHelper;
     protected final StockManagementLogic stockManagementLogic;
     protected final StockMovementService stockMovementService;
-    @Autowired
-    public OrderProcessor(Clock clock, SalesOrderServiceHelper salesOrderServiceHelper,
-                          StockManagementLogic stockManagementLogic, StockMovementService stockMovementService) {
-        this.clock = clock;
-        this.salesOrderServiceHelper = salesOrderServiceHelper;
-        this.stockManagementLogic = stockManagementLogic;
-        this.stockMovementService = stockMovementService;
-    }
 
     @Transactional
     public SalesOrder processOrder(SalesOrder salesOrder, Map<String, Integer> approvedQuantities, String approvedPerson){

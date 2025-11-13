@@ -61,10 +61,6 @@ public class SalesOrderServiceHelper {
         return items.stream().map(OrderItem::getOrderPrice).reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    public Integer totalSalesOrderQuantity(List<OrderItemResponse> orderedItems){
-        return orderedItems.stream().mapToInt(OrderItemResponse::getQuantity).sum();
-    }
-
     private OrderItemResponse convertToOrderItemResponseDto(OrderItem item) {
         try {
             ProductsForPM product = item.getProduct();

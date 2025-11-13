@@ -14,6 +14,7 @@ import com.JK.SIMS.service.reportAnalytics.FinancialOverviewService;
 import com.JK.SIMS.service.reportAnalytics.InventoryHealthService;
 import com.JK.SIMS.service.reportAnalytics.OrderSummaryService;
 import com.JK.SIMS.service.reportAnalytics.ReportAnalyticsService;
+import com.JK.SIMS.service.salesOrder.salesOrderQueryService.SalesOrderQueryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,7 +29,7 @@ import java.time.LocalDate;
 public class ReportAnalyticsServiceImpl implements ReportAnalyticsService {
 
     private final ProductQueryService productQueryService;
-    private final SalesOrderService salesOrderService;
+    private final SalesOrderQueryService salesOrderQueryService;
     private final PurchaseOrderQueryService purchaseOrderQueryService;
     private final DamageLossQueryService damageLossQueryService;
 
@@ -42,7 +43,7 @@ public class ReportAnalyticsServiceImpl implements ReportAnalyticsService {
     public DashboardMetrics getMainDashboardMetrics() {
         ReportProductMetrics totalActiveInactiveProducts = productQueryService.countTotalActiveInactiveProducts();
         BigDecimal inventoryStockValue = inventoryHealthService.calculateInventoryStockValueAtRetail();
-        Long inProgressSalesOrders = salesOrderService.countInProgressSalesOrders();
+        Long inProgressSalesOrders = salesOrderQueryService.countInProgressSalesOrders();
         Long totalValidPoSize = purchaseOrderQueryService.getTotalValidPoSize();
         Long totalDamagedProducts = damageLossQueryService.countTotalDamagedProducts();
 

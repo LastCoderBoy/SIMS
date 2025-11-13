@@ -4,7 +4,7 @@ import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrderStatus;
-import com.JK.SIMS.models.purchaseOrder.dtos.ReceiveStockRequestDto;
+import com.JK.SIMS.models.purchaseOrder.dtos.ReceiveStockRequest;
 import com.JK.SIMS.models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;
 import jakarta.validation.Valid;
 import org.apache.coyote.BadRequestException;
@@ -12,7 +12,7 @@ import org.apache.coyote.BadRequestException;
 public interface POServiceInInventory {
     PaginatedResponse<SummaryPurchaseOrderView> getAllPendingPurchaseOrders(int page, int size, String sortBy, String sortDirection);
 
-    ApiResponse<Void> receivePurchaseOrder(Long orderId, @Valid ReceiveStockRequestDto receiveRequest, String jwtToken) throws BadRequestException;
+    ApiResponse<Void> receivePurchaseOrder(Long orderId, @Valid ReceiveStockRequest receiveRequest, String jwtToken) throws BadRequestException;
 
     ApiResponse<Void> cancelPurchaseOrderInternal(Long orderId, String jwtToken) throws BadRequestException;
 

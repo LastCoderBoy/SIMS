@@ -7,6 +7,7 @@ import com.JK.SIMS.service.InventoryServices.inventoryPageService.stockManagemen
 import com.JK.SIMS.service.stockMovementService.StockMovementService;
 import com.JK.SIMS.service.utilities.SalesOrderServiceHelper;
 import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 

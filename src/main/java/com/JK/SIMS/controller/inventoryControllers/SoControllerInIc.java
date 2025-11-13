@@ -1,40 +1,38 @@
 package com.JK.SIMS.controller.inventoryControllers;
 
-import com.JK.SIMS.config.security.utils.TokenUtils;
+import com.JK.SIMS.exception.ServiceException;
+import com.JK.SIMS.exception.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
+import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.salesOrder.dtos.SalesOrderResponseDto;
 import com.JK.SIMS.models.salesOrder.dtos.processSalesOrderDtos.ProcessSalesOrderRequestDto;
 import com.JK.SIMS.models.salesOrder.dtos.views.SummarySalesOrderView;
-import com.JK.SIMS.models.PaginatedResponse;
-import com.JK.SIMS.service.InventoryServices.soService.SoServiceInIc;
+import com.JK.SIMS.service.InventoryServices.soService.SoServiceInInventory;
 import jakarta.validation.Valid;
-import jakarta.validation.ValidationException;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 
-import static com.JK.SIMS.service.utilities.EntityConstants.*;
+import static com.JK.SIMS.service.utilities.EntityConstants.DEFAULT_SORT_BY_FOR_SO;
+import static com.JK.SIMS.service.utilities.EntityConstants.DEFAULT_SORT_DIRECTION;
 import static com.JK.SIMS.service.utilities.GlobalServiceHelper.getOptionDateValue;
+import static com.JK.SIMS.service.utilities.GlobalServiceHelper.validateAndExtractToken;
+import static com.JK.SIMS.service.utilities.SalesOrderServiceHelper.validateSalesOrderStatus;
 
 @RestController
+@Slf4j
+@RequiredArgsConstructor
 @RequestMapping("/api/v1/products/inventory/sales-order")
 public class SoControllerInIc {
 
-    private static final Logger logger = LoggerFactory.getLogger(SoControllerInIc.class);
-    private final SoServiceInIc soServiceInIc;
-    @Autowired
-    public SoControllerInIc(SoServiceInIc soServiceInIc) {
-        this.soServiceInIc = soServiceInIc;
-    }
-
+    private final SoServiceInInventory soServiceInInventory;
 
     @GetMapping
     public ResponseEntity<?> getAllWaitingSalesOrders(
@@ -43,10 +41,10 @@ public class SoControllerInIc {
             @RequestParam(defaultValue = "orderDate") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir) {
 
-        logger.info("IcSo: getAllOutgoingSalesOrders() fetching orders - page: {}, size: {}, sortBy: {}, sortDir: {}",
+        log.info("IcSo: getAllOutgoingSalesOrders() fetching orders - page: {}, size: {}, sortBy: {}, sortDir: {}",
                 page, size, sortBy, sortDir);
         PaginatedResponse<SummarySalesOrderView> orders =
-                soServiceInIc.getAllOutgoingSalesOrders(page, size, sortBy, sortDir);
+                soServiceInInventory.getAllOutgoingSalesOrders(page, size, sortBy, sortDir);
         return ResponseEntity.ok(orders);
     }
 
@@ -55,23 +53,20 @@ public class SoControllerInIc {
                                                      @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size,
                                                      @RequestParam(defaultValue = "orderReference") String sortBy,
                                                      @RequestParam(defaultValue = "desc") String sortDir){
-        logger.info("IcSo: getAllUrgentSalesOrders() calling...");
-        PaginatedResponse<SalesOrderResponseDto> dtoResponse = soServiceInIc.getAllUrgentSalesOrders(page, size, sortBy, sortDir);
+        log.info("IcSo: getAllUrgentSalesOrders() calling...");
+        PaginatedResponse<SalesOrderResponseDto> dtoResponse = soServiceInInventory.getAllUrgentSalesOrders(page, size, sortBy, sortDir);
         return ResponseEntity.ok(dtoResponse);
     }
 
     // Only High Roles can process the order
-    // Stock OUT button in the SO section
+    // Stock Out button in the SO section
     @PutMapping("/stocks/out")
     @PreAuthorize("@securityUtils.hasAccess()")
     public ResponseEntity<?> bulkStockOutOrders(@Valid @RequestBody ProcessSalesOrderRequestDto request,
                                                 @RequestHeader("Authorization") String token){
-        logger.info("IcSo: bulkStockOutOrders() called with {} orders", request.getItemQuantities().size());
-        if (token == null || token.trim().isEmpty()) {
-            throw new IllegalArgumentException("IcSo: bulkStockOutOrders() Invalid Token provided.");
-        }
-        String jwtToken = TokenUtils.extractToken(token);
-        ApiResponse<Void> response = soServiceInIc.processSalesOrder(request, jwtToken);
+        log.info("IcSo: bulkStockOutOrders() called with {} orders", request.getItemQuantities().size());
+        String jwtToken = validateAndExtractToken(token);
+        ApiResponse<Void> response = soServiceInInventory.processSalesOrder(request, jwtToken);
         return ResponseEntity.ok(response);
     }
 
@@ -79,13 +74,10 @@ public class SoControllerInIc {
     @PutMapping("/{orderId}/cancel")
     @PreAuthorize("@securityUtils.hasAccess()")
     public ResponseEntity<?> cancelSalesOrder(@PathVariable Long orderId, @RequestHeader("Authorization") String token){
-        logger.info("IcSo: cancelSalesOrder() calling...");
-        if(token != null && !token.trim().isEmpty()) {
-            String jwtToken = TokenUtils.extractToken(token);
-            ApiResponse<Void> apiResponse = soServiceInIc.cancelSalesOrder(orderId, jwtToken);
-            return ResponseEntity.ok(apiResponse);
-        }
-        throw new IllegalArgumentException("IcSo: cancelSalesOrder() Invalid Token provided.");
+        log.info("IcSo: cancelSalesOrder() calling...");
+        String jwtToken = validateAndExtractToken(token);
+        ApiResponse<Void> apiResponse = soServiceInInventory.cancelSalesOrder(orderId, jwtToken);
+        return ResponseEntity.ok(apiResponse);
     }
 
     // Search by Order Reference, Customer name
@@ -95,9 +87,9 @@ public class SoControllerInIc {
                                                         @RequestParam(defaultValue = "10") int size,
                                                         @RequestParam(defaultValue = "orderReference") String sortBy,
                                                         @RequestParam(defaultValue = "desc") String sortDir){
-        logger.info("IcSo: searchProduct() calling...");
+        log.info("IcSo: searchProduct() calling...");
         PaginatedResponse<SummarySalesOrderView> dtoResponse =
-                soServiceInIc.searchInWaitingSalesOrders(text, page, size, sortBy, sortDir);
+                soServiceInInventory.searchInWaitingSalesOrders(text, page, size, sortBy, sortDir);
         return ResponseEntity.ok(dtoResponse);
     }
 
@@ -110,20 +102,19 @@ public class SoControllerInIc {
                                                       @RequestParam(defaultValue = "10") int size,
                                                       @RequestParam(defaultValue = DEFAULT_SORT_BY_FOR_SO) String sortBy,
                                                       @RequestParam(defaultValue = DEFAULT_SORT_DIRECTION) String sortDirection){
-        logger.info("IcSo: filterProductsByStatus() calling...");
-
-        SalesOrderStatus soStatus = null;
-        if (status != null) {
-            try {
-                soStatus = SalesOrderStatus.valueOf(status.toUpperCase());
-            } catch (IllegalArgumentException e) {
-                throw new ValidationException("Invalid status value provided: " + status);
-            }
+        log.info("IcSo: filterProductsByStatus() calling...");
+        // TODO: Use Proper Status not String
+        try {
+            SalesOrderStatus statusValue = validateSalesOrderStatus(status);
+            String optionDateValue = getOptionDateValue(optionDate);
+            PaginatedResponse<SummarySalesOrderView> dtoResponse =
+                    soServiceInInventory.filterWaitingSoProducts(statusValue, optionDateValue, startDate, endDate, page, size, sortBy, sortDirection);
+            return ResponseEntity.ok(dtoResponse);
+        } catch (IllegalArgumentException e) {
+            throw new ValidationException("Invalid filter parameters: " + e.getMessage());
+        } catch (Exception e) {
+            log.error("IC-SO filterSalesOrders(): Error filtering orders - {}", e.getMessage());
+            throw new ServiceException("Failed to filter orders", e);
         }
-
-        String optionDateValue = getOptionDateValue(optionDate);
-        PaginatedResponse<SummarySalesOrderView> dtoResponse =
-                soServiceInIc.filterWaitingSoProducts(soStatus, optionDateValue, startDate, endDate, page, size, sortBy, sortDirection);
-        return ResponseEntity.ok(dtoResponse);
     }
 }
