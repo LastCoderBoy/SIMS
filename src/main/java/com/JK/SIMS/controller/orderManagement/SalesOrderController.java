@@ -23,9 +23,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 
-import static com.JK.SIMS.service.utilities.EntityConstants.*;
-import static com.JK.SIMS.service.utilities.GlobalServiceHelper.getOptionDateValue;
-import static com.JK.SIMS.service.utilities.SalesOrderServiceHelper.validateSalesOrderStatus;
+import static com.JK.SIMS.service.generalUtils.EntityConstants.*;
+import static com.JK.SIMS.service.generalUtils.GlobalServiceHelper.getOptionDateValue;
+import static com.JK.SIMS.service.generalUtils.SalesOrderServiceHelper.validateSalesOrderStatus;
 
 
 @RestController

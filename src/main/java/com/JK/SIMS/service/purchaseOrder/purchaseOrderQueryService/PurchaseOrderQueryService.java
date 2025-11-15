@@ -9,7 +9,7 @@ import com.JK.SIMS.models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.purchaseOrder.dtos.views.DetailsPurchaseOrderView;
 import com.JK.SIMS.models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.repository.PurchaseOrder_repo.PurchaseOrderRepository;
-import com.JK.SIMS.service.utilities.PurchaseOrderServiceHelper;
+import com.JK.SIMS.service.generalUtils.PurchaseOrderServiceHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
@@ -19,14 +19,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Centralized Query Service for Purchase Order read operations
  * Purpose:
  * - Provides reusable read-only methods for PO queries
- * - Used by: POServiceInInventory, InventoryControlService, PurchaseOrderController
  * - Prevents code duplication across services
  * - Follows Single Responsibility Principle
  *

@@ -1,10 +1,9 @@
-package com.JK.SIMS.service.InventoryServices.inventoryUtils;
+package com.JK.SIMS.service.InventoryServices.inventoryCommonUtils;
 
 import com.JK.SIMS.exception.ValidationException;
 import com.JK.SIMS.models.inventoryData.InventoryControlData;
 import com.JK.SIMS.models.inventoryData.dtos.InventoryControlRequest;
 import com.JK.SIMS.models.inventoryData.dtos.InventoryControlResponse;
-import com.JK.SIMS.models.inventoryData.InventoryDataStatus;
 import com.JK.SIMS.models.inventoryData.dtos.PendingOrdersResponseInIC;
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;
@@ -13,7 +12,6 @@ import com.JK.SIMS.models.salesOrder.dtos.views.SummarySalesOrderView;
 import com.JK.SIMS.models.salesOrder.orderItem.OrderItem;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.stockMovements.StockMovementReferenceType;
-import com.JK.SIMS.service.email_service.LowStockScheduler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -111,34 +109,33 @@ public class InventoryServiceHelper {
         );
     }
 
-    public PaginatedResponse<InventoryControlResponse> transformToPaginatedInventoryDTOResponse(Page<InventoryControlData> inventoryPage){
-        PaginatedResponse<InventoryControlResponse> dtoResponse = new PaginatedResponse<>();
-        dtoResponse.setContent(inventoryPage.getContent().stream()
-                                                        .map(this::convertToInventoryDTO).toList());
-        dtoResponse.setTotalPages(inventoryPage.getTotalPages());
-        dtoResponse.setTotalElements(inventoryPage.getTotalElements());
-        log.info("TotalItems (getInventoryDataDTOList): {} products retrieved.", inventoryPage.getContent().size());
-        return dtoResponse;
+    public PaginatedResponse<InventoryControlResponse> transformToPaginatedInventoryResponse(Page<InventoryControlData> inventoryPage) {
+        return PaginatedResponse.<InventoryControlResponse>builder()
+                .content(inventoryPage.getContent().stream()
+                        .map(this::convertToInventoryDTO)
+                        .toList())
+                .totalPages(inventoryPage.getTotalPages())
+                .totalElements(inventoryPage.getTotalElements())
+                .build();
     }
 
     public InventoryControlResponse convertToInventoryDTO(InventoryControlData inventoryControlData) {
-        InventoryControlResponse dto = new InventoryControlResponse();
-        // Set product fields
-        dto.setProductID(inventoryControlData.getPmProduct().getProductID());
-        dto.setProductName(inventoryControlData.getPmProduct().getName());
-        dto.setCategory(inventoryControlData.getPmProduct().getCategory());
-        dto.setPrice(inventoryControlData.getPmProduct().getPrice());
-        dto.setProductStatus(inventoryControlData.getPmProduct().getStatus());
-
-        // Set inventory fields
-        dto.setSKU(inventoryControlData.getSKU());
-        dto.setLocation(inventoryControlData.getLocation());
-        dto.setCurrentStock(inventoryControlData.getCurrentStock());
-        dto.setMinLevel(inventoryControlData.getMinLevel());
-        dto.setReservedStock(inventoryControlData.getReservedStock());
-        dto.setInventoryStatus(inventoryControlData.getStatus());
-        dto.setLastUpdate(inventoryControlData.getLastUpdate().toString());
-
-        return dto;
+        return InventoryControlResponse.builder()
+                // Product fields
+                .productID(inventoryControlData.getPmProduct().getProductID())
+                .productName(inventoryControlData.getPmProduct().getName())
+                .category(inventoryControlData.getPmProduct().getCategory())
+                .price(inventoryControlData.getPmProduct().getPrice())
+                .productStatus(inventoryControlData.getPmProduct().getStatus())
+                // Inventory fields
+                .SKU(inventoryControlData.getSKU())
+                .location(inventoryControlData.getLocation())
+                .currentStock(inventoryControlData.getCurrentStock())
+                .minLevel(inventoryControlData.getMinLevel())
+                .reservedStock(inventoryControlData.getReservedStock())
+                .inventoryStatus(inventoryControlData.getStatus())
+                .lastUpdate(inventoryControlData.getLastUpdate().toString())
+                .build();
     }
+
 }

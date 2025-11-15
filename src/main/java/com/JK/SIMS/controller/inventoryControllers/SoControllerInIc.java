@@ -20,11 +20,11 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 
-import static com.JK.SIMS.service.utilities.EntityConstants.DEFAULT_SORT_BY_FOR_SO;
-import static com.JK.SIMS.service.utilities.EntityConstants.DEFAULT_SORT_DIRECTION;
-import static com.JK.SIMS.service.utilities.GlobalServiceHelper.getOptionDateValue;
-import static com.JK.SIMS.service.utilities.GlobalServiceHelper.validateAndExtractToken;
-import static com.JK.SIMS.service.utilities.SalesOrderServiceHelper.validateSalesOrderStatus;
+import static com.JK.SIMS.service.generalUtils.EntityConstants.DEFAULT_SORT_BY_FOR_SO;
+import static com.JK.SIMS.service.generalUtils.EntityConstants.DEFAULT_SORT_DIRECTION;
+import static com.JK.SIMS.service.generalUtils.GlobalServiceHelper.getOptionDateValue;
+import static com.JK.SIMS.service.generalUtils.GlobalServiceHelper.validateAndExtractToken;
+import static com.JK.SIMS.service.generalUtils.SalesOrderServiceHelper.validateSalesOrderStatus;
 
 @RestController
 @Slf4j

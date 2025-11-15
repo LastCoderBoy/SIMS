@@ -1,4 +1,4 @@
-package com.JK.SIMS.service.utilities;
+package com.JK.SIMS.service.generalUtils;
 
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;

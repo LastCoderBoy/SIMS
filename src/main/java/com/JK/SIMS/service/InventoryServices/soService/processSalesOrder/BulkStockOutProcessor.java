@@ -3,11 +3,10 @@ package com.JK.SIMS.service.InventoryServices.soService.processSalesOrder;
 import com.JK.SIMS.exception.InventoryException;
 import com.JK.SIMS.exception.ServiceException;
 import com.JK.SIMS.models.salesOrder.SalesOrder;
-import com.JK.SIMS.service.InventoryServices.inventoryPageService.stockManagement.StockManagementLogic;
+import com.JK.SIMS.service.InventoryServices.inventoryDashboardService.stockManagement.StockManagementLogic;
 import com.JK.SIMS.service.stockMovementService.StockMovementService;
-import com.JK.SIMS.service.utilities.SalesOrderServiceHelper;
+import com.JK.SIMS.service.generalUtils.SalesOrderServiceHelper;
 import jakarta.transaction.Transactional;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 

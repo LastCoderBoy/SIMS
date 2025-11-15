@@ -14,7 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import static com.JK.SIMS.service.utilities.GlobalServiceHelper.validateAndExtractToken;
+import static com.JK.SIMS.service.generalUtils.GlobalServiceHelper.validateAndExtractToken;
 
 @RestController
 @RequestMapping("/api/v1/products/manage-order/so/qrcode")

@@ -1,11 +1,12 @@
-package com.JK.SIMS.service.InventoryServices.inventoryPageService.searchLogic;
+package com.JK.SIMS.service.InventoryServices.inventoryCommonUtils.inventorySearchService.searchLogicPendingOrders.impl;
 
 import com.JK.SIMS.exception.ServiceException;
 import com.JK.SIMS.models.inventoryData.dtos.PendingOrdersResponseInIC;
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.salesOrder.SalesOrder;
 import com.JK.SIMS.models.PaginatedResponse;
-import com.JK.SIMS.service.InventoryServices.inventoryUtils.InventoryServiceHelper;
+import com.JK.SIMS.service.InventoryServices.inventoryCommonUtils.InventoryServiceHelper;
+import com.JK.SIMS.service.InventoryServices.inventoryCommonUtils.inventorySearchService.searchLogicPendingOrders.PendingOrdersSearchStrategy;
 import com.JK.SIMS.service.purchaseOrder.purchaseOrderSearchService.purchaseOrderSearchLogic.PoSearchStrategy;
 import com.JK.SIMS.service.salesOrder.salesOrderSearchService.salesOrderSearchLogic.SoSearchStrategy;
 import lombok.extern.slf4j.Slf4j;
@@ -19,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.JK.SIMS.service.utilities.EntityConstants.*;
+import static com.JK.SIMS.service.generalUtils.EntityConstants.*;
 
 @Component
 @Slf4j

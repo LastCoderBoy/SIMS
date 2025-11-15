@@ -16,12 +16,12 @@ import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.inventoryData.InventoryControlData;
 import com.JK.SIMS.models.inventoryData.InventoryDataStatus;
 import com.JK.SIMS.repository.ProductManagement_repo.PM_repository;
-import com.JK.SIMS.service.InventoryServices.inventoryPageService.InventoryControlService;
-import com.JK.SIMS.service.InventoryServices.inventoryQueryService.InventoryQueryService;
+import com.JK.SIMS.service.InventoryServices.inventoryDashboardService.InventoryControlService;
+import com.JK.SIMS.service.InventoryServices.inventoryCommonUtils.inventoryQueryService.InventoryQueryService;
 import com.JK.SIMS.service.productManagementService.ProductManagementService;
 import com.JK.SIMS.service.productManagementService.utils.PMServiceHelper;
 import com.JK.SIMS.service.salesOrder.salesOrderQueryService.SalesOrderQueryService;
-import com.JK.SIMS.service.utilities.ExcelReporterHelper;
+import com.JK.SIMS.service.generalUtils.ExcelReporterHelper;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,7 +43,7 @@ import java.util.Optional;
 
 import static com.JK.SIMS.service.productManagementService.excelReporter.ExcelReporterForPM.createHeaderRow;
 import static com.JK.SIMS.service.productManagementService.excelReporter.ExcelReporterForPM.populateDataRows;
-import static com.JK.SIMS.service.utilities.GlobalServiceHelper.amongInvalidStatus;
+import static com.JK.SIMS.service.generalUtils.GlobalServiceHelper.amongInvalidStatus;
 
 @Service
 @Slf4j

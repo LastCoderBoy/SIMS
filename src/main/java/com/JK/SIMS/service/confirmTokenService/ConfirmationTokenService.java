@@ -5,9 +5,8 @@ import com.JK.SIMS.models.purchaseOrder.PurchaseOrderStatus;
 import com.JK.SIMS.models.purchaseOrder.confirmationToken.ConfirmationToken;
 import com.JK.SIMS.models.purchaseOrder.confirmationToken.ConfirmationTokenStatus;
 import com.JK.SIMS.repository.confirmationTokenRepo.ConfirmationTokenRepository;
-import com.JK.SIMS.service.orderManagementService.purchaseOrderService.PurchaseOrderService;
 import com.JK.SIMS.service.purchaseOrder.purchaseOrderQueryService.PurchaseOrderQueryService;
-import com.JK.SIMS.service.utilities.GlobalServiceHelper;
+import com.JK.SIMS.service.generalUtils.GlobalServiceHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.Nullable;
@@ -20,7 +19,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.JK.SIMS.service.utilities.GlobalServiceHelper.generateToken;
+import static com.JK.SIMS.service.generalUtils.GlobalServiceHelper.generateToken;
 
 @Service
 @Slf4j

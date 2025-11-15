@@ -1,10 +1,9 @@
 package com.JK.SIMS.service.productManagementService.excelReporter;
 
 import com.JK.SIMS.models.PM_models.dtos.ProductManagementResponse;
-import com.JK.SIMS.service.utilities.ExcelReporterHelper;
+import com.JK.SIMS.service.generalUtils.ExcelReporterHelper;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
-import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;

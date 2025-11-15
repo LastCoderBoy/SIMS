@@ -14,12 +14,12 @@ import com.JK.SIMS.models.inventoryData.InventoryDataStatus;
 import com.JK.SIMS.models.inventoryData.dtos.InventoryControlRequest;
 import com.JK.SIMS.models.inventoryData.dtos.InventoryControlResponse;
 import com.JK.SIMS.repository.InventoryControl_repo.IC_repository;
-import com.JK.SIMS.service.InventoryServices.inventoryPageService.stockManagement.StockManagementLogic;
-import com.JK.SIMS.service.InventoryServices.inventoryQueryService.InventoryQueryService;
-import com.JK.SIMS.service.InventoryServices.inventoryUtils.InventoryServiceHelper;
+import com.JK.SIMS.service.InventoryServices.inventoryDashboardService.stockManagement.StockManagementLogic;
+import com.JK.SIMS.service.InventoryServices.inventoryCommonUtils.InventoryServiceHelper;
+import com.JK.SIMS.service.InventoryServices.inventoryCommonUtils.inventoryQueryService.InventoryQueryService;
 import com.JK.SIMS.service.InventoryServices.totalItemsService.filterLogic.InventorySpecification;
+import com.JK.SIMS.service.generalUtils.GlobalServiceHelper;
 import com.JK.SIMS.service.productManagementService.ProductManagementService;
-import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,16 +38,15 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
 
-import static com.JK.SIMS.service.InventoryServices.inventoryUtils.InventoryServiceHelper.validateUpdateRequest;
-import static com.JK.SIMS.service.utilities.ExcelReporterHelper.*;
+import static com.JK.SIMS.service.InventoryServices.inventoryCommonUtils.InventoryServiceHelper.validateUpdateRequest;
+import static com.JK.SIMS.service.generalUtils.EntityConstants.DEFAULT_SORT_BY;
+import static com.JK.SIMS.service.generalUtils.EntityConstants.DEFAULT_SORT_DIRECTION;
+import static com.JK.SIMS.service.generalUtils.ExcelReporterHelper.*;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class TotalItemsService {
-    private static final String DEFAULT_SORT_BY = "pmProduct.name";
-    private static final String DEFAULT_SORT_DIRECTION = "asc";
-
     // =========== Helpers & Utilities ===========
     private final GlobalServiceHelper globalServiceHelper;
     private final InventoryServiceHelper inventoryServiceHelper;
@@ -75,7 +74,7 @@ public class TotalItemsService {
             Sort sort = Sort.by(direction, sortBy);
             Pageable pageable = PageRequest.of(page, size, sort);
             Page<InventoryControlData> inventoryPage = icRepository.findAll(pageable);
-            return inventoryServiceHelper.transformToPaginatedInventoryDTOResponse(inventoryPage);
+            return inventoryServiceHelper.transformToPaginatedInventoryResponse(inventoryPage);
         } catch (DataAccessException da){
             log.error("TotalItems (getInventoryDataDTOList): Failed to retrieve products due to database error: {}", da.getMessage(), da);
             throw new DatabaseException("TotalItems (getInventoryDataDTOList): Failed to retrieve products due to database error", da);
@@ -125,7 +124,7 @@ public class TotalItemsService {
                 Pageable pageable = PageRequest.of(page, size, Sort.by(DEFAULT_SORT_BY).ascending());
                 Page<InventoryControlData> inventoryData = icRepository.searchProducts(inputText.get().trim().toLowerCase(), pageable);
                 log.info("TotalItems (searchProduct): {} products retrieved.", inventoryData.getContent().size());
-                return inventoryServiceHelper.transformToPaginatedInventoryDTOResponse(inventoryData) ;
+                return inventoryServiceHelper.transformToPaginatedInventoryResponse(inventoryData) ;
             }
             log.info("TotalItems (searchProduct): No search text provided. Retrieving first page with default size.");
             return getPaginatedInventoryDto(DEFAULT_SORT_BY, DEFAULT_SORT_DIRECTION, page,size);
@@ -184,7 +183,7 @@ public class TotalItemsService {
             }
 
             log.info("TotalItems (filterProducts): {} products retrieved.", resultPage.getContent().size());
-            return inventoryServiceHelper.transformToPaginatedInventoryDTOResponse(resultPage);
+            return inventoryServiceHelper.transformToPaginatedInventoryResponse(resultPage);
         } catch (IllegalArgumentException iae) {
             throw new ValidationException("TotalItems (filterProducts): Invalid filterBy value: " + iae.getMessage());
         } catch (DataAccessException da) {

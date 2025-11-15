@@ -17,16 +17,13 @@ import com.JK.SIMS.models.salesOrder.orderItem.dtos.BulkOrderItemsRequestDto;
 import com.JK.SIMS.models.salesOrder.orderItem.dtos.OrderItemRequest;
 import com.JK.SIMS.models.salesOrder.qrcode.SalesOrderQRCode;
 import com.JK.SIMS.repository.salesOrderRepo.SalesOrderRepository;
-import com.JK.SIMS.service.InventoryServices.inventoryPageService.stockManagement.StockManagementLogic;
+import com.JK.SIMS.service.InventoryServices.inventoryDashboardService.stockManagement.StockManagementLogic;
 import com.JK.SIMS.service.orderManagementService.salesOrderService.SalesOrderService;
 import com.JK.SIMS.service.orderManagementService.salesOrderService.SoQrCodeService;
 import com.JK.SIMS.service.productManagementService.utils.queryService.ProductQueryService;
 import com.JK.SIMS.service.salesOrder.salesOrderQueryService.SalesOrderQueryService;
 import com.JK.SIMS.service.salesOrder.salesOrderSearchService.SalesOrderSearchService;
-import com.JK.SIMS.service.salesOrder.salesOrderSearchService.salesOrderFilterLogic.SoFilterStrategy;
-import com.JK.SIMS.service.salesOrder.salesOrderSearchService.salesOrderSearchLogic.SoSearchStrategy;
-import com.JK.SIMS.service.utilities.GlobalServiceHelper;
-import com.JK.SIMS.service.utilities.SalesOrderServiceHelper;
+import com.JK.SIMS.service.generalUtils.SalesOrderServiceHelper;
 import jakarta.annotation.Nullable;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;
@@ -34,8 +31,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,14 +48,11 @@ import java.util.stream.Collectors;
 public class SalesOrderServiceImpl implements SalesOrderService {
 
     // ========== Helpers & Utilities ==========
-    private final GlobalServiceHelper globalServiceHelper;
     private final SalesOrderServiceHelper salesOrderServiceHelper;
     private final SecurityUtils securityUtils;
 
     // ========== Components ==========
     private final StockManagementLogic stockManagementLogic;
-    private final SoSearchStrategy omSoSearchStrategy;
-    private final SoFilterStrategy filterSalesOrdersInOm;
 
     // ========== Services ==========
     private final SalesOrderQueryService salesOrderQueryService;

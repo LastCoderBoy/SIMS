@@ -3,7 +3,7 @@ package com.JK.SIMS.models.purchaseOrder.dtos.views;
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrderStatus;
 import com.JK.SIMS.models.PM_models.ProductCategories;
-import com.JK.SIMS.service.utilities.PurchaseOrderServiceHelper;
+import com.JK.SIMS.service.generalUtils.PurchaseOrderServiceHelper;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

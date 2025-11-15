@@ -1,6 +1,5 @@
-package com.JK.SIMS.service.utilities.qrCode;
+package com.JK.SIMS.service.generalUtils.qrCode;
 
-import com.JK.SIMS.service.utilities.GlobalServiceHelper;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.WriterException;
 import com.google.zxing.client.j2se.MatrixToImageWriter;

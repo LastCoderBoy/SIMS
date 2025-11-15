@@ -1,4 +1,4 @@
-package com.JK.SIMS.service.utilities;
+package com.JK.SIMS.service.generalUtils;
 
 import com.JK.SIMS.models.inventoryData.dtos.InventoryControlResponse;
 import jakarta.servlet.ServletOutputStream;

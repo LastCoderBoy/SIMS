@@ -1,4 +1,4 @@
-package com.JK.SIMS.service.InventoryServices.inventoryPageService;
+package com.JK.SIMS.service.InventoryServices.inventoryDashboardService;
 
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
@@ -10,7 +10,6 @@ import com.JK.SIMS.models.inventoryData.dtos.PendingOrdersResponseInIC;
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrderStatus;
 import com.JK.SIMS.models.salesOrder.SalesOrderStatus;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Optional;
 

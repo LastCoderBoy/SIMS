@@ -8,7 +8,7 @@ import com.JK.SIMS.models.purchaseOrder.dtos.views.SummaryPurchaseOrderView;
 import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.PurchaseOrder_repo.PurchaseOrderRepository;
-import com.JK.SIMS.service.utilities.PurchaseOrderServiceHelper;
+import com.JK.SIMS.service.generalUtils.PurchaseOrderServiceHelper;
 import com.JK.SIMS.service.purchaseOrder.purchaseOrderSearchService.purchaseOrderFilterLogic.filterSpecification.PurchaseOrderSpecification;
 import jakarta.annotation.Nullable;
 import org.slf4j.Logger;

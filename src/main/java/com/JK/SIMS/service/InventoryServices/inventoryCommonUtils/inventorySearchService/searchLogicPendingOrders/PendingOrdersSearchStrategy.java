@@ -1,4 +1,4 @@
-package com.JK.SIMS.service.InventoryServices.inventoryPageService.searchLogic;
+package com.JK.SIMS.service.InventoryServices.inventoryCommonUtils.inventorySearchService.searchLogicPendingOrders;
 
 import com.JK.SIMS.models.inventoryData.dtos.PendingOrdersResponseInIC;
 import com.JK.SIMS.models.PaginatedResponse;

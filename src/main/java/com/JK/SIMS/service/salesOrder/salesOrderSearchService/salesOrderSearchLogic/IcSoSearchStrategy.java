@@ -4,7 +4,7 @@ import com.JK.SIMS.exception.DatabaseException;
 import com.JK.SIMS.exception.ServiceException;
 import com.JK.SIMS.models.salesOrder.SalesOrder;
 import com.JK.SIMS.repository.salesOrderRepo.SalesOrderRepository;
-import com.JK.SIMS.service.utilities.GlobalServiceHelper;
+import com.JK.SIMS.service.generalUtils.GlobalServiceHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;

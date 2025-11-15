@@ -1,4 +1,4 @@
-package com.JK.SIMS.service.utilities;
+package com.JK.SIMS.service.generalUtils.converters;
 
 import com.JK.SIMS.exception.ValidationException;
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrderStatus;

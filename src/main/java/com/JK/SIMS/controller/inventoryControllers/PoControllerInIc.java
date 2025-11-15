@@ -17,7 +17,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import static com.JK.SIMS.service.utilities.GlobalServiceHelper.validateAndExtractToken;
+import static com.JK.SIMS.service.generalUtils.GlobalServiceHelper.validateAndExtractToken;
 
 @RestController
 @RequiredArgsConstructor

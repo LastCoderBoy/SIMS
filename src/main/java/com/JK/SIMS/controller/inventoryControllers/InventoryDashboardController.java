@@ -10,7 +10,7 @@ import com.JK.SIMS.models.purchaseOrder.PurchaseOrderStatus;
 import com.JK.SIMS.models.purchaseOrder.dtos.ReceiveStockRequest;
 import com.JK.SIMS.models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.salesOrder.dtos.processSalesOrderDtos.ProcessSalesOrderRequestDto;
-import com.JK.SIMS.service.InventoryServices.inventoryPageService.InventoryControlService;
+import com.JK.SIMS.service.InventoryServices.inventoryDashboardService.InventoryControlService;
 import com.JK.SIMS.service.InventoryServices.poService.POServiceInInventory;
 import com.JK.SIMS.service.InventoryServices.soService.SoServiceInInventory;
 import jakarta.validation.Valid;
@@ -26,13 +26,13 @@ import org.springframework.web.bind.annotation.*;
 import java.nio.file.AccessDeniedException;
 import java.time.LocalDate;
 
-import static com.JK.SIMS.service.utilities.GlobalServiceHelper.validateAndExtractToken;
+import static com.JK.SIMS.service.generalUtils.GlobalServiceHelper.validateAndExtractToken;
 
 @RestController
 @RequiredArgsConstructor
 @Slf4j
 @RequestMapping("/api/v1/products/inventory")
-public class InventoryController {
+public class InventoryDashboardController {
 
     private final InventoryControlService icService;
     private final POServiceInInventory poServiceInIc;

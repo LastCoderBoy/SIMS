@@ -2,7 +2,7 @@ package com.JK.SIMS.service.purchaseOrder.purchaseOrderSearchService.purchaseOrd
 
 import com.JK.SIMS.models.purchaseOrder.PurchaseOrder;
 import com.JK.SIMS.repository.PurchaseOrder_repo.PurchaseOrderRepository;
-import com.JK.SIMS.service.utilities.PurchaseOrderServiceHelper;
+import com.JK.SIMS.service.generalUtils.PurchaseOrderServiceHelper;
 import org.jetbrains.annotations.Nullable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;

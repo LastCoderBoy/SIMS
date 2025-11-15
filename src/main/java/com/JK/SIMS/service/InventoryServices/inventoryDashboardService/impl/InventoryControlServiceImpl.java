@@ -1,4 +1,4 @@
-package com.JK.SIMS.service.InventoryServices.inventoryPageService.impl;
+package com.JK.SIMS.service.InventoryServices.inventoryDashboardService.impl;
 
 import com.JK.SIMS.exception.DatabaseException;
 import com.JK.SIMS.exception.InventoryException;
@@ -18,14 +18,14 @@ import com.JK.SIMS.models.salesOrder.SalesOrderStatus;
 import com.JK.SIMS.models.salesOrder.dtos.views.SummarySalesOrderView;
 import com.JK.SIMS.repository.InventoryControl_repo.IC_repository;
 import com.JK.SIMS.service.InventoryServices.damageLossService.damageLossQueryService.DamageLossQueryService;
-import com.JK.SIMS.service.InventoryServices.inventoryPageService.InventoryControlService;
-import com.JK.SIMS.service.InventoryServices.inventoryPageService.searchLogic.PendingOrdersSearchStrategy;
-import com.JK.SIMS.service.InventoryServices.inventoryUtils.InventoryServiceHelper;
+import com.JK.SIMS.service.InventoryServices.inventoryDashboardService.InventoryControlService;
+import com.JK.SIMS.service.InventoryServices.inventoryCommonUtils.inventorySearchService.searchLogicPendingOrders.PendingOrdersSearchStrategy;
+import com.JK.SIMS.service.InventoryServices.inventoryCommonUtils.InventoryServiceHelper;
 import com.JK.SIMS.service.purchaseOrder.purchaseOrderQueryService.PurchaseOrderQueryService;
 import com.JK.SIMS.service.purchaseOrder.purchaseOrderSearchService.PurchaseOrderSearchService;
 import com.JK.SIMS.service.salesOrder.salesOrderQueryService.SalesOrderQueryService;
 import com.JK.SIMS.service.salesOrder.salesOrderSearchService.SalesOrderSearchService;
-import com.JK.SIMS.service.utilities.GlobalServiceHelper;
+import com.JK.SIMS.service.generalUtils.GlobalServiceHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
@@ -276,7 +276,6 @@ public class InventoryControlServiceImpl implements InventoryControlService {
         if (isSalesOrderType || hasSalesOrderFilters) {
             if (isSalesOrderType && !hasSalesOrderFilters) {
                 // Fetch all Sales Orders (no filters)
-                // TODO: Use SO Query and Search Services.
                 PaginatedResponse<SummarySalesOrderView> allSalesOrders =
                         salesOrderQueryService.getAllOutgoingSalesOrders(page, size, sortBy, sortDirection);
                 inventoryServiceHelper.fillWithSalesOrderView(combinedResults, allSalesOrders.getContent());

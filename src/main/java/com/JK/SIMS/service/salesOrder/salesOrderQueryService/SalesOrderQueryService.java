@@ -10,10 +10,8 @@ import com.JK.SIMS.models.salesOrder.dtos.SalesOrderResponseDto;
 import com.JK.SIMS.models.salesOrder.dtos.views.DetailedSalesOrderView;
 import com.JK.SIMS.models.salesOrder.dtos.views.SummarySalesOrderView;
 import com.JK.SIMS.repository.salesOrderRepo.SalesOrderRepository;
-import com.JK.SIMS.service.utilities.GlobalServiceHelper;
-import com.JK.SIMS.service.utilities.SalesOrderServiceHelper;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
+import com.JK.SIMS.service.generalUtils.GlobalServiceHelper;
+import com.JK.SIMS.service.generalUtils.SalesOrderServiceHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
@@ -24,7 +22,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 
 /**

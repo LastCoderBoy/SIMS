@@ -1,4 +1,4 @@
-package com.JK.SIMS.service.InventoryServices.inventoryUtils;
+package com.JK.SIMS.service.InventoryServices.inventoryCommonUtils;
 
 import com.JK.SIMS.models.inventoryData.InventoryControlData;
 import com.JK.SIMS.models.inventoryData.InventoryDataStatus;

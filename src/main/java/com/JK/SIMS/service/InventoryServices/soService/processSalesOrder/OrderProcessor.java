@@ -8,13 +8,12 @@ import com.JK.SIMS.models.salesOrder.SalesOrder;
 import com.JK.SIMS.models.salesOrder.orderItem.OrderItem;
 import com.JK.SIMS.models.stockMovements.StockMovementReferenceType;
 import com.JK.SIMS.models.stockMovements.StockMovementType;
-import com.JK.SIMS.service.InventoryServices.inventoryPageService.stockManagement.StockManagementLogic;
+import com.JK.SIMS.service.InventoryServices.inventoryDashboardService.stockManagement.StockManagementLogic;
 import com.JK.SIMS.service.stockMovementService.StockMovementService;
-import com.JK.SIMS.service.utilities.GlobalServiceHelper;
-import com.JK.SIMS.service.utilities.SalesOrderServiceHelper;
+import com.JK.SIMS.service.generalUtils.GlobalServiceHelper;
+import com.JK.SIMS.service.generalUtils.SalesOrderServiceHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;

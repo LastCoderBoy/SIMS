@@ -1,4 +1,4 @@
-package com.JK.SIMS.service.utilities;
+package com.JK.SIMS.service.generalUtils;
 
 import com.JK.SIMS.config.security.utils.TokenUtils;
 import com.JK.SIMS.exception.InvalidTokenException;
@@ -33,15 +33,6 @@ public class GlobalServiceHelper {
 
     public static LocalDateTime now(Clock clock) {
         return LocalDateTime.now(clock).truncatedTo(ChronoUnit.SECONDS);
-    }
-
-    public void validatePaginationParameters(int page, int size) {
-        if (page < 0) {
-            throw new IllegalArgumentException("Page number cannot be negative");
-        }
-        if (size <= 0 || size > 100) {
-            throw new IllegalArgumentException("Page size must be between 1 and 100");
-        }
     }
 
     @Transactional(readOnly = true)
@@ -88,6 +79,15 @@ public class GlobalServiceHelper {
             }
         }
         return optionDateValue;
+    }
+
+    public void validatePaginationParameters(int page, int size) {
+        if (page < 0) {
+            throw new IllegalArgumentException("Page number cannot be negative");
+        }
+        if (size <= 0 || size > 100) {
+            throw new IllegalArgumentException("Page size must be between 1 and 100");
+        }
     }
 
     public Pageable preparePageable(int page, int size, String sortBy, String sortDirection) {

@@ -1,4 +1,4 @@
-package com.JK.SIMS.service.InventoryServices.inventoryPageService.stockManagement;
+package com.JK.SIMS.service.InventoryServices.inventoryDashboardService.stockManagement;
 
 import com.JK.SIMS.exception.DatabaseException;
 import com.JK.SIMS.exception.InsufficientStockException;
@@ -6,7 +6,7 @@ import com.JK.SIMS.exception.ResourceNotFoundException;
 import com.JK.SIMS.exception.ServiceException;
 import com.JK.SIMS.models.inventoryData.InventoryControlData;
 import com.JK.SIMS.repository.InventoryControl_repo.IC_repository;
-import com.JK.SIMS.service.InventoryServices.inventoryUtils.InventoryStatusModifier;
+import com.JK.SIMS.service.InventoryServices.inventoryCommonUtils.InventoryStatusModifier;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
