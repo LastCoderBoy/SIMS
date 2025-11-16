@@ -52,8 +52,6 @@ public interface IC_repository extends JpaRepository<InventoryControlData, Strin
             "LOWER(ic.pmProduct.category) LIKE CONCAT('%', :text, '%')")
     Page<InventoryControlData> searchInLowStockProducts(@Param("text") String text, Pageable pageable);
 
-
-
     Page<InventoryControlData> findByStatus(InventoryDataStatus status, Pageable pageable);
 
     @Query("SELECT i FROM InventoryControlData i WHERE i.currentStock <= :level")
@@ -66,20 +64,10 @@ public interface IC_repository extends JpaRepository<InventoryControlData, Strin
     void deleteBySKU(String sku);
 
     @Query("SELECT i FROM InventoryControlData i WHERE i.status != 'INVALID' AND  i.currentStock <= i.minLevel")
-    List<InventoryControlData> getLowStockItems();
-
-    @Query("SELECT i FROM InventoryControlData i WHERE i.status != 'INVALID' AND  i.currentStock <= i.minLevel")
     List<InventoryControlData> getLowStockItems(Sort sort);
 
     @Query("SELECT i FROM InventoryControlData i WHERE i.status != 'INVALID' AND  i.currentStock <= i.minLevel")
     Page<InventoryControlData> getLowStockItems(Pageable pageable);
-
-    @Query("SELECT i FROM InventoryControlData i " +
-            "JOIN i.pmProduct p " +
-            "WHERE i.status != 'INVALID' AND i.currentStock <= i.minLevel " +
-            "AND (:category IS NULL OR p.category = :category)")
-    Page<InventoryControlData> getLowStockItemsByCategory(@Param("category") ProductCategories category, Pageable pageable);
-
 
     // Find InventoryControlData by product ID with a pessimistic write lock
     @Lock(LockModeType.PESSIMISTIC_WRITE)

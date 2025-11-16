@@ -112,14 +112,14 @@ public class InventoryServiceHelper {
     public PaginatedResponse<InventoryControlResponse> transformToPaginatedInventoryResponse(Page<InventoryControlData> inventoryPage) {
         return PaginatedResponse.<InventoryControlResponse>builder()
                 .content(inventoryPage.getContent().stream()
-                        .map(this::convertToInventoryDTO)
+                        .map(this::convertToInventoryResponse)
                         .toList())
                 .totalPages(inventoryPage.getTotalPages())
                 .totalElements(inventoryPage.getTotalElements())
                 .build();
     }
 
-    public InventoryControlResponse convertToInventoryDTO(InventoryControlData inventoryControlData) {
+    public InventoryControlResponse convertToInventoryResponse(InventoryControlData inventoryControlData) {
         return InventoryControlResponse.builder()
                 // Product fields
                 .productID(inventoryControlData.getPmProduct().getProductID())
@@ -136,6 +136,10 @@ public class InventoryServiceHelper {
                 .inventoryStatus(inventoryControlData.getStatus())
                 .lastUpdate(inventoryControlData.getLastUpdate().toString())
                 .build();
+    }
+
+    public List<InventoryControlResponse> convertToInventoryResponseList(List<InventoryControlData> entityList) {
+        return entityList.stream().map(this::convertToInventoryResponse).toList();
     }
 
 }

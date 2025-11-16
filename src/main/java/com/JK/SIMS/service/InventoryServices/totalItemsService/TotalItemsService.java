@@ -5,19 +5,17 @@ import com.JK.SIMS.exception.ResourceNotFoundException;
 import com.JK.SIMS.exception.ServiceException;
 import com.JK.SIMS.exception.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.inventoryData.InventoryControlData;
-import com.JK.SIMS.models.inventoryData.InventoryDataStatus;
 import com.JK.SIMS.models.inventoryData.dtos.InventoryControlRequest;
 import com.JK.SIMS.models.inventoryData.dtos.InventoryControlResponse;
 import com.JK.SIMS.repository.InventoryControl_repo.IC_repository;
-import com.JK.SIMS.service.InventoryServices.inventoryDashboardService.stockManagement.StockManagementLogic;
 import com.JK.SIMS.service.InventoryServices.inventoryCommonUtils.InventoryServiceHelper;
 import com.JK.SIMS.service.InventoryServices.inventoryCommonUtils.inventoryQueryService.InventoryQueryService;
-import com.JK.SIMS.service.InventoryServices.totalItemsService.filterLogic.InventorySpecification;
+import com.JK.SIMS.service.InventoryServices.inventoryCommonUtils.inventorySearchService.InventorySearchService;
+import com.JK.SIMS.service.InventoryServices.inventoryDashboardService.stockManagement.StockManagementLogic;
 import com.JK.SIMS.service.generalUtils.GlobalServiceHelper;
 import com.JK.SIMS.service.productManagementService.ProductManagementService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -28,10 +26,6 @@ import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,8 +33,6 @@ import java.util.List;
 import java.util.Optional;
 
 import static com.JK.SIMS.service.InventoryServices.inventoryCommonUtils.InventoryServiceHelper.validateUpdateRequest;
-import static com.JK.SIMS.service.generalUtils.EntityConstants.DEFAULT_SORT_BY;
-import static com.JK.SIMS.service.generalUtils.EntityConstants.DEFAULT_SORT_DIRECTION;
 import static com.JK.SIMS.service.generalUtils.ExcelReporterHelper.*;
 
 @Service
@@ -48,40 +40,26 @@ import static com.JK.SIMS.service.generalUtils.ExcelReporterHelper.*;
 @Slf4j
 public class TotalItemsService {
     // =========== Helpers & Utilities ===========
-    private final GlobalServiceHelper globalServiceHelper;
     private final InventoryServiceHelper inventoryServiceHelper;
 
     // =========== Components ===========
-    private final InventoryQueryService inventoryQueryService;
     private final StockManagementLogic stockManagementLogic;
 
     // =========== Services ===========
     private final ProductManagementService productManagementService;
+    private final InventorySearchService inventorySearchService;
+    private final InventoryQueryService inventoryQueryService;
 
     // =========== Repositories ===========
     private final IC_repository icRepository; // We are working with the Inventory Products so that's why we need this repository
 
 
     @Transactional(readOnly = true)
-    public PaginatedResponse<InventoryControlResponse> getPaginatedInventoryDto(String sortBy, String sortDirection, int page, int size) {
-        try{
-            globalServiceHelper.validatePaginationParameters(page, size);
-            // Parse sort direction
-            Sort.Direction direction = sortDirection.equalsIgnoreCase("desc") ?
-                    Sort.Direction.DESC : Sort.Direction.ASC;
-
-            // Create the sort and get the data
-            Sort sort = Sort.by(direction, sortBy);
-            Pageable pageable = PageRequest.of(page, size, sort);
-            Page<InventoryControlData> inventoryPage = icRepository.findAll(pageable);
-            return inventoryServiceHelper.transformToPaginatedInventoryResponse(inventoryPage);
-        } catch (DataAccessException da){
-            log.error("TotalItems (getInventoryDataDTOList): Failed to retrieve products due to database error: {}", da.getMessage(), da);
-            throw new DatabaseException("TotalItems (getInventoryDataDTOList): Failed to retrieve products due to database error", da);
-        } catch (Exception e){
-            log.error("TotalItems (getInventoryDataDTOList): Failed to retrieve products: {}", e.getMessage(), e);
-            throw new ServiceException("TotalItems (getInventoryDataDTOList): Failed to retrieve products", e);
-        }
+    public PaginatedResponse<InventoryControlResponse> getAllPaginatedInventoryResponse(String sortBy, String sortDirection, int page, int size) {
+        Page<InventoryControlData> allInventoryProducts =
+                inventoryQueryService.getAllInventoryProducts(sortBy, sortDirection, page, size);
+        log.info("getAllPaginatedInventoryResponse(): {} products retrieved.", allInventoryProducts.getContent().size());
+        return inventoryServiceHelper.transformToPaginatedInventoryResponse(allInventoryProducts);
     }
 
     // Only currentStock and minLevel can be updated in the IC section
@@ -95,9 +73,11 @@ public class TotalItemsService {
             InventoryControlData existingProduct = inventoryQueryService.getInventoryDataBySku(sku); // might throw ResourceNotFoundException
 
             // Update stock levels
-            stockManagementLogic.updateInventoryStockLevels(existingProduct,
+            stockManagementLogic.updateInventoryStockLevels(
+                    existingProduct,
                     Optional.ofNullable(inventoryControlRequest.getCurrentStock()),
-                    Optional.ofNullable(inventoryControlRequest.getMinLevel()));
+                    Optional.ofNullable(inventoryControlRequest.getMinLevel())
+            );
 
             log.info("IcTotalItems (updateProduct): Product with SKU {} updated successfully", sku);
             return new ApiResponse<>(true, sku + " is updated successfully");
@@ -105,95 +85,32 @@ public class TotalItemsService {
         } catch (DataAccessException da) {
             log.error("IcTotalItems (updateProduct): Database error while updating SKU {}: {}",
                     sku, da.getMessage());
-            throw new DatabaseException("IC (updateProduct): Database error", da);
+            throw new DatabaseException("Internal Database Error", da);
         } catch (ResourceNotFoundException | ValidationException e) {
             throw e;
         } catch (Exception ex) {
             log.error("IcTotalItems (updateProduct): Unexpected error while updating SKU {}: {}",
                     sku, ex.getMessage(), ex);
-            throw new ServiceException("IcTotalItems (updateProduct): Internal Service error", ex);
+            throw new ServiceException("Internal Service error", ex);
         }
     }
 
     // Search by SKU, Location, ID, Name, Category.
     @Transactional(readOnly = true)
-    public PaginatedResponse<InventoryControlResponse> searchProduct(String text, int page, int size) {
-        try {
-            Optional<String> inputText = Optional.ofNullable((text));
-            if (inputText.isPresent() && !inputText.get().trim().isEmpty()) {
-                Pageable pageable = PageRequest.of(page, size, Sort.by(DEFAULT_SORT_BY).ascending());
-                Page<InventoryControlData> inventoryData = icRepository.searchProducts(inputText.get().trim().toLowerCase(), pageable);
-                log.info("TotalItems (searchProduct): {} products retrieved.", inventoryData.getContent().size());
-                return inventoryServiceHelper.transformToPaginatedInventoryResponse(inventoryData) ;
-            }
-            log.info("TotalItems (searchProduct): No search text provided. Retrieving first page with default size.");
-            return getPaginatedInventoryDto(DEFAULT_SORT_BY, DEFAULT_SORT_DIRECTION, page,size);
-        } catch (DataAccessException e) {
-            throw new DatabaseException("TotalItems (searchProduct): Database error", e);
-        } catch (Exception e) {
-            throw new ServiceException("TotalItems (searchProduct): Failed to retrieve products", e);
-        }
+    public PaginatedResponse<InventoryControlResponse> searchProduct(String text, String sortBy, String sortDirection, int page, int size) {
+        Page<InventoryControlData> inventorySearchResponse =
+                inventorySearchService.searchAll(text, sortBy, sortDirection, page, size);
+        log.info("TotalItems (searchProduct): {} products retrieved.", inventorySearchResponse.getContent().size());
+        return inventoryServiceHelper.transformToPaginatedInventoryResponse(inventorySearchResponse) ;
     }
 
-
-
+    @Transactional(readOnly = true)
     public PaginatedResponse<InventoryControlResponse> filterProducts(String filterBy, String sortBy, String sortDirection, int page, int size) {
-        try {
-            globalServiceHelper.validatePaginationParameters(page, size);
+        Page<InventoryControlData> inventoryFilterResponse =
+                inventorySearchService.filterAll(filterBy, sortBy, sortDirection, page, size);
 
-            // Parse sort direction
-            Sort.Direction direction = sortDirection.equalsIgnoreCase("desc") ?
-                    Sort.Direction.DESC : Sort.Direction.ASC;
-
-            // Create sort
-            Sort sort = Sort.by(direction, sortBy);
-            Pageable pageable = PageRequest.of(page, size, sort);
-
-            // Handle filtering
-            Page<InventoryControlData> resultPage;
-            if (filterBy != null && !filterBy.trim().isEmpty()) {
-                String[] filterParts = filterBy.trim().split(":");
-                if (filterParts.length == 2) {
-                    String field = filterParts[0].toLowerCase();
-                    String value = filterParts[1];
-
-                    resultPage = switch (field) {
-                        case "status" -> {
-                            InventoryDataStatus status = InventoryDataStatus.valueOf(value.toUpperCase());
-                            yield icRepository.findByStatus(status, pageable);
-                        }
-                        case "stock" -> icRepository.findByStockLevel(Integer.parseInt(value), pageable);
-                        default -> icRepository.findAll(pageable);
-                    };
-                } else {
-                    boolean isStatusType = GlobalServiceHelper.isInEnum(filterBy.trim().toUpperCase(), InventoryDataStatus.class);
-                    Specification<InventoryControlData> specification;
-                    if(isStatusType){
-                        specification = Specification.where(InventorySpecification.hasStatus(
-                                        InventoryDataStatus.valueOf(filterBy.trim().toUpperCase())));
-                    }else {
-                        specification =
-                                Specification.where(InventorySpecification.hasProductCategory(
-                                        ProductCategories.valueOf(filterBy.trim().toUpperCase())));
-                    }
-                    resultPage = icRepository.findAll(specification, pageable);
-                }
-            } else {
-                resultPage = icRepository.findAll(pageable);
-            }
-
-            log.info("TotalItems (filterProducts): {} products retrieved.", resultPage.getContent().size());
-            return inventoryServiceHelper.transformToPaginatedInventoryResponse(resultPage);
-        } catch (IllegalArgumentException iae) {
-            throw new ValidationException("TotalItems (filterProducts): Invalid filterBy value: " + iae.getMessage());
-        } catch (DataAccessException da) {
-            log.error("TotalItems (filterProducts): Database error while filtering by '{}': {}",
-                    filterBy, da.getMessage(), da);
-            throw new DatabaseException("TotalItems (filterProducts): Database error", da.getCause());
-        } catch (Exception e) {
-            log.error("TotalItems (filterProducts): Internal error while filtering by '{}': {})", filterBy, e.getMessage(), e);
-            throw new ServiceException("TotalItems (filterProducts): Internal error", e);
-        }
+        log.info("TotalItems (filterProducts): {} products retrieved.", inventoryFilterResponse.getContent().size());
+        return inventoryServiceHelper.transformToPaginatedInventoryResponse(inventoryFilterResponse);
     }
 
     /**
@@ -206,29 +123,28 @@ public class TotalItemsService {
      * @throws ServiceException    if any other error occurs during deletion
      */
     @Transactional
-    public ApiResponse<Void> deleteProduct(String sku) throws BadRequestException {
+    public ApiResponse<Void> deleteProduct(String sku){
         try{
-            Optional<InventoryControlData> product = icRepository.findBySKU(sku);
-            if(product.isPresent()){
-                InventoryControlData productToBeDeleted = product.get();
-                ProductsForPM productInPM = productToBeDeleted.getPmProduct();
+            InventoryControlData product = inventoryQueryService.getInventoryDataBySku(sku);
+            ProductsForPM productInPM = product.getPmProduct();
 
-                if(productInPM.getStatus().equals(ProductStatus.ACTIVE) || productInPM.getStatus().equals(ProductStatus.PLANNING)
-                        || productInPM.getStatus().equals(ProductStatus.ON_ORDER) ) {
-                    productInPM.setStatus(ProductStatus.ARCHIVED);
-                    productManagementService.saveProduct(productInPM);
-                }
-                icRepository.deleteBySKU(sku);
-                log.info("IC (deleteProduct): Product {} is deleted successfully.", sku);
-                return new ApiResponse<>(true, "Product " + sku + " is deleted successfully.");
+            if(productInPM.getStatus().equals(ProductStatus.ACTIVE) || productInPM.getStatus().equals(ProductStatus.PLANNING)
+                    || productInPM.getStatus().equals(ProductStatus.ON_ORDER) ) {
+                productInPM.setStatus(ProductStatus.ARCHIVED);
+                productManagementService.saveProduct(productInPM);
             }
-            throw new BadRequestException("IC (deleteProduct): Product with SKU " + sku + " not found");
+            icRepository.deleteBySKU(sku);
+            log.info("TotalItems deleteProduct(): Product {} is deleted successfully.", sku);
+            return new ApiResponse<>(true, "Product " + sku + " is deleted successfully.");
+
         }catch (DataAccessException de){
-            throw new DatabaseException("IC (deleteProduct): Database error occurred.", de);
-        }catch (BadRequestException be){
-            throw be;
+            log.error("TotalItems deleteProduct(): Database error occurred.", de);
+            throw new DatabaseException("Internal Database error occurred.", de);
+        }catch (ResourceNotFoundException re){
+            throw re;
         }catch (Exception e){
-            throw new ServiceException("IC (deleteProduct): Failed to delete product", e);
+            log.error("TotalItems deleteProduct(): Unexpected error occurred.", e);
+            throw new ServiceException("Internal Service Error", e);
         }
     }
 
@@ -236,31 +152,16 @@ public class TotalItemsService {
         XSSFWorkbook workbook = new XSSFWorkbook();
         XSSFSheet sheet = workbook.createSheet("All Inventory Products");
         createHeaderRowForInventoryDto(sheet);
-        List<InventoryControlResponse> allProducts = getAllInventoryProducts(sortBy, sortDirection);
+
+        // Retrieve all inventory products & transform to DTO List
+        List<InventoryControlResponse> allProducts = inventoryServiceHelper
+                .convertToInventoryResponseList(
+                        inventoryQueryService.getAllInventoryProducts(sortBy, sortDirection)
+                );
+
         populateDataRowsForInventoryDto(sheet, allProducts);
         log.info("TotalItems (generateTotalItemsReport): {} products retrieved.", allProducts.size());
         writeWorkbookToResponse(response, workbook);
     }
 
-    // Helper methods
-    public List<InventoryControlResponse> getAllInventoryProducts(String sortBy, String sortDirection) {
-        try {
-            // Parse sort direction
-            Sort.Direction direction = sortDirection.equalsIgnoreCase("desc") ?
-                    Sort.Direction.DESC : Sort.Direction.ASC;
-
-            // Create the sort and get all data
-            Sort sort = Sort.by(direction, sortBy);
-            List<InventoryControlData> inventoryList = icRepository.findAll(sort);
-
-            // Convert to DTOs
-            return inventoryList.stream().map(inventoryServiceHelper::convertToInventoryDTO).toList();
-        } catch (DataAccessException da) {
-            log.error("TotalItems (getAllInventoryData): Failed to retrieve products due to database error: {}", da.getMessage(), da);
-            throw new DatabaseException("TotalItems (getAllInventoryData): Failed to retrieve products due to database error", da);
-        } catch (Exception e) {
-            log.error("TotalItems (getAllInventoryData): Failed to retrieve products: {}", e.getMessage(), e);
-            throw new ServiceException("TotalItems (getAllInventoryData): Failed to retrieve products", e);
-        }
-    }
 }

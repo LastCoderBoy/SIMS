@@ -3,13 +3,16 @@ package com.JK.SIMS.service.InventoryServices.inventoryCommonUtils.inventoryQuer
 import com.JK.SIMS.exception.DatabaseException;
 import com.JK.SIMS.exception.ResourceNotFoundException;
 import com.JK.SIMS.exception.ServiceException;
+import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.inventoryData.InventoryControlData;
+import com.JK.SIMS.models.inventoryData.dtos.InventoryControlResponse;
 import com.JK.SIMS.repository.InventoryControl_repo.IC_repository;
 import com.JK.SIMS.service.generalUtils.GlobalServiceHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -40,7 +43,7 @@ public class InventoryQueryService {
     @Transactional(readOnly = true)
     public InventoryControlData getInventoryDataBySku(String sku) {
         return icRepository.findBySKU(sku)
-                .orElseThrow(() -> new ResourceNotFoundException("IC (updateProduct): No product with SKU " + sku + " found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Product with SKU " + sku + "is not found"));
     }
 
     @Transactional(readOnly = true)
@@ -49,15 +52,15 @@ public class InventoryQueryService {
     }
 
     @Transactional(readOnly = true)
-    public Page<InventoryControlData> getAllPagedLowStockItems (String sortBy, String sortDirection, int page, int size) {
+    public Page<InventoryControlData> getAllLowStockProducts(String sortBy, String sortDirection, int page, int size) {
         try {
             Pageable pageable = globalServiceHelper.preparePageable(page, size, sortBy, sortDirection);
             return icRepository.getLowStockItems(pageable);
         }catch (DataAccessException da){
-            log.error("getAllPagedLowStockItems(): Failed to retrieve products due to database error: {}", da.getMessage(), da);
+            log.error("Page-getAllLowStockProducts(): Failed to retrieve products due to database error: {}", da.getMessage(), da);
             throw new DatabaseException("Failed to retrieve products due to database error", da);
         }catch (Exception e){
-            log.error("getAllPagedLowStockItems(): Failed to retrieve products: {}", e.getMessage(), e);
+            log.error("Page-getAllLowStockProducts(): Failed to retrieve products: {}", e.getMessage(), e);
             throw new ServiceException("Internal Service Error, please contact the administration", e);
         }
     }
@@ -73,10 +76,43 @@ public class InventoryQueryService {
             Sort sort = Sort.by(direction, sortBy);
             return icRepository.getLowStockItems(sort);
         } catch (DataAccessException da) {
-            log.error("getAllLowStockProducts(): Failed to retrieve products due to database error: {}", da.getMessage(), da);
+            log.error("List-getAllLowStockProducts(): Failed to retrieve products due to database error: {}", da.getMessage(), da);
             throw new DatabaseException("Failed to retrieve products due to database error", da);
         } catch (Exception e) {
-            log.error("getAllLowStockProducts(): Failed to retrieve products: {}", e.getMessage(), e);
+            log.error("List-getAllLowStockProducts(): Failed to retrieve products: {}", e.getMessage(), e);
+            throw new ServiceException("Internal Service Error", e);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public List<InventoryControlData> getAllInventoryProducts(String sortBy, String sortDirection) {
+        try {
+            // Parse sort direction
+            Sort.Direction direction = sortDirection.equalsIgnoreCase("desc") ?
+                    Sort.Direction.DESC : Sort.Direction.ASC;
+
+            // Create the sort and get all data
+            Sort sort = Sort.by(direction, sortBy);
+            return icRepository.findAll(sort);
+        } catch (DataAccessException da) {
+            log.error("List-getAllInventoryProducts() : Failed to retrieve products due to database error: {}", da.getMessage(), da);
+            throw new DatabaseException("Failed to retrieve products due to database error", da);
+        } catch (Exception e) {
+            log.error("List-getAllInventoryProducts(): Failed to retrieve products: {}", e.getMessage(), e);
+            throw new ServiceException("Internal Service Error", e);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public Page<InventoryControlData> getAllInventoryProducts(String sortBy, String sortDirection, int page, int size) {
+        try{
+            Pageable pageable = globalServiceHelper.preparePageable(page, size, sortBy, sortDirection);
+            return icRepository.findAll(pageable);
+        } catch (DataAccessException da){
+            log.error("Page-getAllInventoryProducts(): Failed to retrieve products due to database error: {}", da.getMessage(), da);
+            throw new DatabaseException("Failed to retrieve products due to database error", da);
+        } catch (Exception e){
+            log.error("Page-getAllInventoryProducts(): Failed to retrieve products: {}", e.getMessage(), e);
             throw new ServiceException("Internal Service Error", e);
         }
     }

@@ -1,38 +1,37 @@
 package com.JK.SIMS.controller.inventoryControllers;
 
 import com.JK.SIMS.models.ApiResponse;
+import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.inventoryData.dtos.InventoryControlRequest;
 import com.JK.SIMS.models.inventoryData.dtos.InventoryControlResponse;
-import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.service.InventoryServices.totalItemsService.TotalItemsService;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.coyote.BadRequestException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import static com.JK.SIMS.service.generalUtils.EntityConstants.DEFAULT_SORT_BY;
+import static com.JK.SIMS.service.generalUtils.EntityConstants.DEFAULT_SORT_DIRECTION;
+
 @RestController
+@RequiredArgsConstructor
+@Slf4j
 @RequestMapping("/api/v1/products/inventory/total")
 public class TotalItemsController {
-    private static final Logger logger = LoggerFactory.getLogger(TotalItemsController.class);
-
     private final TotalItemsService totalItemsService;
-    @Autowired
-    public TotalItemsController(TotalItemsService totalItemsService) {
-        this.totalItemsService = totalItemsService;
-    }
+
 
     @GetMapping
-    public ResponseEntity<?> getAllProducts(@RequestParam(defaultValue = "pmProduct.name") String sortBy,
-                                            @RequestParam(defaultValue = "asc") String sortDirection,
+    public ResponseEntity<?> getAllProducts(@RequestParam(defaultValue = DEFAULT_SORT_BY) String sortBy,
+                                            @RequestParam(defaultValue = DEFAULT_SORT_DIRECTION) String sortDirection,
                                             @RequestParam(defaultValue = "0") int page,
                                             @RequestParam(defaultValue = "10") int size){
-        logger.info("TotalItemsController: getAllProducts() calling with page {} and size {}...", page, size);
+        log.info("TotalItemsController: getAllProducts() calling with page {} and size {}...", page, size);
         PaginatedResponse<InventoryControlResponse> inventoryResponse =
-                totalItemsService.getPaginatedInventoryDto(sortBy, sortDirection, page, size);
+                totalItemsService.getAllPaginatedInventoryResponse(sortBy, sortDirection, page, size);
         return ResponseEntity.ok(inventoryResponse);
     }
 
@@ -49,10 +48,13 @@ public class TotalItemsController {
 
     @GetMapping("/search")
     public ResponseEntity<?> searchProduct(@RequestParam(required = false) String text,
+                                           @RequestParam(defaultValue = DEFAULT_SORT_BY) String sortBy,
+                                           @RequestParam(defaultValue = DEFAULT_SORT_DIRECTION) String sortDirection,
                                            @RequestParam(defaultValue = "0") int page,
                                            @RequestParam(defaultValue = "10") int size){
-        logger.info("TotalItemsController: searchProduct() calling with page {} and size {}...", page, size);
-        PaginatedResponse<InventoryControlResponse> inventoryResponse = totalItemsService.searchProduct(text, page, size);
+        log.info("TotalItemsController: searchProduct() calling with page {} and size {}...", page, size);
+        PaginatedResponse<InventoryControlResponse> inventoryResponse =
+                totalItemsService.searchProduct(text, sortBy, sortDirection, page, size);
         return ResponseEntity.ok(inventoryResponse);
     }
 
@@ -60,11 +62,11 @@ public class TotalItemsController {
     @GetMapping("/filter")
     public ResponseEntity<?> filterProducts(
             @RequestParam String filterBy,
-            @RequestParam(defaultValue = "pmProduct.name") String sortBy,
-            @RequestParam(defaultValue = "asc") String sortDirection,
+            @RequestParam(defaultValue = DEFAULT_SORT_BY) String sortBy,
+            @RequestParam(defaultValue = DEFAULT_SORT_DIRECTION) String sortDirection,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        logger.info("TotalItemsController: filterProducts() calling with page {} and size {}...", page, size);
+        log.info("TotalItemsController: filterProducts() calling with page {} and size {}...", page, size);
         PaginatedResponse<InventoryControlResponse> filterResponse =
                 totalItemsService.filterProducts(filterBy, sortBy, sortDirection, page, size);
         return ResponseEntity.ok(filterResponse);
@@ -74,9 +76,9 @@ public class TotalItemsController {
     @PreAuthorize("@securityUtils.hasAccess()")
     public ResponseEntity<?> deleteProduct(@PathVariable String sku) throws BadRequestException{
         if(sku == null || sku.trim().isEmpty()){
-            throw new BadRequestException("IC: deleteProduct() SKU cannot be empty");
+            throw new BadRequestException("SKU cannot be empty");
         }
-        logger.info("IC: deleteProduct() calling...");
+        log.info("IC: deleteProduct() calling...");
         ApiResponse<Void> response = totalItemsService.deleteProduct(sku);
         return ResponseEntity.ok(response);
     }
@@ -85,8 +87,8 @@ public class TotalItemsController {
     @GetMapping("/report")
     public void generateReport(HttpServletResponse response,
                                @RequestParam(defaultValue = "pmProduct.productID") String sortBy,
-                               @RequestParam(defaultValue = "asc") String sortDirection) {
-        logger.info("TotalItemsController: generateTotalItemsReport() calling...");
+                               @RequestParam(defaultValue = DEFAULT_SORT_DIRECTION) String sortDirection) {
+        log.info("TotalItemsController: generateTotalItemsReport() calling...");
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         String headerKey = "Content-Disposition";
         String headerValue = "attachment; filename=TotalItemsReport.xlsx";

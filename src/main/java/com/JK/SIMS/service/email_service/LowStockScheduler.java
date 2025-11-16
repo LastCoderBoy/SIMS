@@ -2,35 +2,35 @@ package com.JK.SIMS.service.email_service;
 
 import com.JK.SIMS.models.inventoryData.InventoryControlData;
 import com.JK.SIMS.repository.InventoryControl_repo.IC_repository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.JK.SIMS.service.InventoryServices.inventoryCommonUtils.inventoryQueryService.InventoryQueryService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-@Service
-public class LowStockScheduler {
-    private static final Logger logger = LoggerFactory.getLogger(LowStockScheduler.class);
+import static com.JK.SIMS.service.generalUtils.EntityConstants.DEFAULT_SORT_BY;
+import static com.JK.SIMS.service.generalUtils.EntityConstants.DEFAULT_SORT_DIRECTION;
 
-    private final IC_repository icRepository;
+@Service
+@Slf4j
+@RequiredArgsConstructor
+public class LowStockScheduler {
+
+    private final InventoryQueryService inventoryQueryService;
     private final EmailSender emailSender;
-    @Autowired
-    public LowStockScheduler(IC_repository icRepository, EmailSender emailSender) {
-        this.icRepository = icRepository;
-        this.emailSender = emailSender;
-    }
 
 
 //    @Scheduled(cron = "*/30 * * * * ?")
     @Scheduled(cron = "0 0 8 * * ?")
     public void sendDailyLowStockAlert() {
-        List<InventoryControlData> lowStockProducts = icRepository.getLowStockItems();
+        List<InventoryControlData> lowStockProducts =
+                inventoryQueryService.getAllLowStockProducts(DEFAULT_SORT_BY, DEFAULT_SORT_DIRECTION);
         if (lowStockProducts.isEmpty()) {
             return; // nothing to send
         }
-        logger.info("Sending daily low stock alerts product size {}.", lowStockProducts.size());
+        log.info("Sending daily low stock alerts product size {}.", lowStockProducts.size());
         String html = buildLowStockHtml(lowStockProducts);
         emailSender.sendLowStockEmail( "Daily Low Stock Alert", html);
     }

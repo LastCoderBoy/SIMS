@@ -21,4 +21,15 @@ public class InventorySpecification {
             return criteriaBuilder.equal(joinProduct.get("category"), category);
         });
     }
+
+    public static Specification<InventoryControlData> hasLowStock() {
+        return (root, query, criteriaBuilder) ->
+                criteriaBuilder.and(
+                        criteriaBuilder.notEqual(root.get("status"), InventoryDataStatus.INVALID),
+                        criteriaBuilder.lessThanOrEqualTo(
+                                root.get("currentStock"),
+                                root.get("minLevel")
+                        )
+                );
+    }
 }
