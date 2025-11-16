@@ -8,6 +8,7 @@ import jakarta.persistence.criteria.Join;
 import org.springframework.data.jpa.domain.Specification;
 
 public class InventorySpecification {
+
     public static Specification<InventoryControlData> hasStatus(InventoryDataStatus status){
         return ((root, query, criteriaBuilder) -> {
             if(status == null) return null;

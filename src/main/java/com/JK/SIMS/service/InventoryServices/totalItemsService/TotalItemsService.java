@@ -16,12 +16,10 @@ import com.JK.SIMS.service.InventoryServices.inventoryCommonUtils.InventoryServi
 import com.JK.SIMS.service.InventoryServices.inventoryCommonUtils.inventoryQueryService.InventoryQueryService;
 import com.JK.SIMS.service.InventoryServices.inventoryCommonUtils.inventorySearchService.InventorySearchService;
 import com.JK.SIMS.service.InventoryServices.inventoryDashboardService.stockManagement.StockManagementLogic;
-import com.JK.SIMS.service.generalUtils.GlobalServiceHelper;
 import com.JK.SIMS.service.productManagementService.ProductManagementService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.coyote.BadRequestException;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.dao.DataAccessException;
@@ -55,7 +53,8 @@ public class TotalItemsService {
 
 
     @Transactional(readOnly = true)
-    public PaginatedResponse<InventoryControlResponse> getAllPaginatedInventoryResponse(String sortBy, String sortDirection, int page, int size) {
+    public PaginatedResponse<InventoryControlResponse> getAllPaginatedInventoryResponse(String sortBy, String sortDirection,
+                                                                                        int page, int size) {
         Page<InventoryControlData> allInventoryProducts =
                 inventoryQueryService.getAllInventoryProducts(sortBy, sortDirection, page, size);
         log.info("getAllPaginatedInventoryResponse(): {} products retrieved.", allInventoryProducts.getContent().size());
@@ -97,7 +96,8 @@ public class TotalItemsService {
 
     // Search by SKU, Location, ID, Name, Category.
     @Transactional(readOnly = true)
-    public PaginatedResponse<InventoryControlResponse> searchProduct(String text, String sortBy, String sortDirection, int page, int size) {
+    public PaginatedResponse<InventoryControlResponse> searchProduct(String text, String sortBy, String sortDirection,
+                                                                     int page, int size) {
         Page<InventoryControlData> inventorySearchResponse =
                 inventorySearchService.searchAll(text, sortBy, sortDirection, page, size);
         log.info("TotalItems (searchProduct): {} products retrieved.", inventorySearchResponse.getContent().size());
@@ -105,7 +105,8 @@ public class TotalItemsService {
     }
 
     @Transactional(readOnly = true)
-    public PaginatedResponse<InventoryControlResponse> filterProducts(String filterBy, String sortBy, String sortDirection, int page, int size) {
+    public PaginatedResponse<InventoryControlResponse> filterProducts(String filterBy, String sortBy, String sortDirection,
+                                                                      int page, int size) {
         Page<InventoryControlData> inventoryFilterResponse =
                 inventorySearchService.filterAll(filterBy, sortBy, sortDirection, page, size);
 
@@ -118,7 +119,7 @@ public class TotalItemsService {
      *
      * @param sku The Stock Keeping Unit identifier of the product to delete
      * @return ApiResponse containing success status and confirmation message
-     * @throws BadRequestException if product is not found in IC or PM system
+     * @throws ResourceNotFoundException if product is not found in IC or PM system
      * @throws DatabaseException   if database operation fails
      * @throws ServiceException    if any other error occurs during deletion
      */
@@ -133,7 +134,7 @@ public class TotalItemsService {
                 productInPM.setStatus(ProductStatus.ARCHIVED);
                 productManagementService.saveProduct(productInPM);
             }
-            icRepository.deleteBySKU(sku);
+            icRepository.delete(product);
             log.info("TotalItems deleteProduct(): Product {} is deleted successfully.", sku);
             return new ApiResponse<>(true, "Product " + sku + " is deleted successfully.");
 

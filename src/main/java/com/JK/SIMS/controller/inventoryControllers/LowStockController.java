@@ -14,6 +14,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import static com.JK.SIMS.service.generalUtils.EntityConstants.DEFAULT_SORT_BY;
+import static com.JK.SIMS.service.generalUtils.EntityConstants.DEFAULT_SORT_DIRECTION;
+
 
 @RestController
 @RequiredArgsConstructor
@@ -22,12 +25,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class LowStockController {
     private final LowStockService lowStockService;
 
-    // Get All
     @GetMapping
-    public ResponseEntity<PaginatedResponse<InventoryControlResponse>> getAllLowStockRecords(@RequestParam(defaultValue = "pmProduct.name") String sortBy,
-                                                   @RequestParam(defaultValue = "desc") String sortDirection,
-                                                   @RequestParam(defaultValue = "0") int page,
-                                                   @RequestParam(defaultValue = "10") int size){
+    public ResponseEntity<PaginatedResponse<InventoryControlResponse>> getAllLowStockRecords(@RequestParam(defaultValue = DEFAULT_SORT_BY) String sortBy,
+                                                                                             @RequestParam(defaultValue = DEFAULT_SORT_DIRECTION) String sortDirection,
+                                                                                             @RequestParam(defaultValue = "0") int page,
+                                                                                             @RequestParam(defaultValue = "10") int size){
         log.info("LowStockController: getAllPaginatedLowStockRecords() calling with page {} and size {}...", page, size);
         PaginatedResponse<InventoryControlResponse> response =
                 lowStockService.getAllPaginatedLowStockRecords(sortBy, sortDirection, page, size);
@@ -36,10 +38,10 @@ public class LowStockController {
 
     @GetMapping("/search")
     public ResponseEntity<PaginatedResponse<InventoryControlResponse>> searchProduct(@RequestParam(required = false) String text,
-                                           @RequestParam(defaultValue = "pmProduct.name") String sortBy,
-                                           @RequestParam(defaultValue = "desc") String sortDirection,
-                                           @RequestParam(defaultValue = "0") int page,
-                                           @RequestParam(defaultValue = "10") int size){
+                                                                                     @RequestParam(defaultValue = DEFAULT_SORT_BY) String sortBy,
+                                                                                     @RequestParam(defaultValue = DEFAULT_SORT_DIRECTION) String sortDirection,
+                                                                                     @RequestParam(defaultValue = "0") int page,
+                                                                                     @RequestParam(defaultValue = "10") int size){
         log.info("LowStockController: searchProduct() calling with page {} and size {}...", page, size);
         PaginatedResponse<InventoryControlResponse> inventoryResponse =
                 lowStockService.searchInLowStockProducts(text, page, size, sortBy, sortDirection);
@@ -48,10 +50,10 @@ public class LowStockController {
 
     @GetMapping("/filter")
     public ResponseEntity<PaginatedResponse<InventoryControlResponse>> filterProducts(@RequestParam(required = false) ProductCategories category,
-                                            @RequestParam(defaultValue = "pmProduct.name") String sortBy,
-                                            @RequestParam(defaultValue = "desc") String sortDirection,
-                                            @RequestParam(defaultValue = "0") int page,
-                                            @RequestParam(defaultValue = "10") int size){
+                                                                                      @RequestParam(defaultValue = DEFAULT_SORT_BY) String sortBy,
+                                                                                      @RequestParam(defaultValue = DEFAULT_SORT_DIRECTION) String sortDirection,
+                                                                                      @RequestParam(defaultValue = "0") int page,
+                                                                                      @RequestParam(defaultValue = "10") int size){
         log.info("LowStockController: filterProducts() calling with page {} and size {}...", page, size);
         PaginatedResponse<InventoryControlResponse> filterResponse =
                 lowStockService.filterLowStockProducts(category, sortBy, sortDirection, page, size);
@@ -60,8 +62,8 @@ public class LowStockController {
 
     @GetMapping("/report")
     public void generateLowStockReport(HttpServletResponse response,
-                                       @RequestParam(defaultValue = "pmProduct.name") String sortBy,
-                                       @RequestParam(defaultValue = "desc") String sortDirection){
+                                       @RequestParam(defaultValue = DEFAULT_SORT_BY) String sortBy,
+                                       @RequestParam(defaultValue = DEFAULT_SORT_DIRECTION) String sortDirection){
         log.info("LowStockController: generateLowStockReport() calling...");
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         String headerKey = "Content-Disposition";

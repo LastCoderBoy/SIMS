@@ -22,6 +22,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.nio.file.AccessDeniedException;
 
+import static com.JK.SIMS.service.generalUtils.EntityConstants.DEFAULT_SORT_DIRECTION;
+
 @RestController
 @RequestMapping("/api/v1/products")
 @RequiredArgsConstructor
@@ -32,16 +34,19 @@ public class ProductController {
 
     @GetMapping
     public ResponseEntity<PaginatedResponse<ProductManagementResponse>> getAllProducts(
+            @RequestParam(defaultValue = "productID") String sortBy,
+            @RequestParam(defaultValue = DEFAULT_SORT_DIRECTION) String sortDirection,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         log.info("PM: getAllProducts() calling...");
-        PaginatedResponse<ProductManagementResponse> products = pmService.getAllProducts(page, size);
+        PaginatedResponse<ProductManagementResponse> products = pmService.getAllProducts(sortBy, sortDirection, page, size);
         return ResponseEntity.ok(products);
     }
 
     @PostMapping
     @PreAuthorize("@securityUtils.hasAccess()")
-    public ResponseEntity<ApiResponse<ProductManagementResponse>> addProduct(@RequestBody @Valid ProductManagementRequest newProduct){
+    public ResponseEntity<ApiResponse<ProductManagementResponse>> addProduct(
+            @RequestBody @Valid ProductManagementRequest newProduct){
         if (newProduct == null) {
             log.error("PM: addProduct() Request for Product cannot be null");
             throw new ValidationException("Request for Product cannot be null");
@@ -57,7 +62,8 @@ public class ProductController {
     // Batch product creation
     @PostMapping("/batch")
     @PreAuthorize("@securityUtils.hasAccess()")
-    public ResponseEntity<ApiResponse<BatchProductResponse>> addProductsBatch(@RequestBody @Valid BatchProductRequest batchRequest) {
+    public ResponseEntity<ApiResponse<BatchProductResponse>> addProductsBatch(
+            @RequestBody @Valid BatchProductRequest batchRequest) {
         if (batchRequest == null || batchRequest.getProducts() == null ||
                 batchRequest.getProducts().isEmpty()) {
             throw new ValidationException("Batch request must contain at least one product");
@@ -84,7 +90,9 @@ public class ProductController {
 
     @PutMapping("/{id}")
     @PreAuthorize("@securityUtils.hasAccess()")
-    public ResponseEntity<ApiResponse<Void>> updateProduct(@PathVariable String id, @RequestBody ProductManagementRequest productRequest) throws BadRequestException, AccessDeniedException {
+    public ResponseEntity<ApiResponse<Void>> updateProduct(
+            @PathVariable String id,
+            @RequestBody ProductManagementRequest productRequest) throws BadRequestException {
         if (id == null || productRequest == null || id.trim().isEmpty()) {
             throw new BadRequestException("Product ID or New product cannot be null");
         }
@@ -112,10 +120,13 @@ public class ProductController {
     @GetMapping("/search")
     public ResponseEntity<PaginatedResponse<ProductManagementResponse>> searchProduct(
             @RequestParam(required = false) String text,
+            @RequestParam(defaultValue = "productID") String sortBy,
+            @RequestParam(defaultValue = DEFAULT_SORT_DIRECTION) String sortDirection,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size){
         log.info("PM: searchProduct() calling...");
-        PaginatedResponse<ProductManagementResponse> result = pmService.searchProduct(text, page, size);
+        PaginatedResponse<ProductManagementResponse> result =
+                pmService.searchProduct(text, sortBy, sortDirection, page, size);
         log.info("PM (searchProduct): Returning {} paginated data", result.getContent().size());
         return ResponseEntity.ok(result);
     }
@@ -124,7 +135,7 @@ public class ProductController {
     public ResponseEntity<PaginatedResponse<ProductManagementResponse>> filterProducts(
             @RequestParam(required = false) String filter,
             @RequestParam(defaultValue = "productID") String sortBy,
-            @RequestParam(defaultValue = "asc") String direction,
+            @RequestParam(defaultValue = DEFAULT_SORT_DIRECTION) String direction,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         PaginatedResponse<ProductManagementResponse> result = pmService.filterProducts(filter, sortBy, direction, page, size);

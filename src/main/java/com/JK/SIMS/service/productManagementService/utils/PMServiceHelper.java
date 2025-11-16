@@ -94,11 +94,21 @@ public class PMServiceHelper {
         );
     }
 
-    public PaginatedResponse<ProductManagementResponse> transformToDTOPaginatedResponse(Page<ProductsForPM> products) {
+    public PaginatedResponse<ProductManagementResponse> transformToPaginatedResponse(Page<ProductsForPM> products) {
         PaginatedResponse<ProductManagementResponse> response = new PaginatedResponse<>();
         response.setContent(products.getContent().stream().map(this::convertToDTO).toList());
         response.setTotalPages(products.getTotalPages());
         response.setTotalElements(products.getTotalElements());
         return response;
+    }
+
+    public ProductsForPM createProductEntity(ProductManagementRequest request) {
+        ProductsForPM product = new ProductsForPM();
+        product.setName(request.getName());
+        product.setCategory(request.getCategory());
+        product.setPrice(request.getPrice());
+        product.setLocation(request.getLocation());
+        product.setStatus(request.getStatus());
+        return product;
     }
 }

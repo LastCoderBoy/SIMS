@@ -61,8 +61,6 @@ public interface IC_repository extends JpaRepository<InventoryControlData, Strin
 
     Optional<InventoryControlData> findByPmProduct_ProductID(String productId);
 
-    void deleteBySKU(String sku);
-
     @Query("SELECT i FROM InventoryControlData i WHERE i.status != 'INVALID' AND  i.currentStock <= i.minLevel")
     List<InventoryControlData> getLowStockItems(Sort sort);
 

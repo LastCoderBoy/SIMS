@@ -1,6 +1,6 @@
 package com.JK.SIMS.service.InventoryServices.damageLossService;
 
-import com.JK.SIMS.config.security.JWTService;
+import com.JK.SIMS.config.security.utils.SecurityUtils;
 import com.JK.SIMS.exception.DatabaseException;
 import com.JK.SIMS.exception.ResourceNotFoundException;
 import com.JK.SIMS.exception.ServiceException;
@@ -16,11 +16,10 @@ import com.JK.SIMS.models.damage_loss.dtos.DamageLossResponse;
 import com.JK.SIMS.models.inventoryData.InventoryControlData;
 import com.JK.SIMS.repository.damageLossRepo.DamageLossRepository;
 import com.JK.SIMS.service.InventoryServices.damageLossService.damageLossQueryService.DamageLossQueryService;
-import com.JK.SIMS.service.InventoryServices.inventoryDashboardService.stockManagement.StockManagementLogic;
 import com.JK.SIMS.service.InventoryServices.inventoryCommonUtils.inventoryQueryService.InventoryQueryService;
+import com.JK.SIMS.service.InventoryServices.inventoryDashboardService.stockManagement.StockManagementLogic;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.coyote.BadRequestException;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -41,7 +40,7 @@ public class DamageLossService {
     private final Clock clock;
 
     // =========== Components ===========
-    private final JWTService jWTService;
+    private final SecurityUtils securityUtils;
     private final StockManagementLogic stockManagementLogic;
     private final DamageLossQueryService damageLossQueryService;
     private final InventoryQueryService inventoryQueryService;
@@ -54,20 +53,15 @@ public class DamageLossService {
 
     @Transactional(readOnly = true)
     public DamageLossPageResponse getDamageLossDashboardData(int page, int size) {
-        try {
-            DamageLossMetrics damageLossMetrics = damageLossQueryService.getDamageLossMetrics();
+        DamageLossMetrics damageLossMetrics = damageLossQueryService.getDamageLossMetrics();
+        Page<DamageLoss> pagedDamageLossEntity = damageLossQueryService.getAllDamageLoss(page, size);
 
-            return new DamageLossPageResponse(
-                    damageLossMetrics.getTotalReport(),
-                    damageLossMetrics.getTotalItemLost(),
-                    damageLossMetrics.getTotalLossValue(),
-                    getAllDamageLoss(page, size)
-            );
-        } catch (DataAccessException de) {
-            throw new DatabaseException("DL (getDamageLossDashboardData): Database error.", de);
-        } catch (Exception e) {
-            throw new ServiceException("DL (getDamageLossDashboardData): Internal Service error", e);
-        }
+        return new DamageLossPageResponse(
+                damageLossMetrics.getTotalReport(),
+                damageLossMetrics.getTotalItemLost(),
+                damageLossMetrics.getTotalLossValue(),
+                damageLossHelper.transformToPaginatedDTO(pagedDamageLossEntity)
+        );
     }
 
     @Transactional
@@ -79,16 +73,20 @@ public class DamageLossService {
                     inventoryQueryService.getInventoryDataBySku(dtoRequest.sku());
             damageLossHelper.validateStockInput(inventoryProduct, dtoRequest.quantityLost());
 
-            String username = jWTService.extractUsername(jwtToken);
+            String username = securityUtils.validateAndExtractUsername(jwtToken);
             DamageLoss entity = damageLossHelper.convertToEntity(dtoRequest, inventoryProduct, username);
             damageLossRepository.save(entity);
 
             // Update the Inventory Stock level and the status
             int remainingStock = inventoryProduct.getCurrentStock() - dtoRequest.quantityLost();
             stockManagementLogic.updateInventoryStockLevels(
-                    inventoryProduct, Optional.of(remainingStock), Optional.empty());
+                    inventoryProduct,
+                    Optional.of(remainingStock),
+                    Optional.empty()
+            );
         } catch (DataAccessException de) {
-            throw new DatabaseException("DL (addDamageLoss): Database error while saving damage/loss record", de);
+            log.error("DL (addDamageLoss): Database error while saving damage/loss record: {}", de.getMessage());
+            throw new DatabaseException("Database error while saving damage/loss record", de);
         } catch (IllegalArgumentException ie) {
             throw new ValidationException("DL (addDamageLoss): " + ie.getMessage());
         } catch (Exception e) {
@@ -97,9 +95,9 @@ public class DamageLossService {
     }
 
     @Transactional
-    public ApiResponse<DamageLoss> updateDamageLossProduct(Integer id, DamageLossRequest request) throws BadRequestException {
+    public ApiResponse<DamageLoss> updateDamageLossProduct(Integer id, DamageLossRequest request) {
         try {
-            DamageLoss report = getDamageLossById(id);
+            DamageLoss report = damageLossQueryService.getDamageLossById(id);
             if (request == null || damageLossHelper.isRequestEmpty(request)) {
                 throw new ValidationException("DL (updateDamageLossProduct): At least one field required to update.");
             }
@@ -148,24 +146,28 @@ public class DamageLossService {
 
         } catch (DataAccessException e) {
             throw new DatabaseException("Failed to update damage/loss report due to database error", e);
-        } catch (ValidationException | BadRequestException | IllegalArgumentException e) {
+        } catch (ValidationException | ResourceNotFoundException e) {
             throw e;
         } catch (Exception e) {
             throw new ServiceException("Failed to update damage/loss report due to internal error", e);
         }
     }
 
+    // NOTE: Deleting Report will return the Inventory Level into previous state
     @Transactional
     public ApiResponse<String> deleteDamageLossReport(Integer id) {
         try {
-            DamageLoss report = getDamageLossById(id);
+            DamageLoss report = damageLossQueryService.getDamageLossById(id);
             restoreStockLevel(report.getIcProduct(), report.getQuantityLost());
             damageLossRepository.delete(report);
 
             log.info("DL (delete): Deleted damage/loss report and restored inventory for SKU {}", report.getIcProduct().getSKU());
             return new ApiResponse<>(true, "Report deleted and stock restored for SKU: " + report.getIcProduct().getSKU());
+        } catch (ResourceNotFoundException e) {
+            throw e;
         } catch (Exception e) {
-            throw new ServiceException("DL (delete): Error while deleting report", e);
+            log.error("DL (delete): Error while deleting report: {}", e.getMessage(), e);
+            throw new ServiceException("Error while deleting report", e);
         }
     }
 
@@ -175,12 +177,16 @@ public class DamageLossService {
             Optional<String> inputText = Optional.ofNullable((text));
             if (inputText.isPresent() && !inputText.get().trim().isEmpty()) {
                 Pageable pageable = PageRequest.of(page, size, Sort.by("icProduct.pmProduct.name").ascending());
-                Page<DamageLoss> damageLossReports = damageLossRepository.searchProducts(inputText.get().trim().toLowerCase(), pageable);
+                Page<DamageLoss> damageLossReports =
+                        damageLossRepository.searchProducts(inputText.get().trim().toLowerCase(), pageable);
                 log.info("DL (searchProduct): {} products retrieved.", damageLossReports.getContent().size());
                 return damageLossHelper.transformToPaginatedDTO(damageLossReports);
             }
+
             log.info("DL (searchProduct): No search text provided. Retrieving first page with default size.");
-            return getAllDamageLoss(page,size);
+            Page<DamageLoss> pagedDamageLossEntity = damageLossQueryService.getAllDamageLoss(page, size);
+            return damageLossHelper.transformToPaginatedDTO(pagedDamageLossEntity);
+
         } catch (DataAccessException e) {
             throw new DatabaseException("DL (searchProduct): Database error", e);
         } catch (Exception e) {
@@ -209,11 +215,6 @@ public class DamageLossService {
         }
     }
 
-    private DamageLoss getDamageLossById(Integer id) throws BadRequestException {
-        return damageLossRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("DL (getDamageLossById): Report not found for ID: " + id));
-    }
-
     private void restoreStockLevel(InventoryControlData product, int quantityToRestore) {
         if (quantityToRestore <= 0) {
             log.warn("DL (restoreStockLevel): Quantity to restore is zero or negative. Skipping update.");
@@ -225,20 +226,5 @@ public class DamageLossService {
 
         log.info("DL (restoreStockLevel): Restored {} units to SKU {}. New stock: {}",
                 quantityToRestore, product.getSKU(), updatedStock);
-    }
-
-    private PaginatedResponse<DamageLossResponse> getAllDamageLoss(int page, int size) {
-        try {
-            Pageable pageable = PageRequest.of(page, size, Sort.by("icProduct.pmProduct.name").ascending());
-            Page<DamageLoss> dbResponse = damageLossRepository.findAll(pageable);
-
-            PaginatedResponse<DamageLossResponse> dtoResult = damageLossHelper.transformToPaginatedDTO(dbResponse);
-            log.info("DL (getAllDamageLoss): Returning {} paginated data", dtoResult.getContent().size());
-            return dtoResult;
-        } catch (DataAccessException de) {
-            throw new DatabaseException("DL (getAllDamageLoss): Database error.", de);
-        } catch (Exception e) {
-            throw new ServiceException("DL (getAllDamageLoss): Internal Service error", e);
-        }
     }
 }

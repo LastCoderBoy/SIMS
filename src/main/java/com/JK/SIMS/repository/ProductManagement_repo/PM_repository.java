@@ -7,6 +7,7 @@ import com.JK.SIMS.models.PM_models.dtos.ReportProductMetrics;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -15,7 +16,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface PM_repository extends JpaRepository<ProductsForPM, String> {
+public interface PM_repository extends JpaRepository<ProductsForPM, String>, JpaSpecificationExecutor<ProductsForPM> {
     @Query(value = "SELECT pm.productID  FROM ProductsForPM pm ORDER BY CAST(SUBSTRING(pm.productID, 4) AS INTEGER) DESC Limit 1")
     Optional<String> getLastId();
 

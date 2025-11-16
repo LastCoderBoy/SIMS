@@ -1,12 +1,11 @@
 package com.JK.SIMS.service.productManagementService.impl;
 
-import com.JK.SIMS.config.security.JWTService;
+import com.JK.SIMS.config.security.utils.SecurityUtils;
 import com.JK.SIMS.exception.DatabaseException;
 import com.JK.SIMS.exception.ResourceNotFoundException;
 import com.JK.SIMS.exception.ServiceException;
 import com.JK.SIMS.exception.ValidationException;
 import com.JK.SIMS.models.ApiResponse;
-import com.JK.SIMS.models.PM_models.ProductCategories;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PM_models.dtos.BatchProductResponse;
@@ -16,12 +15,14 @@ import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.inventoryData.InventoryControlData;
 import com.JK.SIMS.models.inventoryData.InventoryDataStatus;
 import com.JK.SIMS.repository.ProductManagement_repo.PM_repository;
-import com.JK.SIMS.service.InventoryServices.inventoryDashboardService.InventoryControlService;
 import com.JK.SIMS.service.InventoryServices.inventoryCommonUtils.inventoryQueryService.InventoryQueryService;
+import com.JK.SIMS.service.InventoryServices.inventoryDashboardService.InventoryControlService;
+import com.JK.SIMS.service.generalUtils.ExcelReporterHelper;
 import com.JK.SIMS.service.productManagementService.ProductManagementService;
 import com.JK.SIMS.service.productManagementService.utils.PMServiceHelper;
+import com.JK.SIMS.service.productManagementService.utils.queryService.ProductQueryService;
+import com.JK.SIMS.service.productManagementService.utils.searchService.ProductSearchService;
 import com.JK.SIMS.service.salesOrder.salesOrderQueryService.SalesOrderQueryService;
-import com.JK.SIMS.service.generalUtils.ExcelReporterHelper;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,9 +31,6 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,9 +39,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import static com.JK.SIMS.service.generalUtils.GlobalServiceHelper.amongInvalidStatus;
 import static com.JK.SIMS.service.productManagementService.excelReporter.ExcelReporterForPM.createHeaderRow;
 import static com.JK.SIMS.service.productManagementService.excelReporter.ExcelReporterForPM.populateDataRows;
-import static com.JK.SIMS.service.generalUtils.GlobalServiceHelper.amongInvalidStatus;
 
 @Service
 @Slf4j
@@ -54,66 +52,36 @@ public class ProductManagementServiceImpl implements ProductManagementService {
     private final PMServiceHelper pmServiceHelper;
 
     // ========== Components ==========
-    private final InventoryQueryService inventoryQueryService;
+    private final SecurityUtils securityUtils;
 
     // ========== Services ==========
+    private final InventoryQueryService inventoryQueryService;
     private final InventoryControlService icService;
-    private final JWTService jwtService;
     private final SalesOrderQueryService salesOrderQueryService;
+    private final ProductQueryService productQueryService;
+    private final ProductSearchService productSearchService;
 
     // ========== Repositories ==========
     private final PM_repository pmRepository;
 
 
-    private ProductsForPM findProductById(String productId) {
-        return pmRepository.findById(productId)
-                .orElseThrow(() -> new ResourceNotFoundException("Product with ID " + productId + " not found"));
-    }
-
-    /**
-     * Retrieves a paginated list of all products from the database.
-     * The products are sorted by productID in ascending order.
-     * Each product entity is converted to a DTO before returning.
-     *
-     * @param page zero-based page number for pagination
-     * @param size number of items per page
-     * @return PaginatedResponse containing all products in the system
-     * @throws DatabaseException if database access fails
-     * @throws ServiceException  if any other error occurs during retrieval
-     */
     @Override
     @Transactional(readOnly = true)
-    public PaginatedResponse<ProductManagementResponse> getAllProducts(int page, int size) {
-        try {
-            Pageable pageable = PageRequest.of(page, size, Sort.by("productID").ascending());
-            Page<ProductsForPM> allProducts = pmRepository.findAll(pageable);
-            PaginatedResponse<ProductManagementResponse> dtoPaginatedResponse = pmServiceHelper.transformToDTOPaginatedResponse(allProducts);
-            log.info("PM (getAllProducts): Retrieved {} products from database.", allProducts.getTotalElements());
-            return dtoPaginatedResponse;
-        } catch (DataAccessException e) {
-            throw new DatabaseException("PM (getAllProducts): Failed to retrieve products from database", e);
-        } catch (Exception e) {
-            throw new ServiceException("PM (getAllProducts): Failed to retrieve products", e);
-        }
+    public PaginatedResponse<ProductManagementResponse> getAllProducts(String sortBy, String sortDirection, int page, int size) {
+        // Delegate to the QueryService
+        Page<ProductsForPM> pagedProductsEntity =
+                productQueryService.getAllProducts(sortBy, sortDirection, page, size);
+        log.info("PM (getAllProducts): Retrieved {} products from database.", pagedProductsEntity.getTotalElements());
+        return pmServiceHelper.transformToPaginatedResponse(pagedProductsEntity);
     }
 
-
-    
-    /**
-     * Adds a new product to the system after validation and generates a new product ID.
-     * If the product status is NOT Equal to PLANNING, it will be added to IC section.
-     *
-     * @param productRequest The product object containing all required product details
-     * @return ApiResponse object containing success status and message
-     * @throws ValidationException   if product details are invalid
-     * @throws ServiceException      if there's an error during product addition
-     */
     @Override
     @Transactional
     public ProductManagementResponse addProduct(ProductManagementRequest productRequest){
         try {
             if (pmServiceHelper.validateProduct(productRequest)) {
-                ProductsForPM product = createProductEntity(productRequest);
+                ProductsForPM product = pmServiceHelper.createProductEntity(productRequest);
+                product.setProductID(generateProductId());
                 ProductsForPM savedProduct = pmRepository.save(product);
 
                 // Add to inventory if status is not PLANNING
@@ -152,7 +120,8 @@ public class ProductManagementServiceImpl implements ProductManagementService {
             ProductManagementRequest productRequest = products.get(i);
             try {
                 if (pmServiceHelper.validateProduct(productRequest)) {
-                    ProductsForPM product = createProductEntity(productRequest);
+                    ProductsForPM product = pmServiceHelper.createProductEntity(productRequest);
+                    product.setProductID(generateProductId());
                     ProductsForPM savedProduct = pmRepository.save(product);
 
                     // Add to inventory if needed
@@ -188,20 +157,6 @@ public class ProductManagementServiceImpl implements ProductManagementService {
     }
 
     /**
-     * Helper method to create ProductsForPM entity from DTO
-     */
-    private ProductsForPM createProductEntity(ProductManagementRequest request) {
-        ProductsForPM product = new ProductsForPM();
-        product.setProductID(generateProductId());
-        product.setName(request.getName());
-        product.setCategory(request.getCategory());
-        product.setPrice(request.getPrice());
-        product.setLocation(request.getLocation());
-        product.setStatus(request.getStatus());
-        return product;
-    }
-
-    /**
      * Deletes a product from both Product Management and Inventory Control systems.
      * This is a cascading delete operation that removes the product from both PM and IC databases.
      *
@@ -216,9 +171,9 @@ public class ProductManagementServiceImpl implements ProductManagementService {
     @Transactional
     public ApiResponse<Void> deleteProduct(String id, String jwtToken) {
         try {
-            String username = jwtService.extractUsername(jwtToken);
+            String username = securityUtils.validateAndExtractUsername(jwtToken);
 
-            ProductsForPM product = findProductById(id);  // Throws ResourceNotFoundException if not found
+            ProductsForPM product = productQueryService.findById(id);  // Throws ResourceNotFoundException if not found
 
             // If the product is used in active orders (prevent accidental deletion)
             long activeOrdersCount = salesOrderQueryService.countActiveOrdersForProduct(id);
@@ -264,7 +219,7 @@ public class ProductManagementServiceImpl implements ProductManagementService {
     @Transactional
     public ApiResponse<Void> updateProduct(String productId, ProductManagementRequest updateProductRequest) {
         try {
-            ProductsForPM currentProduct = findProductById(productId);
+            ProductsForPM currentProduct = productQueryService.findById(productId);
             if(pmServiceHelper.isAllFieldsNull(updateProductRequest)){
                 log.info("PM (updateProduct): No fields to update. Product with ID {} not updated.", productId);
                 return new ApiResponse<>(false, "Missing fields to update.");
@@ -344,115 +299,21 @@ public class ProductManagementServiceImpl implements ProductManagementService {
     }
 
 
-    /**
-     * Searches for products based on a text query with pagination support.
-     * The search is performed across multiple fields including product ID, name,
-     * category, status, and location.
-     *
-     * @param text The search query text
-     * @param page Zero-based page number
-     * @param size Number of items per page
-     * @return PaginatedResponse after the search operation.
-     * @throws DatabaseException if an error occurs accessing the database
-     * @throws ServiceException if an error occurs during the search operation
-     */
     @Override
     @Transactional(readOnly = true)
-    public PaginatedResponse<ProductManagementResponse> searchProduct(String text, int page, int size) {
-        try {
-            if (text != null && !text.trim().isEmpty()) {
-                Pageable pageable = PageRequest.of(page, size, Sort.by("productID").ascending());
-                Page<ProductsForPM> result = pmRepository.searchProducts(text.trim().toLowerCase(), pageable);
-                return pmServiceHelper.transformToDTOPaginatedResponse(result);
-            }
-            log.info("PM (searchProduct): No search text provided. Retrieving first page with default size.");
-            return getAllProducts(0, 10);
-        }catch (DataAccessException da) {
-            throw new DatabaseException("PM (searchProduct): Database error", da);
-        } catch (Exception e) {
-            throw new ServiceException("PM (searchProduct): Failed to retrieve products", e);
-        }
+    public PaginatedResponse<ProductManagementResponse> searchProduct(String text, String sortBy, String sortDirection, int page, int size) {
+        Page<ProductsForPM> searchResult =
+                productSearchService.searchProduct(text, sortBy, sortDirection, page, size);
+        return pmServiceHelper.transformToPaginatedResponse(searchResult);
     }
 
 
-    /**
-     * Filters and sorts products based on specified criteria with pagination support.
-     * Filter format: "field:value" where field can be category, location, price, or status.
-     * Also supports general text search if filter doesn't match the field:value format.
-     *
-     * @param filter    Filter string in "field:value" format or general search term
-     * @param sortBy    Field to sort by (e.g. "productID", "name", "price")
-     * @param direction Sort direction ("asc" or "desc")
-     * @param page      Zero-based page number
-     * @param size      Number of items per page
-     * @return PaginatedResponse containing filtered and sorted ProductManagementDTO objects
-     * @throws ValidationException if filter value is invalid
-     * @throws DatabaseException   if database operation fails
-     * @throws ServiceException    if any other error occurs
-     */
     @Override
     @Transactional(readOnly = true)
     public PaginatedResponse<ProductManagementResponse> filterProducts(String filter, String sortBy, String direction, int page, int size) {
-        try {
-            Sort.Direction sortDirection = direction.equalsIgnoreCase("desc") ?
-                    Sort.Direction.DESC : Sort.Direction.ASC;
-
-            Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortBy));
-
-            Page<ProductsForPM> resultPage;
-            if(filter != null && !filter.trim().isEmpty()){
-                String[] filterParts = filter.split(":");
-                if(filterParts.length == 2){
-                    String field = filterParts[0].toLowerCase();
-                    String value = filterParts[1];
-                    resultPage = switch (field) {
-                        case "category" -> {
-                            ProductCategories category = ProductCategories.valueOf(value.toUpperCase());
-                            yield pmRepository.findByCategory(category, pageable);
-                        }
-                        case "location" -> pmRepository.findByLocation(value, pageable);
-                        case "price" -> pmRepository.findByPriceLevel(Integer.parseInt(value), pageable);
-                        case "status" -> {
-                            ProductStatus status = ProductStatus.valueOf(value.toUpperCase());
-                            yield pmRepository.findByStatus(status, pageable);
-                        }
-                        default -> pmRepository.findAll(pageable);
-                    };
-                }
-                else {
-                    resultPage = pmRepository.findByGeneralFilter(filter.trim().toLowerCase(), pageable);
-                }
-            }
-            else {
-                resultPage = pmRepository.findAll(pageable);
-            }
-
-            return pmServiceHelper.transformToDTOPaginatedResponse(resultPage);
-
-        } catch (IllegalArgumentException iae) {
-            log.error("PM (filterProducts): Invalid filter value: {}", iae.getMessage());
-            throw new ValidationException("PM (filterProducts): Invalid filter value");
-        } catch (DataAccessException da) {
-            log.error("PM (filterProducts): Database error: {}", da.getMessage());
-            throw new DatabaseException("PM (filterProducts): Database error", da);
-        } catch (Exception e) {
-            log.error("PM (filterProducts): Failed to filter products: {}", e.getMessage());
-            throw new ServiceException("PM (filterProducts): Failed to filter products", e);
-        }
-    }
-
-    /**
-     * Retrieves all products from the database sorted by productID in ascending order.
-     * This method is primarily used for report generation and returns the full list without pagination.
-     * Each product entity is converted to a DTO before being added to the returned list.
-     *
-     * @return List of ProductManagementDTO objects containing all products in the system
-     * @throws DatabaseException if there is an error accessing the database
-     * @throws ServiceException  if any other error occurs during the retrieval process
-     */
-    private List<ProductManagementResponse> getAllProducts() {
-        List<ProductsForPM> productList = pmRepository.findAll(Sort.by("productID").ascending());
-        return productList.stream().map(pmServiceHelper::convertToDTO).toList();
+        Page<ProductsForPM> pagedFilterResponse =
+                productSearchService.filterProducts(filter, sortBy, direction, page, size);
+        return pmServiceHelper.transformToPaginatedResponse(pagedFilterResponse);
     }
 
     /**
@@ -467,9 +328,11 @@ public class ProductManagementServiceImpl implements ProductManagementService {
         XSSFWorkbook workbook = new XSSFWorkbook();
         XSSFSheet sheet = workbook.createSheet("Product Management");
         createHeaderRow(sheet);
-        List<ProductManagementResponse> allProducts = getAllProducts();
-        populateDataRows(sheet, allProducts);
-        log.info("PM (GeneratePmReport): Retrieved {} products from database for report generation.)", allProducts.size());
+
+        // Get All Products and populate data rows
+        List<ProductsForPM> productList = productQueryService.getAllProducts();
+        populateDataRows(sheet, productList);
+        log.info("PM (GeneratePmReport): Retrieved {} products from database for report generation.)", productList.size());
         ExcelReporterHelper.writeWorkbookToResponse(response, workbook);
     }
 
@@ -478,20 +341,18 @@ public class ProductManagementServiceImpl implements ProductManagementService {
     public void saveProduct(ProductsForPM product) {
         try {
             pmRepository.save(product);
-            log.info("PM (saveProduct): Successfully saved/updated product with ID {}",
-                    product.getProductID());
+            log.info("PM (saveProduct): Successfully saved/updated product with ID {}", product.getProductID());
         } catch (DataAccessException da) {
-            log.error("PM (saveProduct): Database error while saving product: {}",
-                    da.getMessage());
+            log.error("PM (saveProduct): Database error while saving product: {}", da.getMessage());
             throw new DatabaseException("Failed to save product", da);
         } catch (Exception e) {
-            log.error("PM (saveProduct): Unexpected error while saving product: {}",
-                    e.getMessage());
+            log.error("PM (saveProduct): Unexpected error while saving product: {}", e.getMessage());
             throw new ServiceException("Failed to save product", e);
         }
     }
 
-    private String generateProductId() {
+    @Transactional(readOnly = true)
+    public String generateProductId() {
         Optional<String> lastIdOpt = pmRepository.getLastId();
         if (lastIdOpt.isPresent()) {
             String lastId = lastIdOpt.get();

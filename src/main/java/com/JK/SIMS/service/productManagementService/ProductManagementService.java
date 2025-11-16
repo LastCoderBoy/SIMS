@@ -12,12 +12,12 @@ import org.apache.coyote.BadRequestException;
 import java.util.List;
 
 public interface ProductManagementService {
-    PaginatedResponse<ProductManagementResponse> getAllProducts(int page, int size);
+    PaginatedResponse<ProductManagementResponse> getAllProducts(String sortBy, String sortDirection, int page, int size);
     ProductManagementResponse addProduct(ProductManagementRequest newProduct);
     BatchProductResponse addProductsBatch(List<ProductManagementRequest> products);
     ApiResponse<Void> deleteProduct(String id, String jwtToken) throws BadRequestException;
     ApiResponse<Void> updateProduct(String productId, ProductManagementRequest updateProductRequest);
-    PaginatedResponse<ProductManagementResponse> searchProduct(String text, int page, int size);
+    PaginatedResponse<ProductManagementResponse> searchProduct(String text, String sortBy, String sortDirection, int page, int size);
     PaginatedResponse<ProductManagementResponse> filterProducts(String filter, String sortBy, String direction, int page, int size);
     void generatePMReport(HttpServletResponse response);
     void saveProduct(ProductsForPM product);

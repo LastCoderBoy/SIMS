@@ -1,5 +1,6 @@
 package com.JK.SIMS.service.productManagementService.excelReporter;
 
+import com.JK.SIMS.models.PM_models.ProductsForPM;
 import com.JK.SIMS.models.PM_models.dtos.ProductManagementResponse;
 import com.JK.SIMS.service.generalUtils.ExcelReporterHelper;
 import org.apache.poi.ss.usermodel.Cell;
@@ -35,9 +36,9 @@ public class ExcelReporterForPM {
         cell.setCellStyle(style);
     }
 
-    public static void populateDataRows(XSSFSheet sheet, List<ProductManagementResponse> allProducts) {
+    public static void populateDataRows(XSSFSheet sheet, List<ProductsForPM> allProducts) {
         int dataRowIndex = 1;
-        for (ProductManagementResponse pm : allProducts) {
+        for (ProductsForPM pm : allProducts) {
             XSSFRow rowForData = sheet.createRow(dataRowIndex);
             rowForData.createCell(0).setCellValue(pm.getProductID());
             rowForData.createCell(1).setCellValue(pm.getCategory().toString());

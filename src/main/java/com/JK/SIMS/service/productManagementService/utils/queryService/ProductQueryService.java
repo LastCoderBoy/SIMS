@@ -7,13 +7,22 @@ import com.JK.SIMS.exception.ServiceException;
 import com.JK.SIMS.exception.ValidationException;
 import com.JK.SIMS.models.PM_models.ProductStatus;
 import com.JK.SIMS.models.PM_models.ProductsForPM;
+import com.JK.SIMS.models.PM_models.dtos.ProductManagementResponse;
 import com.JK.SIMS.models.PM_models.dtos.ReportProductMetrics;
+import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.repository.ProductManagement_repo.PM_repository;
+import com.JK.SIMS.service.generalUtils.GlobalServiceHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 /**
  * Shared query service for product-related read operations
@@ -26,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProductQueryService {
 
     private final PM_repository pmRepository;
+    private final GlobalServiceHelper globalServiceHelper;
 
     /**
      * Find product by ID - throws exception if not found
@@ -35,6 +45,25 @@ public class ProductQueryService {
     public ProductsForPM findById(String productId) {
         return pmRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with ID: " + productId));
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProductsForPM> getAllProducts() {
+        return pmRepository.findAll(Sort.by("productID").ascending());
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ProductsForPM> getAllProducts(String sortBy, String sortDirection, int page, int size) {
+        try {
+            Pageable pageable = globalServiceHelper.preparePageable(page, size, sortBy, sortDirection);
+            return pmRepository.findAll(pageable);
+        } catch (DataAccessException e) {
+            log.error("PM (getAllProducts): Failed to retrieve products due to database error: {}", e.getMessage());
+            throw new DatabaseException("Failed to retrieve products due to database error", e);
+        } catch (Exception e) {
+            log.error("PM (getAllProducts): Failed to retrieve products: {}", e.getMessage());
+            throw new ServiceException("Internal Service Error occurred", e);
+        }
     }
 
     @Transactional(readOnly = true)
