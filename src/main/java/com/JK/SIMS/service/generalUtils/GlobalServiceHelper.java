@@ -23,8 +23,6 @@ import java.util.UUID;
 @Slf4j
 public class GlobalServiceHelper {
 
-    //TODO: Use abstract inheritance for common logic serives
-
     public static boolean amongInvalidStatus(ProductStatus status) {
         return status.equals(ProductStatus.RESTRICTED) ||
                 status.equals(ProductStatus.ARCHIVED) ||

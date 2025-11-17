@@ -1,6 +1,5 @@
 package com.JK.SIMS.controller.inventoryControllers;
 
-import com.JK.SIMS.config.security.utils.SecurityUtils;
 import com.JK.SIMS.models.ApiResponse;
 import com.JK.SIMS.models.PaginatedResponse;
 import com.JK.SIMS.models.damage_loss.DamageLoss;
